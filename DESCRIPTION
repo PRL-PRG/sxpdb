@@ -1,5 +1,5 @@
-Package: recorder
-Title: Records R values
+Package: sxpdb
+Title: Store R values
 Version: 0.0.0.9000
 Authors@R: c(
     person(given = "Yuan",
@@ -12,7 +12,7 @@ Authors@R: c(
           role = c("aut", "cre"),
           email = "Pierre.donat.bouillud@gmail.com",
           comment = c(ORCID = "0000-0003-4455-1130")))
-Description: Records R values. It stores the values in an efficient ways that scales to millions of unique values and provides 
+Description: Stores R values. It stores the values in an efficient ways that scales to millions of unique values and provides 
     a rich query API to find values from the database.
 License: MIT + file LICENSE
 Encoding: UTF-8

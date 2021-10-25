@@ -31,7 +31,7 @@
 
 #include "fun_store.h"
 
-#include "recorder.h"
+#include "sxpdb.h"
 
 static const R_CallMethodDef callMethods[] = {
 	/* name						casted ptr to function			# of args */
@@ -182,9 +182,9 @@ static const R_CallMethodDef callMethods[] = {
 	{NULL,						NULL,								0}
 };
 
-void R_init_recorder(DllInfo* dll) {
+void R_init_sxpdb(DllInfo* dll) {
 	R_registerRoutines(dll, NULL, callMethods, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
-	//R_RegisterCCallable("record", "add_val", (DL_FUNC) &add_val);
+	R_RegisterCCallable("sxpdb", "add_val", (DL_FUNC) &add_val);
 }
 

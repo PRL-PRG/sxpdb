@@ -13,7 +13,7 @@ extern "C" {
  * @method setup
  * @return R_NilValue on succecss
  */
-extern SEXP setup();
+SEXP setup();
 
 /**
  * This function tears down all traces of the database after running.

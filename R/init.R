@@ -1,4 +1,4 @@
 ## usethis namespace: start
-#' @useDynLib recorder, .registration = TRUE, .fixes = "RCRD_"
+#' @useDynLib sxpdb, .registration = TRUE, .fixes = "RCRD_"
 ## usethis namespace: end
 NULL

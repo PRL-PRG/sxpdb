@@ -12,8 +12,8 @@ check: build
 	$R CMD check record*tar.gz
 
 clean:
-	-rm -f record*tar.gz
-	-rm -fr record.Rcheck
+	-rm -f sxpdb*tar.gz
+	-rm -fr sxpdb.Rcheck
 	-rm -rf src/*.o src/*.so
 	-rm -rf tests/testthat/test_db*
 	-rm -f trace
