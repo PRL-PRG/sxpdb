@@ -64,10 +64,11 @@ extern size_t n_count;
 extern size_t g_size;
 
 /**
- * This function sets up the initiatial state of the database.
+ * This function sets up the initial state of the database.
  * This function must be called first.
  * @method setup
- * @return R_NilValue on succecss
+ * @export
+ * @return R_NilValue on success
  */
 SEXP setup() {
 	vector = make_vector(1 << 30);
@@ -79,7 +80,7 @@ SEXP setup() {
  * This function tears down all traces of the database after running.
  * This function must be called last.
  * @method setup
- * @return R_NilValue on succecss
+ * @return R_NilValue on success
  */
 SEXP teardown() {
 	if (vector) {

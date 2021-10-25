@@ -182,8 +182,9 @@ static const R_CallMethodDef callMethods[] = {
 	{NULL,						NULL,								0}
 };
 
-void R_init_record(DllInfo* dll) {
+void R_init_recorder(DllInfo* dll) {
 	R_registerRoutines(dll, NULL, callMethods, NULL, NULL);
-	R_RegisterCCallable("record", "add_val", (DL_FUNC) &add_val);
+  R_useDynamicSymbols(dll, FALSE);
+	//R_RegisterCCallable("record", "add_val", (DL_FUNC) &add_val);
 }
 

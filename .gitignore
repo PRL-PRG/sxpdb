@@ -41,3 +41,6 @@ vignettes/*.pdf
 # Object files
 *.o
 *.so
+
+# Database
+db
