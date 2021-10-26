@@ -27,6 +27,7 @@ static inline void trim(std::string &s) {
 }
 
 
+
 Description::Description(const std::string& filename) {
   std::ifstream description_file(filename);
   if(!description_file) {
@@ -68,7 +69,7 @@ void Description::write(std::ostream& out) {
 }
 
 DefaultStore::DefaultStore(const std::string& description_name) :
-  description_name(description_name), description(description_name)
+  description_name(description_name), description(description_name), bytes_read(0)
 {
   load();
 }
@@ -93,6 +94,25 @@ bool DefaultStore::load() {
   }
   if(!index_file) exit(1);
 
+  index_file.exceptions(std::fstream::failbit);
+  store_file.exceptions(std::fstream::failbit);
 
+  load_index();
+
+  return true;
 }
 
+
+void DefaultStore::load_index() {
+  index.reserve(description.nb_values);
+  size_t start = 0;
+  std::array<char, 20> hash;
+  size_t offset = 0;
+
+  for(size_t i = 0; i < description.nb_values ; i++) {
+    index_file.read(hash.data(), 20);
+    index_file.read(reinterpret_cast<char*>(&offset), sizeof(offset));
+    index[hash] = offset;
+    bytes_read += 20 + sizeof(offset);
+  }
+}

@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <unordered_map>
+#include <array>
 
 struct Description {
   std::string type;
@@ -19,6 +20,23 @@ struct Description {
 
 };
 
+// from boost::hash_combine
+void hash_combine(std::size_t& seed, std::size_t value) {
+  seed ^= value + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
+
+struct container_hasher {
+  template<class T>
+  std::size_t operator()(const T& c) const {
+    std::size_t seed = 0;
+    for(const auto& elem : c) {
+      hash_combine(seed, std::hash<typename T::value_type>()(elem));
+    }
+    return seed;
+  }
+};
+
 class DefaultStore : Store {
 private:
   std::string description_name;
@@ -27,11 +45,12 @@ private:
   std::fstream store_file;//values
   std::fstream metadata_file;//function, package, srcref, number of times seen, offset to the value
 
-  //TODO: write a proper hash class that can automatically give its hash
-  // instead of wasting memory
-  // Or use std::map?
-  std::unordered_map<std::string, size_t> index;
+  std::unordered_map<std::array<char, 20>, size_t, container_hasher> index;
 
+  size_t bytes_read;
+
+protected:
+  void load_index();
 
 public:
   DefaultStore(const std::string& description_name);
