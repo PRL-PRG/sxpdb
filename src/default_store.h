@@ -46,11 +46,15 @@ private:
   std::fstream metadata_file;//function, package, srcref, number of times seen, offset to the value
 
   std::unordered_map<std::array<char, 20>, size_t, container_hasher> index;
+  // Values (number of times seen, new during that session or not)
+  std::unordered_map<std::array<char, 20>, std::pair<size_t, bool>, container_hasher> metadata;
 
   size_t bytes_read;
 
 protected:
-  void load_index();
+  virtual void load_index();
+  virtual void load_metadata();
+  virtual void write_index();
 
 public:
   DefaultStore(const std::string& description_name);

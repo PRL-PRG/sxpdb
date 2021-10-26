@@ -98,6 +98,7 @@ bool DefaultStore::load() {
   store_file.exceptions(std::fstream::failbit);
 
   load_index();
+  load_metadata();
 
   return true;
 }
@@ -114,5 +115,26 @@ void DefaultStore::load_index() {
     index_file.read(reinterpret_cast<char*>(&offset), sizeof(offset));
     index[hash] = offset;
     bytes_read += 20 + sizeof(offset);
+  }
+}
+
+void DefaultStore::load_metadata() {
+  metadata.reserve(description.nb_values);
+
+  // Rather actually load these metadata from a proper file
+  for(auto& it : index) {
+    metadata[it.first] = std::make_pair(1, false);
+  }
+}
+
+void DefaultStore::write_index() {
+  // Only write values that were newly discovered during this run
+  // The old one can keep living happily at the beginning of the file!
+  for(auto& it : index) {
+    auto meta = metadata[it.first];
+    if(meta.second) {
+      index_file.write(it.first.data(), it.first.size());
+      index_file.write(reinterpret_cast<char*>(&it.second), sizeof(it.second));
+    }
   }
 }
