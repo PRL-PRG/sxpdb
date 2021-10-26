@@ -27,6 +27,8 @@ class GlobalStore : Store {
 
     virtual bool merge_in(const std::string& filename);
 
+    virtual const std::string& sexp_type() const { return "any"; };
+
     virtual bool add_value(SEXP val);
     virtual bool have_seen(SEXP val) const;
 

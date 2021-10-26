@@ -14,6 +14,8 @@ public:
     virtual bool add_value(SEXP val) = 0 ;
     virtual bool have_seen(SEXP val) const = 0;
 
+    virtual const std::string& sexp_type() const = 0;// the return type will be more complex when we deal with richer queries
+
     virtual SEXP get_value(size_t index) const = 0;
 
     // Pass it a Description and a Distribution that precises what kind of values

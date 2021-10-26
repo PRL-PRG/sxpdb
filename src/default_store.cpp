@@ -6,6 +6,11 @@
 #include <cctype>
 #include <locale>
 
+// from boost::hash_combine
+void hash_combine(std::size_t& seed, std::size_t value) {
+  seed ^= value + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
 // trim from start (in place)
 static inline void ltrim(std::string &s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {

@@ -21,11 +21,10 @@ struct Description {
 };
 
 // from boost::hash_combine
-void hash_combine(std::size_t& seed, std::size_t value) {
-  seed ^= value + 0x9e3779b9 + (seed<<6) + (seed>>2);
-}
+void hash_combine(std::size_t& seed, std::size_t value);
 
 
+// TODO: make it work for more complex values (when elem is a pair for instance)
 struct container_hasher {
   template<class T>
   std::size_t operator()(const T& c) const {
@@ -65,6 +64,8 @@ public:
 
   virtual bool add_value(SEXP val);
   virtual bool have_seen(SEXP val) const;
+
+  virtual const std::string& sexp_type() const { return description.type; };
 
   virtual SEXP get_value(size_t index) const;
 
