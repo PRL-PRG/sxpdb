@@ -5,7 +5,6 @@
 
 #include <fstream>
 #include <unordered_map>
-#include <Rinternals.h>
 
 struct Description {
   std::string type;
@@ -22,6 +21,7 @@ struct Description {
 
 class DefaultStore : Store {
 private:
+  std::string description_name;
   Description description;//description of the file (types stored, sizes and names of the 3 other files, number of values)
   std::fstream index_file;//hash of value, offset to value in the store, offset to metadata
   std::fstream store_file;//values
@@ -34,11 +34,11 @@ private:
 
 
 public:
-  DefaultStore(std::string description_name);
+  DefaultStore(const std::string& description_name);
 
-  virtual bool open(std::string filename);
+  virtual bool load();
 
-  virtual bool merge_in(std::string filename);
+  virtual bool merge_in(const std::string& filename);
 
   virtual bool add_value(SEXP val);
   virtual bool have_seen(SEXP val) const;
@@ -49,7 +49,7 @@ public:
   // we want
   virtual SEXP sample_value() const;
 
-  virtual ~DefaultStore() {};
+  virtual ~DefaultStore();
 };
 
 

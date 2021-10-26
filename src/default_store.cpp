@@ -67,14 +67,32 @@ void Description::write(std::ostream& out) {
   out << "nb_values=" << nb_values << std::endl;
 }
 
-DefaultStore::DefaultStore(std::string description_name) : description(description_name) {
-
-
-  // We will just write at the end of the file (but might read before)
-  //index_file.open(index_name, std::fstream::in| std::fstream::out | std::fstream::binary | std::fstream::app);
-  //store_file.open(index_name, std::fstream::in| std::fstream::out | std::fstream::binary | std::fstream::app);
+DefaultStore::DefaultStore(const std::string& description_name) :
+  description_name(description_name), description(description_name)
+{
+  load();
 }
 
 
+DefaultStore::~DefaultStore() {
+  std::ofstream description_file(description_name);
+  description.write(description_file);
+}
 
+bool DefaultStore::load() {
+
+  // We will just write at the end of the file (but might read before)
+  index_file.open(description.index_name, std::fstream::in| std::fstream::out | std::fstream::binary | std::fstream::app);
+  store_file.open(description.store_name, std::fstream::in| std::fstream::out | std::fstream::binary | std::fstream::app);
+  if(!index_file) {
+    std::cerr << "Failed to open index file " << description.index_name << std::endl;
+  }
+  if(!store_file) {
+    std::cerr << "Failed to open store file " << description.store_name << std::endl;
+    exit(1);
+  }
+  if(!index_file) exit(1);
+
+
+}
 

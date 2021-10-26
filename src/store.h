@@ -2,12 +2,14 @@
 #define RCRD_STORE_H
 
 #include <iostream>
+#define R_NO_REMAP
 #include <Rinternals.h>
 
 class Store {
 public:
-    virtual bool open(std::string filename) = 0;
-    virtual bool merge_in(std::string filename) = 0;
+    virtual bool open(const std::string filename);
+
+    virtual bool merge_in(const std::string& filename);
 
     virtual bool add_value(SEXP val) = 0 ;
     virtual bool have_seen(SEXP val) const = 0;
