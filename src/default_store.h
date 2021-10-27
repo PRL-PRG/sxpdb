@@ -42,7 +42,7 @@ private:
   Description description;//description of the file (types stored, sizes and names of the 3 other files, number of values)
   std::fstream index_file;//hash of value, offset to value in the store, offset to metadata
   std::fstream store_file;//values
-  std::fstream metadata_file;//function, package, srcref, number of times seen, offset to the value
+  std::fstream metadata_file;//function, package, srcref, number of times seen, offset to the value (TODO)
 
   std::unordered_map<std::array<char, 20>, size_t, container_hasher> index;
   // Values (number of times seen, new during that session or not)

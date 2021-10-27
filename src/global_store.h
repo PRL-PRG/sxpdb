@@ -5,13 +5,14 @@
 #include "default_store.h"
 
 #include <vector>
+#include <memory>
 
 class GlobalStore : Store {
   private:
     // Stores the names of the various stores, their types, their number of values
     // it is redundant with the configuration files of the various stores, but it is ok
     std::string configuration_name;
-    std::vector<DefaultStore> stores;
+    std::vector<std::unique_ptr<DefaultStore>> stores;
 
     size_t bytes_read;
 
