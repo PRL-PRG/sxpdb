@@ -16,6 +16,8 @@ class GlobalStore : Store {
 
     size_t bytes_read;
 
+    size_t total_values;
+
   protected:
     virtual void load_index();
     virtual void load_metadata();

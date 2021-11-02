@@ -18,6 +18,8 @@ public:
 
     virtual SEXP get_value(size_t index) const = 0;
 
+    virtual size_t nb_values() const = 0;
+
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
     virtual SEXP sample_value() const = 0;

@@ -128,7 +128,7 @@ void DefaultStore::load_metadata() {
 
   // Rather actually load these metadata from a proper file
   for(auto& it : index) {
-    metadata[it.first] = std::make_pair(1, false);
+    metadata[it.first] = std::make_pair(1, false);//placeholder
   }
 }
 

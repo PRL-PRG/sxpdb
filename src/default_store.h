@@ -65,6 +65,8 @@ public:
   virtual bool add_value(SEXP val);
   virtual bool have_seen(SEXP val) const;
 
+  virtual size_t nb_values() const { return description.nb_values; }
+
   virtual const std::string& sexp_type() const { return description.type; };
 
   virtual SEXP get_value(size_t index) const;
