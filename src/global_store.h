@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <memory>
+#include <random>
 
 class GlobalStore : Store {
   private:
@@ -13,10 +14,13 @@ class GlobalStore : Store {
     // it is redundant with the configuration files of the various stores, but it is ok
     std::string configuration_name;
     std::vector<std::unique_ptr<DefaultStore>> stores;
+    std::unordered_map<std::string, size_t> types;
 
     size_t bytes_read;
 
     size_t total_values;
+
+    std::default_random_engine rand_engine;
 
   protected:
     virtual void load_index();
@@ -42,7 +46,7 @@ class GlobalStore : Store {
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
-    virtual SEXP sample_value() const;
+    virtual SEXP sample_value(); // not const because the random number generator as internal state
 
     virtual ~GlobalStore();
 };
