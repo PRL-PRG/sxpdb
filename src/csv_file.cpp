@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cassert>
 
 CSVFile::CSVFile(const std::string& filename) {
   std::ifstream file(filename);
@@ -45,4 +46,25 @@ size_t CSVFile::nb_rows() const {
 
 const std::string& CSVFile::cell(size_t column, size_t row) const {
   return rows.at(row).at(column);
+}
+
+
+void CSVFile::add_row(std::vector<std::string>&& row) {
+  assert(rows.size() == 0 || rows.back().size() == row.size() );
+  rows.push_back(row);
+}
+
+void CSVFile::write(const std::string& filename) {
+  std::ofstream file(filename,std::ofstream::out | std::ofstream::trunc);
+  if(!file) {
+    std::cerr << "Impossible to open for write CSV file " << filename << std::endl;
+  }
+
+  for(auto& row: rows) {
+    for(auto& column : row) {
+      file << column << ",";
+    }
+    file.seekp(-1, std::ios_base::cur);
+    file.put('\n');
+  }
 }

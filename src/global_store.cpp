@@ -34,3 +34,16 @@ GlobalStore::GlobalStore(const std::string& filename) : configuration_name(filen
   }
 
 }
+
+
+GlobalStore::~GlobalStore() {
+  CSVFile file;
+  std::vector<std::string> row(3);
+  for(auto& store: stores) {
+    row[0] = store->description_file();
+    row[1] = store->sexp_type();
+    row[2] = std::to_string(store->nb_values());
+    file.add_row(std::move(row));
+  }
+  file.write(configuration_name);
+}

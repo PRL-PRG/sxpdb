@@ -2,23 +2,12 @@
 #define SXPDB_DEFAULTSTORE_H
 
 #include "store.h"
+#include "config.h"
 
 #include <fstream>
 #include <unordered_map>
 #include <array>
 
-struct Description {
-  std::string type;
-  std::string index_name;
-  std::string store_name;
-  std::string metadata_name;
-  size_t nb_values;
-
-  Description(const std::string& filename);
-
-  void write(std::ostream& output);
-
-};
 
 // from boost::hash_combine
 void hash_combine(std::size_t& seed, std::size_t value);
@@ -39,7 +28,11 @@ struct container_hasher {
 class DefaultStore : Store {
 private:
   std::string description_name;
-  Description description;//description of the file (types stored, sizes and names of the 3 other files, number of values)
+  std::string type;
+  std::string index_name;
+  std::string store_name;
+  std::string metadata_name;
+  size_t n_values;
   std::fstream index_file;//hash of value, offset to value in the store, offset to metadata
   std::fstream store_file;//values
   std::fstream metadata_file;//function, package, srcref, number of times seen, offset to the value (TODO)
@@ -65,11 +58,13 @@ public:
   virtual bool add_value(SEXP val);
   virtual bool have_seen(SEXP val) const;
 
-  virtual size_t nb_values() const { return description.nb_values; }
+  virtual size_t nb_values() const { return n_values; }
 
-  virtual const std::string& sexp_type() const { return description.type; };
+  virtual const std::string& sexp_type() const { return type; };
 
   virtual SEXP get_value(size_t index) const;
+
+  virtual const std::string& description_file() const  { return description_name; }
 
   // Pass it a Description and a Distribution that precises what kind of values
   // we want

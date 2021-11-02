@@ -13,6 +13,8 @@ private:
   std::vector<std::vector<std::string>> rows;
 public:
   CSVFile(const std::string& filename);
+  CSVFile();
+
   void write(const std::string& filename);
 
   size_t nb_columns() const;
@@ -21,7 +23,7 @@ public:
 
   const std::vector<std::vector<std::string>>& get_rows() const { return rows;}
 
-  //TODO: add a set function
+  void add_row(std::vector<std::string>&& row);
 };
 
 #endif
