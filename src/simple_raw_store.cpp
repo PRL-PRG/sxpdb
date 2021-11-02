@@ -55,6 +55,7 @@ SEXP merge_simple_raw_store(SEXP other_raws) {
 
 		if (raw_db[i] == 0 && other_raw_count > 0) {
 			size += 1;
+			r_size += 1;
 			s_r_size += 1;
 		}
 

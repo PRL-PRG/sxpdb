@@ -59,6 +59,7 @@ SEXP merge_simple_int_store(SEXP other_ints) {
 
 		if (int_db[i] == 0 && other_int_count > 0) {
 			size += 1;
+			i_size += 1;
 			s_i_size += 1;
 		}
 

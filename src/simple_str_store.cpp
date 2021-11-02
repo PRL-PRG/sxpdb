@@ -106,6 +106,7 @@ SEXP merge_simple_str_store(SEXP other_strs, SEXP other_index) {
 		if (it == s_str_index->end()) { // TODO: Deal with collisions
 			(*s_str_index)[hash] = s_s_size;
 			s_s_size++;
+			s_size += 1;
 			size++;
 
 			char buf [9] = { 0 };

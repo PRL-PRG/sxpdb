@@ -61,6 +61,7 @@ SEXP merge_simple_dbl_store(SEXP other_dbls) {
 
 		if (dbl_db[i] == 0 && other_dbl_count > 0) {
 			size += 1;
+			d_size += 1;
 			s_d_size += 1;
 		}
 
