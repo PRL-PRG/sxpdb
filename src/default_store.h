@@ -3,6 +3,7 @@
 
 #include "store.h"
 #include "config.h"
+#include "serialization.h"
 
 #include <fstream>
 #include <unordered_map>
@@ -42,6 +43,8 @@ private:
   std::unordered_map<std::array<char, 20>, std::pair<size_t, bool>, container_hasher> metadata;
 
   size_t bytes_read;
+
+  Serializer ser;
 
 protected:
   virtual void load_index();

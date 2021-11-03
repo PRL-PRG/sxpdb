@@ -6,6 +6,8 @@
 #include <cctype>
 #include <locale>
 
+#include "sha1.h"
+
 // from boost::hash_combine
 void hash_combine(std::size_t& seed, std::size_t value) {
   seed ^= value + 0x9e3779b9 + (seed<<6) + (seed>>2);
@@ -13,7 +15,7 @@ void hash_combine(std::size_t& seed, std::size_t value) {
 
 
 DefaultStore::DefaultStore(const std::string& description_name) :
-  description_name(description_name), bytes_read(0)
+  description_name(description_name), bytes_read(0), ser(256)
 {
   Config config(description_name);
   type = config["type"];
@@ -97,3 +99,30 @@ void DefaultStore::write_index() {
     }
   }
 }
+
+bool DefaultStore::add_value(SEXP val) {
+  const std::vector<std::byte>& buf = ser.serialize(val);
+
+  std::array<char, 20> key;
+  sha1_context ctx;
+  sha1_starts(&ctx);
+  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
+  sha1_finish(&ctx, reinterpret_cast<uint8*>(key.data()));
+
+  auto it = index.find(key);
+  if(it == index.end()) { // the value is not in the database
+    size_t size = buf.size();
+    store_file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
+    store_file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
+
+    // add it to the index
+    index[key] = store_file.tellp();
+
+    return true;
+  }
+
+  return false;
+}
+
+
+
