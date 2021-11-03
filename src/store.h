@@ -8,9 +8,7 @@
 
 class Store {
 public:
-    virtual bool open(const std::string filename);
-
-    virtual bool merge_in(const std::string& filename);
+    // virtual bool merge_in(const std::string& filename) = 0;
 
     virtual bool add_value(SEXP val) = 0 ;
     virtual bool have_seen(SEXP val) const = 0;
@@ -25,7 +23,7 @@ public:
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
-    virtual SEXP sample_value() const = 0;
+    virtual SEXP sample_value() = 0;
 
     virtual ~Store() {};
 };

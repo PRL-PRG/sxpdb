@@ -40,6 +40,11 @@ GlobalStore::GlobalStore(const std::string& filename) : configuration_name(filen
 
 }
 
+bool GlobalStore::merge_in(const std::string& filename) {
+  //TODO: rather do it by merging with another store as argument?
+  // Then, the store can access the other ones data and can do the kob...
+}
+
 bool GlobalStore::add_value(SEXP val) {
   // we assume there is at least a "any" store
   auto it = types.find(Rf_type2char(TYPEOF(val)));
@@ -93,6 +98,7 @@ SEXP GlobalStore::get_value(size_t index) const {
 
   return stores[store_index]->get_value(index_in_store);
 }
+
 
 SEXP GlobalStore::sample_value() {
   //TODO: or seed it just at the beginning and have it as a class member?
