@@ -125,4 +125,14 @@ bool DefaultStore::add_value(SEXP val) {
 }
 
 
+bool DefaultStore::have_seen(SEXP val) const {
+  const std::vector<std::byte>& buf = ser.serialize(val);
 
+  std::array<char, 20> key;
+  sha1_context ctx;
+  sha1_starts(&ctx);
+  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
+  sha1_finish(&ctx, reinterpret_cast<uint8*>(key.data()));
+
+  return index.find(key) != index.end();
+}

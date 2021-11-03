@@ -23,7 +23,7 @@ public:
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
-    virtual SEXP sample_value() = 0;
+    virtual SEXP sample_value() const = 0;
 
     virtual ~Store() {};
 };

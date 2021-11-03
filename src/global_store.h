@@ -20,7 +20,7 @@ class GlobalStore : Store {
 
     size_t total_values;
 
-    std::default_random_engine rand_engine;
+    mutable std::default_random_engine rand_engine;
 
   protected:
     virtual void load_index();
@@ -46,7 +46,7 @@ class GlobalStore : Store {
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
-    virtual SEXP sample_value(); // not const because the random number generator as internal state
+    virtual SEXP sample_value() const;
 
     virtual ~GlobalStore();
 };

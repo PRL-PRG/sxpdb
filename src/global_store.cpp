@@ -100,7 +100,7 @@ SEXP GlobalStore::get_value(size_t index) const {
 }
 
 
-SEXP GlobalStore::sample_value() {
+SEXP GlobalStore::sample_value() const {
   //TODO: or seed it just at the beginning and have it as a class member?
 
   std::uniform_int_distribution<size_t> dist(0, total_values - 1);

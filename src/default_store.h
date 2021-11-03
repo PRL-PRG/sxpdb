@@ -44,7 +44,7 @@ private:
 
   size_t bytes_read;
 
-  Serializer ser;
+  mutable Serializer ser;
 
 protected:
   virtual void load_index();
