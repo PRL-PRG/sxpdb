@@ -36,10 +36,13 @@ class GlobalStore : Store {
     virtual const std::string& sexp_type() const {
       static std::string any = "any";
       return any;
-    };
+    }
 
     virtual bool add_value(SEXP val);
     virtual bool have_seen(SEXP val) const;
+
+    virtual const std::string& description_file() const {return configuration_name; }
+    virtual size_t nb_values() const {return total_values; }
 
     virtual SEXP get_value(size_t index);
 

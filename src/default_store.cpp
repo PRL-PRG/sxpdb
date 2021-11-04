@@ -53,7 +53,7 @@ DefaultStore::~DefaultStore() {
 void DefaultStore::write_configuration() {
   //Save the configuration
   std::unordered_map<std::string, std::string> conf;
-  conf["type"] = "type";
+  conf["type"] = type;
   conf["index"] = index_name;
   conf["store"] = store_name;
   conf["metadata"] = metadata_name;

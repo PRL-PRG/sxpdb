@@ -11,12 +11,13 @@
 static const R_CallMethodDef callMethods[] = {
 	/* name						casted ptr to function			# of args */
 	// Generic record related
-	{"setup",					(DL_FUNC) &setup,					0},
-	{"teardown",				(DL_FUNC) &teardown,				0},
-	{"add_val",					(DL_FUNC) &add_val,					1},
-	{"have_seen",				(DL_FUNC) &have_seen,				1},
-	{"sample_val",				(DL_FUNC) &sample_val,				0},
+	{"open_db",					(DL_FUNC) &open_db,					1},
+	{"close_db",				(DL_FUNC) &close_db,				1},
+	{"add_val",					(DL_FUNC) &add_val,					2},
+	{"have_seen",				(DL_FUNC) &have_seen,				2},
+	{"sample_val",				(DL_FUNC) &sample_val,				1},
 	{"get_val",					(DL_FUNC) &get_val,					1},
+	{"merge_db",					(DL_FUNC) &merge_db,					2},
 
 	// Must have at the end
 	{NULL,						NULL,								0}
