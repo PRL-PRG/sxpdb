@@ -3,31 +3,6 @@
 #include "byte_vector.h"
 #include "helper.h" // rans_d_size_t
 
-// Include all stores
-#include "stats_store.h"
-#include "generic_store.h"
-
-#include "int_store.h"
-#include "simple_int_store.h"
-
-#include "dbl_store.h"
-#include "simple_dbl_store.h"
-
-#include "raw_store.h"
-#include "simple_raw_store.h"
-
-#include "str_store.h"
-#include "simple_str_store.h"
-
-#include "log_store.h"
-
-#include "cmp_store.h"
-
-#include "lst_store.h"
-
-#include "env_store.h"
-
-#include "fun_store.h"
 
 // Reusable buffer for everything
 byte_vector_t vector = NULL;
