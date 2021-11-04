@@ -79,7 +79,7 @@ bool GlobalStore::have_seen(SEXP val) const {
 }
 
 
-SEXP GlobalStore::get_value(size_t index) const {
+SEXP GlobalStore::get_value(size_t index) {
   size_t store_index = 0;
   size_t values = stores[store_index]->nb_values(); // we assume there is at least one store
 
@@ -100,7 +100,7 @@ SEXP GlobalStore::get_value(size_t index) const {
 }
 
 
-SEXP GlobalStore::sample_value() const {
+SEXP GlobalStore::sample_value() {
   //TODO: or seed it just at the beginning and have it as a class member?
 
   std::uniform_int_distribution<size_t> dist(0, total_values - 1);

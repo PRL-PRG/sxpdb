@@ -65,7 +65,7 @@ public:
 
   virtual const std::string& sexp_type() const { return type; };
 
-  virtual SEXP get_value(size_t index) const;
+  virtual SEXP get_value(size_t index);
 
   virtual const std::string& description_file() const  { return description_name; }
 

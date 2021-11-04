@@ -15,7 +15,7 @@ public:
 
     virtual const std::string& sexp_type() const = 0;// the return type will be more complex when we deal with richer queries
 
-    virtual SEXP get_value(size_t index) const = 0;
+    virtual SEXP get_value(size_t index) = 0;
 
     virtual size_t nb_values() const = 0;
 
@@ -23,7 +23,7 @@ public:
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
-    virtual SEXP sample_value() const = 0;
+    virtual SEXP sample_value() = 0;
 
     virtual ~Store() {};
 };

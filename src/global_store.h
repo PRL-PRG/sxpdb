@@ -42,11 +42,11 @@ class GlobalStore : Store {
     virtual bool add_value(SEXP val);
     virtual bool have_seen(SEXP val) const;
 
-    virtual SEXP get_value(size_t index) const;
+    virtual SEXP get_value(size_t index);
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
-    virtual SEXP sample_value() const;
+    virtual SEXP sample_value();
 
     virtual ~GlobalStore();
 };

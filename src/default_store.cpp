@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cctype>
 #include <locale>
+#include <cassert>
 
 #include "sha1.h"
 
@@ -136,3 +137,22 @@ bool DefaultStore::have_seen(SEXP val) const {
 
   return index.find(key) != index.end();
 }
+
+
+SEXP DefaultStore::get_value(size_t idx) {
+  auto it = index.begin();
+  std::advance(it, idx);
+  size_t offset = it->second;
+
+  store_file.seekg(offset);
+  size_t size = 0;
+  store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+  assert(size> 0);
+
+  std::vector<std::byte> buf(size);
+  store_file.read(reinterpret_cast<char*>(buf.data()), size);
+
+  return ser.unserialize(buf);
+}
+
+
