@@ -29,7 +29,7 @@ struct container_hasher {
 
 class DefaultStore : Store {
 private:
-  std::string description_name;
+  fs::path configuration_path;
   std::string type;
   std::string index_name;
   std::string store_name;
@@ -56,9 +56,9 @@ protected:
   virtual void write_configuration();
 
 public:
-  DefaultStore(const std::string& description_name);
+  DefaultStore(const fs::path& description_name);
 
-  DefaultStore(const std::string& description_name, const std::string& type);
+  DefaultStore(const fs::path& description_name, const std::string& type);
 
   virtual bool load();
 
@@ -73,7 +73,7 @@ public:
 
   virtual SEXP get_value(size_t index);
 
-  virtual const std::string& description_file() const  { return description_name; }
+  virtual const fs::path& description_path() const  { return configuration_path; }
 
   // Pass it a Description and a Distribution that precises what kind of values
   // we want

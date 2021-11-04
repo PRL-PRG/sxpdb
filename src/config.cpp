@@ -32,7 +32,6 @@ Config::Config(const std::string& filename) {
     exit(1);
   }
 
-  std::unordered_map<std::string, std::string> config;
   std::string line;
   while(std::getline(description_file, line)) {
     std::istringstream is_line(line);

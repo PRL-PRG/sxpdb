@@ -5,6 +5,10 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
+#include <filesystem>
+
+
+namespace fs = std::filesystem;
 
 class Store {
 protected:
@@ -21,7 +25,7 @@ public:
 
     virtual size_t nb_values() const = 0;
 
-    virtual const std::string& description_file() const = 0;
+    virtual const fs::path& description_path() const = 0;
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want

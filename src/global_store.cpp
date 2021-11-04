@@ -3,24 +3,27 @@
 #include "csv_file.h"
 #include <chrono>
 #include <cassert>
-#include <filesystem>
 
-GlobalStore::GlobalStore(const std::string& filename) : configuration_name(filename), bytes_read(0), total_values(0),
+
+GlobalStore::GlobalStore(const std::string& filename) : configuration_path(fs::absolute(filename)), bytes_read(0), total_values(0),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
 {
-  if(std::filesystem::exists(filename)) {
+
+
+  if(std::filesystem::exists(configuration_path)) {
     // Load configuration files
-    CSVFile config(filename);
+    CSVFile config(configuration_path);
     //Layout:
     // Filename,Type,Number of values
 
-
     // Build the stores
     for(auto& row : config.get_rows()) {
-      std::cout << "Loading store at " << row.at(0) << " with type " <<
+      fs::path config_path = configuration_path.parent_path().append(row.at(0));
+
+      std::cout << "Loading store at " << config_path << " with type " <<
         row.at(1) << " with " << row.at(2) << " values." << std::endl;
 
-      stores.push_back(std::make_unique<DefaultStore>(row.at(0)));
+      stores.push_back(std::make_unique<DefaultStore>(config_path));
 
 
       //Check if the types in the configuration file and in the CSF are coherent
@@ -56,7 +59,7 @@ void GlobalStore::create() {
 
   assert(stores.size() == 0);
 
-  stores.push_back(std::make_unique<DefaultStore>("generic", "any"));
+  stores.push_back(std::make_unique<DefaultStore>(configuration_path.parent_path().append("generic"), "any"));
   types["any"] = 0;
 
   write_configuration();
@@ -159,12 +162,12 @@ void GlobalStore::write_configuration() {
   CSVFile file;
   std::vector<std::string> row(3);
   for(auto& store: stores) {
-    row[0] = store->description_file();
+    row[0] = store->description_path().filename().string();
     row[1] = store->sexp_type();
     row[2] = std::to_string(store->nb_values());
     file.add_row(std::move(row));
   }
-  file.write(configuration_name);
+  file.write(configuration_path);
 }
 
 GlobalStore::~GlobalStore() {

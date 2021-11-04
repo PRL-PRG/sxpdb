@@ -8,11 +8,13 @@
 #include <memory>
 #include <random>
 
+
+
 class GlobalStore : Store {
   private:
     // Stores the names of the various stores, their types, their number of values
     // it is redundant with the configuration files of the various stores, but it is ok
-    std::string configuration_name;
+    fs::path configuration_path;
 
     // to preserve the order
     std::vector<std::unique_ptr<DefaultStore>> stores;
@@ -41,7 +43,7 @@ class GlobalStore : Store {
     virtual bool add_value(SEXP val);
     virtual bool have_seen(SEXP val) const;
 
-    virtual const std::string& description_file() const {return configuration_name; }
+    virtual const fs::path& description_path() const {return configuration_path; }
     virtual size_t nb_values() const {return total_values; }
 
     virtual SEXP get_value(size_t index);

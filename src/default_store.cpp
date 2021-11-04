@@ -16,11 +16,11 @@ void hash_combine(std::size_t& seed, std::size_t value) {
 }
 
 
-DefaultStore::DefaultStore(const std::string& description_name) :
-  description_name(description_name), bytes_read(0), ser(256),
+DefaultStore::DefaultStore(const fs::path& config_path) :
+  configuration_path(config_path), bytes_read(0), ser(256),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
 {
-  Config config(description_name);
+  Config config(configuration_path);
   type = config["type"];
   index_name = config["index"];
   store_name = config["store"];
@@ -29,11 +29,10 @@ DefaultStore::DefaultStore(const std::string& description_name) :
   load();
 }
 
-
-DefaultStore::DefaultStore(const std::string& filename, const std::string& type_) :
-  description_name(filename + ".conf"), bytes_read(0), ser(256), type(type_),
-  index_name(filename + "_index.bin"), store_name(filename + "_store.bin"),
-  metadata_name(filename + "_meta.bin"), n_values(0),
+DefaultStore::DefaultStore(const fs::path& config_path, const std::string& type_) :
+  configuration_path(config_path.parent_path().append(config_path.filename().string() + ".conf")), bytes_read(0), ser(256), type(type_),
+  index_name(config_path.filename().string() + "_index.bin"), store_name(config_path.filename().string() + "_store.bin"),
+  metadata_name(config_path.filename().string() + "_meta.bin"), n_values(0),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()) {
 
   // it means we want to create the database!
@@ -60,13 +59,16 @@ void DefaultStore::write_configuration() {
   conf["nb_values"] = std::to_string(n_values);
 
   Config config(std::move(conf));
-  config.write(description_name);
+  config.write(configuration_path);
 }
 
 bool DefaultStore::load() {
   // We will just write at the end of the file (but might read before)
-  index_file.open(index_name, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
-  store_file.open(store_name, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
+  fs::path index_path = fs::absolute(configuration_path).parent_path().append(index_name);
+  fs::path store_path = fs::absolute(configuration_path).parent_path().append(store_name);
+
+  index_file.open(index_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
+  store_file.open(store_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
   if(!index_file) {
     std::cerr << "Failed to open index file " << index_name << std::endl;
   }
