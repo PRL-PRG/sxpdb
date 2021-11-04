@@ -13,7 +13,7 @@ private:
   std::vector<std::vector<std::string>> rows;
 public:
   CSVFile(const std::string& filename);
-  CSVFile();
+  CSVFile() {};
 
   void write(const std::string& filename);
 

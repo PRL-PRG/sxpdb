@@ -25,16 +25,11 @@ class GlobalStore : Store {
     std::default_random_engine rand_engine;
 
   protected:
-    virtual void load_index();
-    virtual void load_metadata();
-    virtual void write_index();
     virtual void write_configuration();
     virtual void create();
 
   public:
     GlobalStore(const std::string& description_name);
-
-    virtual bool load();
 
     virtual bool merge_in(GlobalStore& store);
 
