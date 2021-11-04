@@ -13,6 +13,8 @@ class GlobalStore : Store {
     // Stores the names of the various stores, their types, their number of values
     // it is redundant with the configuration files of the various stores, but it is ok
     std::string configuration_name;
+
+    // to preserve the order
     std::vector<std::unique_ptr<DefaultStore>> stores;
     std::unordered_map<std::string, size_t> types;
 
@@ -20,19 +22,21 @@ class GlobalStore : Store {
 
     size_t total_values;
 
-    mutable std::default_random_engine rand_engine;
+    std::default_random_engine rand_engine;
 
   protected:
     virtual void load_index();
     virtual void load_metadata();
     virtual void write_index();
+    virtual void write_configuration();
+    virtual void create();
 
   public:
     GlobalStore(const std::string& description_name);
 
     virtual bool load();
 
-    virtual bool merge_in(const std::string& filename);
+    virtual bool merge_in(GlobalStore& store);
 
     virtual const std::string& sexp_type() const {
       static std::string any = "any";

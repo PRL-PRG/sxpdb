@@ -8,6 +8,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <array>
+#include <random>
 
 
 // from boost::hash_combine
@@ -45,18 +46,23 @@ private:
   size_t bytes_read;
 
   mutable Serializer ser;
+  std::default_random_engine rand_engine;
 
 protected:
   virtual void load_index();
   virtual void load_metadata();
   virtual void write_index();
+  virtual void create();
+  virtual void write_configuration();
 
 public:
   DefaultStore(const std::string& description_name);
 
+  DefaultStore(const std::string& description_name, const std::string& type);
+
   virtual bool load();
 
-  virtual bool merge_in(const std::string& filename);
+  virtual bool merge_in(DefaultStore& other);
 
   virtual bool add_value(SEXP val);
   virtual bool have_seen(SEXP val) const;

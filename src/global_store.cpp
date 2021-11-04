@@ -2,47 +2,94 @@
 
 #include "csv_file.h"
 #include <chrono>
+#include <cassert>
+#include <filesystem>
 
 GlobalStore::GlobalStore(const std::string& filename) : configuration_name(filename), bytes_read(0), total_values(0),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
 {
-  // Load configuration files
-  CSVFile config(filename);
-  //Layout:
-  // Filename,Type,Number of values
+  if(std::filesystem::exists(filename)) {
+    // Load configuration files
+    CSVFile config(filename);
+    //Layout:
+    // Filename,Type,Number of values
 
 
-  // Build the stores
-  for(auto& row : config.get_rows()) {
-    std::cout << "Loading store at " << row.at(0) << " with type " <<
-      row.at(1) << " with " << row.at(2) << " values." << std::endl;
+    // Build the stores
+    for(auto& row : config.get_rows()) {
+      std::cout << "Loading store at " << row.at(0) << " with type " <<
+        row.at(1) << " with " << row.at(2) << " values." << std::endl;
 
-    stores.push_back(std::make_unique<DefaultStore>(row.at(0)));
+      stores.push_back(std::make_unique<DefaultStore>(row.at(0)));
 
 
-    //Check if the types in the configuration file and in the CSF are coherent
-    if(row.at(1) != stores.back()->sexp_type()) {
-      std::cerr << "Inconsistent types in the global configuration file and the store configuration file: " <<
-        row.at(1) << " vs " << stores.back()->sexp_type() << std::endl;
+      //Check if the types in the configuration file and in the CSF are coherent
+      if(row.at(1) != stores.back()->sexp_type()) {
+        std::cerr << "Inconsistent types in the global configuration file and the store configuration file: " <<
+          row.at(1) << " vs " << stores.back()->sexp_type() << std::endl;
+      }
+
+      types[row.at(1)] = stores.size() - 1;//index of the element that was just inserted
+
+      size_t nb_values = std::stoul(row.at(2));
+
+      if(nb_values != stores.back()->nb_values()) {
+        std::cerr << "Inconsistent number of values in the global configuration file and the store configuration file: " <<
+          nb_values << " vs " << stores.back()->nb_values() << std::endl;
+      }
+
+      total_values += nb_values;
     }
-
-    types[row.at(1)] = stores.size() - 1;//index of the element that was just inserted
-
-    size_t nb_values = std::stoul(row.at(2));
-
-    if(nb_values != stores.back()->nb_values()) {
-      std::cerr << "Inconsistent number of values in the global configuration file and the store configuration file: " <<
-        nb_values << " vs " << stores.back()->nb_values() << std::endl;
-    }
-
-    total_values += nb_values;
   }
+  else {
+    std::cerr << "Configuration file does not exist. Creating new database " << filename << std::endl;
+
+    create();
+  }
+
+  assert(types.count("any") > 0);
 
 }
 
-bool GlobalStore::merge_in(const std::string& filename) {
-  //TODO: rather do it by merging with another store as argument?
-  // Then, the store can access the other ones data and can do the kob...
+void GlobalStore::create() {
+  // Just create a generic default store
+
+  assert(stores.size() == 0);
+
+  stores.push_back(std::make_unique<DefaultStore>("generic", "any"));
+  types["any"] = 0;
+
+  write_configuration();
+}
+
+bool GlobalStore::merge_in(GlobalStore& gstore) {
+  size_t new_total_values = 0;
+  // merge the various stores
+  for(auto&store : gstore.stores) {
+    //look for a store in this that has the same type
+    // merge
+    // If there is not corresponding store, merge in the generic one
+    auto it = types.find(store->sexp_type());
+    size_t store_index = 0;
+    if(it != types.end()) {
+      store_index = it->second;
+    }
+    else {
+      store_index = types["any"];
+    }
+    stores[store_index]->merge_in(*store);
+
+    // update the counters
+    new_total_values += store->nb_values();
+  }
+
+  // Update the configuration information
+  assert(new_total_values >= total_values);
+  total_values = new_total_values;
+
+  write_configuration();// might be redudant (or rather, the destructor might be redud)
+
+  return true;
 }
 
 bool GlobalStore::add_value(SEXP val) {
@@ -108,7 +155,7 @@ SEXP GlobalStore::sample_value() {
   return get_value(dist(rand_engine));
 }
 
-GlobalStore::~GlobalStore() {
+void GlobalStore::write_configuration() {
   CSVFile file;
   std::vector<std::string> row(3);
   for(auto& store: stores) {
@@ -118,4 +165,8 @@ GlobalStore::~GlobalStore() {
     file.add_row(std::move(row));
   }
   file.write(configuration_name);
+}
+
+GlobalStore::~GlobalStore() {
+  write_configuration();
 }

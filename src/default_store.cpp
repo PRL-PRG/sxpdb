@@ -6,6 +6,7 @@
 #include <cctype>
 #include <locale>
 #include <cassert>
+#include <chrono>
 
 #include "sha1.h"
 
@@ -16,7 +17,8 @@ void hash_combine(std::size_t& seed, std::size_t value) {
 
 
 DefaultStore::DefaultStore(const std::string& description_name) :
-  description_name(description_name), bytes_read(0), ser(256)
+  description_name(description_name), bytes_read(0), ser(256),
+  rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
 {
   Config config(description_name);
   type = config["type"];
@@ -28,8 +30,27 @@ DefaultStore::DefaultStore(const std::string& description_name) :
 }
 
 
-DefaultStore::~DefaultStore() {
+DefaultStore::DefaultStore(const std::string& filename, const std::string& type_) :
+  description_name(filename + ".conf"), bytes_read(0), ser(256), type(type_),
+  index_name(filename + "_index.bin"), store_name(filename + "_store.bin"),
+  metadata_name(filename + "_meta.bin"), n_values(0),
+  rand_engine(std::chrono::system_clock::now().time_since_epoch().count()) {
 
+  // it means we want to create the database!
+
+  create();
+}
+
+void DefaultStore::create() {
+  load();
+  write_configuration();
+}
+
+DefaultStore::~DefaultStore() {
+  write_configuration();
+}
+
+void DefaultStore::write_configuration() {
   //Save the configuration
   std::unordered_map<std::string, std::string> conf;
   conf["type"] = "type";
@@ -43,10 +64,9 @@ DefaultStore::~DefaultStore() {
 }
 
 bool DefaultStore::load() {
-
   // We will just write at the end of the file (but might read before)
-  index_file.open(index_name, std::fstream::in| std::fstream::out | std::fstream::binary | std::fstream::app);
-  store_file.open(store_name, std::fstream::in| std::fstream::out | std::fstream::binary | std::fstream::app);
+  index_file.open(index_name, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
+  store_file.open(store_name, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
   if(!index_file) {
     std::cerr << "Failed to open index file " << index_name << std::endl;
   }
@@ -112,12 +132,13 @@ bool DefaultStore::add_value(SEXP val) {
 
   auto it = index.find(key);
   if(it == index.end()) { // the value is not in the database
+    // add it to the index
+    index[key] = store_file.tellp();
+
+    //write the value
     size_t size = buf.size();
     store_file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
     store_file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
-
-    // add it to the index
-    index[key] = store_file.tellp();
 
     return true;
   }
@@ -149,10 +170,46 @@ SEXP DefaultStore::get_value(size_t idx) {
   store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
   assert(size> 0);
 
-  std::vector<std::byte> buf(size);
+  std::vector<std::byte> buf(size);//or expose the internal buffer of the serializer?
   store_file.read(reinterpret_cast<char*>(buf.data()), size);
 
   return ser.unserialize(buf);
 }
 
+SEXP DefaultStore::sample_value() {
+  std::uniform_int_distribution<size_t> dist(0, n_values - 1);
 
+  return get_value(dist(rand_engine));
+}
+
+
+bool DefaultStore::merge_in(DefaultStore& other) {
+  if(other.sexp_type() != sexp_type()) {
+    // we can only merge databases of the same type
+    return false;
+  }
+
+  for(auto& it: other.index) {
+    //Check if the hash is not in the index
+    if(index.find(it.first) == index.end()) {
+      // read the value from other
+      size_t offset = it.second;
+      other.store_file.seekg(offset);
+      size_t size = 0;
+      other.store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+      assert(size> 0);
+      std::vector<std::byte> buf;
+      other.store_file.read(reinterpret_cast<char*>(buf.data()), size);
+
+      // add it to the index
+      index[it.first] = store_file.tellp();
+
+      //write the value
+      store_file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
+      store_file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
+
+    }
+  }
+
+  return true;
+}

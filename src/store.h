@@ -7,6 +7,8 @@
 #include <Rinternals.h>
 
 class Store {
+protected:
+    virtual void create() = 0;
 public:
     // virtual bool merge_in(const std::string& filename) = 0;
 
