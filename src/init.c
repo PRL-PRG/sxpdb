@@ -19,6 +19,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"get_val",					(DL_FUNC) &get_val,					2},
 	{"merge_db",					(DL_FUNC) &merge_db,					2},
 	{"size_db",           (DL_FUNC) &size_db,					1},
+	{"get_meta",        (DL_FUNC) &get_meta,        2},
 
 
 	// Must have at the end

@@ -135,6 +135,21 @@ bool GlobalStore::have_seen(SEXP val) const {
   return stores[store_index]->have_seen(val);
 }
 
+SEXP GlobalStore::get_metadata(SEXP val) const {
+  auto it = types.find(Rf_type2char(TYPEOF(val)));
+  size_t store_index= 0;
+
+  if(it != nullptr) {
+    store_index = it->second;
+  }
+  else {
+    store_index = types.at("any"); // so fail if there is no "any" type
+    // or just return false to indicate that we could not store it?
+  }
+
+  return stores[store_index]->get_metadata(val);
+}
+
 
 SEXP GlobalStore::get_value(size_t index) {
   size_t store_index = 0;
@@ -181,17 +196,3 @@ GlobalStore::~GlobalStore() {
   write_configuration();
 }
 
-SEXP GlobalStore::get_metadata(SEXP val) const {
-  auto it = types.find(Rf_type2char(TYPEOF(val)));
-  size_t store_index= 0;
-
-  if(it != nullptr) {
-    store_index = it->second;
-  }
-  else {
-    store_index = types.at("any"); // so fail if there is no "any" type
-    // or just return false to indicate that we could not store it?
-  }
-
-  return stores[store_index]->get_metadata(val);
-}

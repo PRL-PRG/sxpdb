@@ -83,6 +83,7 @@ bool DefaultStore::load() {
   store_file.exceptions(std::fstream::failbit);
 
   load_index();
+  load_metadata();
 
   return true;
 }
@@ -166,6 +167,31 @@ bool DefaultStore::have_seen(SEXP val) const {
   return index.find(key) != index.end();
 }
 
+SEXP DefaultStore::get_metadata(SEXP val) const {
+  const std::vector<std::byte>& buf = ser.serialize(val);
+
+  std::array<char, 20> key;
+  sha1_context ctx;
+  sha1_starts(&ctx);
+  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
+  sha1_finish(&ctx, reinterpret_cast<uint8*>(key.data()));
+
+  auto it = newly_seen.find(key);
+
+  if(it == newly_seen.end()) {
+    return R_NilValue;
+  }
+
+  const char*names[] = {"newly_seen", ""};
+  SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
+  SEXP n_seen = PROTECT(Rf_ScalarLogical(it->second));
+  SET_VECTOR_ELT(res, 0, n_seen);
+
+  UNPROTECT(2);
+
+  return res;
+}
+
 
 SEXP DefaultStore::get_value(size_t idx) {
   auto it = index.begin();
@@ -226,26 +252,4 @@ bool DefaultStore::merge_in(DefaultStore& other) {
   return true;
 }
 
-SEXP DefaultStore::get_metadata(SEXP val) const {
-  const std::vector<std::byte>& buf = ser.serialize(val);
 
-  std::array<char, 20> key;
-  sha1_context ctx;
-  sha1_starts(&ctx);
-  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
-  sha1_finish(&ctx, reinterpret_cast<uint8*>(key.data()));
-
-  auto it = newly_seen.find(key);
-
-  if(it == newly_seen.end()) {
-    return R_NilValue;
-  }
-
-  const char*names[] = {"newly_seen"};
-  SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
-  SEXP n_seen = PROTECT(Rf_ScalarLogical(it->second));
-
-  UNPROTECT(2);
-
-  return res;
-}

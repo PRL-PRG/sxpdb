@@ -2,6 +2,7 @@
 
 export(add_val)
 export(close_db)
+export(get_meta)
 export(have_seen)
 export(merge_db)
 export(open_db)
