@@ -46,6 +46,7 @@ void DefaultStore::create() {
 }
 
 DefaultStore::~DefaultStore() {
+  write_index();
   write_configuration();
 }
 
@@ -89,13 +90,12 @@ bool DefaultStore::load() {
 
 void DefaultStore::load_index() {
   index.reserve(n_values);
-  size_t start = 0;
   std::array<char, 20> hash;
   size_t offset = 0;
 
   for(size_t i = 0; i < n_values ; i++) {
     index_file.read(hash.data(), 20);
-    index_file.read(reinterpret_cast<char*>(&offset), sizeof(offset));
+    index_file.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
     index[hash] = offset;
 
     bytes_read += 20 + sizeof(offset);
@@ -117,7 +117,8 @@ void DefaultStore::write_index() {
     auto not_seen = newly_seen[it.first];
     if(not_seen) {
       index_file.write(it.first.data(), it.first.size());
-      index_file.write(reinterpret_cast<char*>(&it.second), sizeof(it.second));
+      index_file.write(reinterpret_cast<char*>(&it.second), sizeof(size_t));
+      newly_seen[it.first] = false;// now written so should not be written next time
     }
   }
 }
@@ -194,7 +195,7 @@ bool DefaultStore::merge_in(DefaultStore& other) {
     // we can only merge databases of the same type
     return false;
   }
-
+  std::vector<std::byte> buf;
   for(auto& it: other.index) {
     //Check if the hash is not in the index
     if(index.find(it.first) == index.end()) {
@@ -204,7 +205,8 @@ bool DefaultStore::merge_in(DefaultStore& other) {
       size_t size = 0;
       other.store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
       assert(size> 0);
-      std::vector<std::byte> buf;
+
+      buf.resize(size);
       other.store_file.read(reinterpret_cast<char*>(buf.data()), size);
 
       // add it to the index
@@ -219,6 +221,7 @@ bool DefaultStore::merge_in(DefaultStore& other) {
 
     }
   }
+  write_index();
 
   return true;
 }

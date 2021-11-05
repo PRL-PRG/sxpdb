@@ -38,6 +38,8 @@ private:
   std::fstream index_file;//hash of value, offset to value in the store, offset to metadata
   std::fstream store_file;//values
 
+  // it means that the order in the hash map won't necessary be the order of offsets
+  // it that bad because of data locality?
   std::unordered_map<std::array<char, 20>, size_t, container_hasher> index;
   // new during that session or not
   std::unordered_map<std::array<char, 20>, bool, container_hasher> newly_seen;

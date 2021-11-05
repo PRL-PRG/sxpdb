@@ -30,6 +30,7 @@ GlobalStore::GlobalStore(const std::string& filename) : configuration_path(fs::a
       if(row.at(1) != stores.back()->sexp_type()) {
         std::cerr << "Inconsistent types in the global configuration file and the store configuration file: " <<
           row.at(1) << " vs " << stores.back()->sexp_type() << std::endl;
+          exit(1);
       }
 
       types[row.at(1)] = stores.size() - 1;//index of the element that was just inserted
@@ -39,6 +40,7 @@ GlobalStore::GlobalStore(const std::string& filename) : configuration_path(fs::a
       if(nb_values != stores.back()->nb_values()) {
         std::cerr << "Inconsistent number of values in the global configuration file and the store configuration file: " <<
           nb_values << " vs " << stores.back()->nb_values() << std::endl;
+          exit(1);
       }
 
       total_values += nb_values;
@@ -83,7 +85,7 @@ bool GlobalStore::merge_in(GlobalStore& gstore) {
     stores[store_index]->merge_in(*store);
 
     // update the counters
-    new_total_values += store->nb_values();
+    new_total_values += stores[store_index]->nb_values();
   }
 
   // Update the configuration information
