@@ -74,6 +74,23 @@ SEXP get_val(SEXP db, SEXP i);
  */
 SEXP merge_db(SEXP db1, SEXP db2);
 
+/**
+ * Number of values in the database
+ * @method size_db
+ * @param  db       external pointer to the target database
+ * @return R_NilValue if error, number of values in the database otherwise
+ */
+SEXP size_db(SEXP db);
+
+/**
+ * Metadata associated to a value
+ * @method get_meta
+ * @param  db       external pointer to the target database
+ * @param val       value to look for
+ * @return R_NilValue if error or no such value in the database, metadata otherwise, as a named list
+ */
+SEXP get_meta(SEXP db, SEXP val);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

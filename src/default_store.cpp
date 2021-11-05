@@ -144,6 +144,8 @@ bool DefaultStore::add_value(SEXP val) {
     // new value in that session
     newly_seen[key] = true;
 
+    n_values++;
+
     return true;
   }
 
@@ -211,6 +213,9 @@ bool DefaultStore::merge_in(DefaultStore& other) {
       //write the value
       store_file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
       store_file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
+
+      n_values++;
+      newly_seen[it.first] = true;
 
     }
   }

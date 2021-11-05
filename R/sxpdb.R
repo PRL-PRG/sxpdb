@@ -18,30 +18,49 @@ open_db <- function(db = "db") {
   .Call(SXPDB_open_db, prefix)
 }
 
-
-
+#' @export
 close_db <- function(db) {
   # Check if it is a EXTPTR and if it has the right tag here maybe
   .Call(SXPDB_close_db, db)
 }
 
+#' @export
+add_val <- function(db, val) {
+  .Call(SXPDB_add_val, db, val)
+}
+
+#' @export
+sample_val <- function(db) {
+  .Call(SXPDB_sample_val, db)
+}
+
+#' @export
+merge_db <- function(db1, db2) {
+  .Call(SXPDB_merge_db, db1, db2)
+}
+
 ## Testing/Information Gathering Related Functionality
 
 #' @export
-have_seen <- function(val) {
-	.Call(RCRD_have_seen, val)
+have_seen <- function(db, val) {
+	.Call(SXPDB_have_seen, db, val)
+}
+
+#' @export
+size_db <- function(db) {
+  .Call(SXPDB_size_db, db)
 }
 
 #' @export
 report <- function() {
-	.Call(RCRD_print_report)
+	.Call(SXPDB_print_report) #TODO
 }
 
 #' @export
-print_vals <- function () {
-	if (size_db()) {
-		for(i in 0:(size_db() - 1)) {
-			print(.Call(RCRD_get_val, i))
+print_vals <- function (db) {
+	if (size_db(db)) {
+		for(i in 0:(size_db(db) - 1)) {
+			print(.Call(SXPDB_get_val, db, i))
 		}
 	} else {
 		stop("There are no values in the database.")
@@ -49,26 +68,12 @@ print_vals <- function () {
 }
 
 #' @export
-view_db <- function() {
-	if(size_db() == 0) {
+view_db <- function(db) {
+	if(size_db(db) == 0) {
 		viewer <- list()
 	} else {
-		viewer <- lapply(seq(from=0, to=size_db()-1), function(i) .Call(RCRD_get_val, i))
+		viewer <- lapply(seq(from=0, to=size_db(db)-1), function(i) .Call(SXPDB_get_val, db, i))
 	}
 	viewer
 }
 
-#' @export
-count_vals <- function() {
-	.Call(RCRD_count_vals)
-}
-
-#' @export
-size_db <- function() {
-	.Call(RCRD_size_db)
-}
-
-#' @export
-size_ints <- function() {
-	.Call(RCRD_size_ints)
-}

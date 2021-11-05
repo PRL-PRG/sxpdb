@@ -90,7 +90,7 @@ bool GlobalStore::merge_in(GlobalStore& gstore) {
   assert(new_total_values >= total_values);
   total_values = new_total_values;
 
-  write_configuration();// might be redudant (or rather, the destructor might be redud)
+  write_configuration();// might be redundant (or rather, the destructor might be redud)
 
   return true;
 }
@@ -108,9 +108,14 @@ bool GlobalStore::add_value(SEXP val) {
     // or just return false to indicate that we could not store it?
   }
 
-  stores[store_index]->add_value(val);
+  bool added = stores[store_index]->add_value(val);
 
-  return true;
+  if(added) {
+    total_values++;
+    return true;
+  }
+
+  return false;
 }
 
 bool GlobalStore::have_seen(SEXP val) const {

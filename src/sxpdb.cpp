@@ -102,3 +102,23 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
 
   return Rf_ScalarInteger(db1->nb_values());
 }
+
+SEXP size_db(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+
+  return Rf_ScalarInteger(db->nb_values());
+}
+
+SEXP get_meta(SEXP sxpdb, SEXP val) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+
+  return db->get_metadata(val);
+}
