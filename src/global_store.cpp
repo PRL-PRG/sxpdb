@@ -92,7 +92,7 @@ bool GlobalStore::merge_in(GlobalStore& gstore) {
   assert(new_total_values >= total_values);
   total_values = new_total_values;
 
-  write_configuration();// might be redundant (or rather, the destructor might be redud)
+  write_configuration();// might be redundant (or rather, the destructor might be redundant)
 
   return true;
 }
