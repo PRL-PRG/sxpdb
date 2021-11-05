@@ -48,6 +48,8 @@ class GlobalStore : Store {
 
     virtual SEXP get_value(size_t index);
 
+    virtual SEXP get_metadata(SEXP val) const;
+
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
     virtual SEXP sample_value();

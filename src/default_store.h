@@ -37,11 +37,10 @@ private:
   size_t n_values;
   std::fstream index_file;//hash of value, offset to value in the store, offset to metadata
   std::fstream store_file;//values
-  std::fstream metadata_file;//function, package, srcref, number of times seen, offset to the value (TODO)
 
   std::unordered_map<std::array<char, 20>, size_t, container_hasher> index;
-  // Values (number of times seen, new during that session or not)
-  std::unordered_map<std::array<char, 20>, std::pair<size_t, bool>, container_hasher> metadata;
+  // new during that session or not
+  std::unordered_map<std::array<char, 20>, bool, container_hasher> newly_seen;
 
   size_t bytes_read;
 
@@ -75,9 +74,11 @@ public:
 
   virtual const fs::path& description_path() const  { return configuration_path; }
 
+  virtual SEXP get_metadata(SEXP val) const;
+
   // Pass it a Description and a Distribution that precises what kind of values
   // we want
-  virtual SEXP sample_value();
+  virtual SEXP sample_value(); // attach metadata to an attribute?
 
   virtual ~DefaultStore();
 };

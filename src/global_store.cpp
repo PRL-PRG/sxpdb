@@ -173,3 +173,18 @@ void GlobalStore::write_configuration() {
 GlobalStore::~GlobalStore() {
   write_configuration();
 }
+
+SEXP GlobalStore::get_metadata(SEXP val) const {
+  auto it = types.find(Rf_type2char(TYPEOF(val)));
+  size_t store_index= 0;
+
+  if(it != nullptr) {
+    store_index = it->second;
+  }
+  else {
+    store_index = types.at("any"); // so fail if there is no "any" type
+    // or just return false to indicate that we could not store it?
+  }
+
+  return stores[store_index]->get_metadata(val);
+}

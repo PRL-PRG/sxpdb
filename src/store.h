@@ -25,6 +25,8 @@ public:
 
     virtual size_t nb_values() const = 0;
 
+    virtual SEXP get_metadata(SEXP val) const = 0;
+
     virtual const fs::path& description_path() const = 0;
 
     // Pass it a Description and a Distribution that precises what kind of values

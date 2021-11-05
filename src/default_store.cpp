@@ -82,7 +82,6 @@ bool DefaultStore::load() {
   store_file.exceptions(std::fstream::failbit);
 
   load_index();
-  load_metadata();
 
   return true;
 }
@@ -98,16 +97,16 @@ void DefaultStore::load_index() {
     index_file.read(hash.data(), 20);
     index_file.read(reinterpret_cast<char*>(&offset), sizeof(offset));
     index[hash] = offset;
+
     bytes_read += 20 + sizeof(offset);
   }
 }
 
 void DefaultStore::load_metadata() {
-  metadata.reserve(n_values);
+  newly_seen.reserve(n_values);
 
-  // Rather actually load these metadata from a proper file
   for(auto& it : index) {
-    metadata[it.first] = std::make_pair(1, false);//placeholder
+    newly_seen[it.first] = false;
   }
 }
 
@@ -115,8 +114,8 @@ void DefaultStore::write_index() {
   // Only write values that were newly discovered during this run
   // The old one can keep living happily at the beginning of the file!
   for(auto& it : index) {
-    auto meta = metadata[it.first];
-    if(meta.second) {
+    auto not_seen = newly_seen[it.first];
+    if(not_seen) {
       index_file.write(it.first.data(), it.first.size());
       index_file.write(reinterpret_cast<char*>(&it.second), sizeof(it.second));
     }
@@ -141,6 +140,9 @@ bool DefaultStore::add_value(SEXP val) {
     size_t size = buf.size();
     store_file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
     store_file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
+
+    // new value in that session
+    newly_seen[key] = true;
 
     return true;
   }
@@ -214,4 +216,28 @@ bool DefaultStore::merge_in(DefaultStore& other) {
   }
 
   return true;
+}
+
+SEXP DefaultStore::get_metadata(SEXP val) const {
+  const std::vector<std::byte>& buf = ser.serialize(val);
+
+  std::array<char, 20> key;
+  sha1_context ctx;
+  sha1_starts(&ctx);
+  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
+  sha1_finish(&ctx, reinterpret_cast<uint8*>(key.data()));
+
+  auto it = newly_seen.find(key);
+
+  if(it == newly_seen.end()) {
+    return R_NilValue;
+  }
+
+  const char*names[] = {"newly_seen"};
+  SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
+  SEXP n_seen = PROTECT(Rf_ScalarLogical(it->second));
+
+  UNPROTECT(2);
+
+  return res;
 }
