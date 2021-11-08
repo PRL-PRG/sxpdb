@@ -10,7 +10,7 @@ VERSION = "0.5.0"
 # if the database does not exist, it will create
 open_db <- function(db = "db") {
 	if (!dir.exists(db)) {
-    dir.create(db)
+    dir.create(db, recursive = TRUE)
 	}
 
   prefix <- file.path(db, "sxpdb.csv")

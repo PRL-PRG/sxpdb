@@ -4,6 +4,10 @@
 
 SEXP open_db(SEXP filename) {
   GlobalStore* db = new GlobalStore(CHAR(STRING_ELT(filename, 0)));
+  if(db == nullptr) {
+    Rf_error("Could not allocate memory for database %s", CHAR(STRING_ELT(filename, 0)));
+    exit(1);
+  }
   SEXP db_ptr = PROTECT(R_MakeExternalPtr(db, Rf_install("sxpdb"), R_NilValue));
 
   // ASk to close the database when R session is closed.

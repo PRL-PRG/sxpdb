@@ -17,6 +17,7 @@ void hash_combine(std::size_t& seed, std::size_t value) {
 
 
 DefaultStore::DefaultStore(const fs::path& config_path) :
+  Store(""),
   configuration_path(config_path), bytes_read(0), ser(256),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
 {
@@ -26,10 +27,12 @@ DefaultStore::DefaultStore(const fs::path& config_path) :
   store_name = config["store"];
   metadata_name = config["metadata"];
   n_values = std::stoul(config["nb_values"]);
+  set_kind(config["kind"]);
   load();
 }
 
 DefaultStore::DefaultStore(const fs::path& config_path, const std::string& type_) :
+  Store("default"),
   configuration_path(config_path.parent_path().append(config_path.filename().string() + ".conf")), bytes_read(0), ser(256), type(type_),
   index_name(config_path.filename().string() + "_index.bin"), store_name(config_path.filename().string() + "_store.bin"),
   metadata_name(config_path.filename().string() + "_meta.bin"), n_values(0),
@@ -58,6 +61,7 @@ void DefaultStore::write_configuration() {
   conf["store"] = store_name;
   conf["metadata"] = metadata_name;
   conf["nb_values"] = std::to_string(n_values);
+  conf["kind"] = store_kind();
 
   Config config(std::move(conf));
   config.write(configuration_path);

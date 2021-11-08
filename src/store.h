@@ -6,20 +6,26 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <filesystem>
+#include <string>
 
 
 namespace fs = std::filesystem;
 
 class Store {
+private:
+    std::string store_k;
 protected:
     virtual void create() = 0;
+    void set_kind(const std::string& kind) {store_k = kind;}
 public:
     // virtual bool merge_in(const std::string& filename) = 0;
+    Store(const std::string& kind) : store_k(kind) {}
 
     virtual bool add_value(SEXP val) = 0 ;
     virtual bool have_seen(SEXP val) const = 0;
 
     virtual const std::string& sexp_type() const = 0;// the return type will be more complex when we deal with richer queries
+    virtual const std::string& store_kind() const { return store_k;};// typed, generic, specialized...
 
     virtual SEXP get_value(size_t index) = 0;
 

@@ -5,7 +5,9 @@
 #include <cassert>
 
 
-GlobalStore::GlobalStore(const std::string& filename) : configuration_path(fs::absolute(filename)), bytes_read(0), total_values(0),
+GlobalStore::GlobalStore(const std::string& filename) :
+  Store("global"),
+  configuration_path(fs::absolute(filename)), bytes_read(0), total_values(0),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
 {
 
