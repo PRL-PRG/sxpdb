@@ -148,6 +148,8 @@ bool DefaultStore::add_value(SEXP val) {
 
     n_values++;
 
+    assert(index.size() == n_values);
+
     return true;
   }
 
@@ -247,6 +249,7 @@ bool DefaultStore::merge_in(DefaultStore& other) {
 
     }
   }
+  assert(index.size() == n_values);
   write_index();
 
   return true;
