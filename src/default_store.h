@@ -27,7 +27,7 @@ struct container_hasher {
   }
 };
 
-class DefaultStore : protected Store {
+class DefaultStore : public Store {
 private:
   fs::path configuration_path;
   std::string type;
