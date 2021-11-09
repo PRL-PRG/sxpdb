@@ -32,6 +32,7 @@ public:
     virtual size_t nb_values() const = 0;
 
     virtual SEXP get_metadata(SEXP val) const = 0;
+    virtual SEXP get_metadata(size_t index) const = 0;
 
     virtual const fs::path& description_path() const = 0;
 

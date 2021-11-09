@@ -36,7 +36,7 @@ private:
   std::string metadata_name;
   size_t n_values;
   std::fstream index_file;//hash of value, offset to value in the store, offset to metadata
-  std::fstream store_file;//values
+  mutable std::fstream store_file;//values
 
   // it means that the order in the hash map won't necessary be the order of offsets
   // it that bad because of data locality?
@@ -77,6 +77,7 @@ public:
   virtual const fs::path& description_path() const  { return configuration_path; }
 
   virtual SEXP get_metadata(SEXP val) const;
+  virtual SEXP get_metadata(size_t index) const;
 
   // Pass it a Description and a Distribution that precises what kind of values
   // we want

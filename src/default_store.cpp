@@ -188,12 +188,54 @@ SEXP DefaultStore::get_metadata(SEXP val) const {
     return R_NilValue;
   }
 
-  const char*names[] = {"newly_seen", ""};
+  auto it2 = index.find(key);
+  size_t offset = it2->second;
+
+  store_file.seekg(offset);
+  size_t size = 0;
+  store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+  assert(size> 0);
+
+  const char*names[] = {"newly_seen", "size", ""};
   SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
-  SEXP n_seen = PROTECT(Rf_ScalarLogical(it->second));
+
+  SEXP n_seen = PROTECT(Rf_ScalarLogical(it2->second));
   SET_VECTOR_ELT(res, 0, n_seen);
 
-  UNPROTECT(2);
+  SEXP s_size = PROTECT(Rf_ScalarInteger(size));
+  SET_VECTOR_ELT(res, 1, s_size);
+
+  UNPROTECT(3);
+
+  return res;
+}
+
+SEXP DefaultStore::get_metadata(size_t idx) const {
+  auto it = index.begin();
+  std::advance(it, idx);
+  size_t offset = it->second;
+
+  auto it2 = newly_seen.find(it->first);
+
+  if(it2 == newly_seen.end()) {
+    return R_NilValue;
+  }
+
+  store_file.seekg(offset);
+  size_t size = 0;
+  store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+  assert(size> 0);
+
+  const char*names[] = {"newly_seen", "size", ""};
+  SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
+
+  SEXP n_seen = PROTECT(Rf_ScalarLogical(it2->second));
+  SET_VECTOR_ELT(res, 0, n_seen);
+
+  SEXP s_size = PROTECT(Rf_ScalarInteger(size));
+  SET_VECTOR_ELT(res, 1, s_size);
+
+  UNPROTECT(3);
 
   return res;
 }

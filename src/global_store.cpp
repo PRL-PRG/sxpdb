@@ -152,6 +152,23 @@ SEXP GlobalStore::get_metadata(SEXP val) const {
   return stores[store_index]->get_metadata(val);
 }
 
+SEXP GlobalStore::get_metadata(size_t index) const {
+  size_t store_index = 0;
+  size_t values = stores[store_index]->nb_values(); // we assume there is at least one store
+
+  while(values < index) {
+    store_index++;
+    if(store_index >= stores.size()) {
+      break;
+    }
+    values += stores[store_index]->nb_values();
+  }
+
+  size_t index_in_store = index - (values - stores[store_index]->nb_values());
+
+  return stores[store_index]->get_metadata(index_in_store);
+}
+
 
 SEXP GlobalStore::get_value(size_t index) {
   size_t store_index = 0;
