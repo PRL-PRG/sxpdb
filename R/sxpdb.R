@@ -52,6 +52,12 @@ get_meta <- function(db, val) {
 }
 
 #' @export
+get_meta_idx <- function(db, idx) {
+  stopifnot(is.numeric(idx))
+  .Call(SXPDB_get_meta_idx, db, idx)
+}
+
+#' @export
 size_db <- function(db) {
   .Call(SXPDB_size_db, db)
 }

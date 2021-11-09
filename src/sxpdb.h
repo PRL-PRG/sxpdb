@@ -91,6 +91,15 @@ SEXP size_db(SEXP db);
  */
 SEXP get_meta(SEXP db, SEXP val);
 
+/**
+ * Metadata associated to a value
+ * @method get_meta
+ * @param  db       external pointer to the target database
+ * @param idx       index of the value to look for
+ * @return R_NilValue if error or no such value in the database, metadata otherwise, as a named list
+ */
+SEXP get_meta_idx(SEXP db, SEXP idx);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

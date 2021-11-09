@@ -126,3 +126,13 @@ SEXP get_meta(SEXP sxpdb, SEXP val) {
 
   return db->get_metadata(val);
 }
+
+SEXP get_meta_idx(SEXP sxpdb, SEXP idx) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+
+  return db->get_metadata(Rf_asInteger(idx));
+}
