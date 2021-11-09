@@ -88,3 +88,7 @@ view_db <- function(db) {
 	viewer
 }
 
+#' @export
+view_meta_db <- function(db) {
+  do.call(rbind.data.frame, lapply(seq_len(size_db(db) - 1), function(i) as.data.frame(.Call(SXPDB_get_meta_idx, db, i))))
+}
