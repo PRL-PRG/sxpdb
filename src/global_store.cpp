@@ -28,11 +28,18 @@ GlobalStore::GlobalStore(const std::string& filename) :
       stores.push_back(std::make_unique<DefaultStore>(config_path));
 
 
-      //Check if the types in the configuration file and in the CSF are coherent
+      //Check if the types in the configuration file and in the CSV are coherent
       if(row.at(1) != stores.back()->sexp_type()) {
         std::cerr << "Inconsistent types in the global configuration file and the store configuration file: " <<
           row.at(1) << " vs " << stores.back()->sexp_type() << std::endl;
           exit(1);
+      }
+
+      //Check if the kinds of stores in the configuration file and in the CSV are coherent
+      if(row.at(3) != stores.back()->sexp_type()) {
+        std::cerr << "Inconsistent kinds of stores in the global configuration file and the store configuration file: " <<
+          row.at(3) << " vs " << stores.back()->store_kind() << std::endl;
+        exit(1);
       }
 
       types[row.at(1)] = stores.size() - 1;//index of the element that was just inserted
@@ -201,11 +208,12 @@ SEXP GlobalStore::sample_value() {
 
 void GlobalStore::write_configuration() {
   CSVFile file;
-  std::vector<std::string> row(3);
+  std::vector<std::string> row(4);
   for(auto& store: stores) {
     row[0] = store->description_path().filename().string();
     row[1] = store->sexp_type();
     row[2] = std::to_string(store->nb_values());
+    row[3] = store->store_kind();
     file.add_row(std::move(row));
   }
   file.write(configuration_path);
