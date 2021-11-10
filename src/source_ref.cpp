@@ -10,7 +10,7 @@ SourceRefs::SourceRefs(fs::path config_path) {
     load_configuration();
     load_store();
   }else {
-
+      //no packages and no srcrefs so far!
   }
 }
 

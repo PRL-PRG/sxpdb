@@ -35,18 +35,22 @@ private:
 
   std::unordered_map<std::string, package_t> packages;
 
+  //first load the configuration and the store
   void load_configuration();
   void load_store();
+
+
+  // must be called before write_configuration
+  // because write_configuration needs offset to be set first
+  void write();
+  void write_configuration();
 
 public:
   SourceRefs(fs::path config_path);
 
   void merge_in(SourceRefs& srcrefs);
 
-  // must be called before write_configuration
-  // because write_configuration needs offset to be set first
-  void write();
-  void write_configuration();
+  void add_value(size_t offset, const std::string& package_name, const std::string& function_name, const std::string& argument_name);
 };
 
 #endif

@@ -3,6 +3,7 @@
 
 #include "store.h"
 #include "default_store.h"
+#include "source_ref.h"
 
 #include <vector>
 #include <memory>
@@ -20,6 +21,7 @@ class GlobalStore : Store {
     std::vector<std::unique_ptr<DefaultStore>> stores;
     std::unordered_map<std::string, size_t> types;
 
+
     size_t bytes_read;
 
     size_t total_values;
@@ -29,6 +31,8 @@ class GlobalStore : Store {
   protected:
     virtual void write_configuration();
     virtual void create();
+
+    SourceRefs src_refs;//TODO
 
   public:
     GlobalStore(const std::string& description_name);
