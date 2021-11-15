@@ -107,11 +107,16 @@ bool GlobalStore::merge_in(GlobalStore& gstore) {
 }
 
 bool GlobalStore::add_value(SEXP val) {
+  // Ignore environments
+  if(TYPEOF(val) == ENVSXP) {
+    return false;  
+  }
+  
   // we assume there is at least a "any" store
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
 
-  if(it != nullptr) {
+  if(it != types.end()) {
     store_index = it->second;
   }
   else {
@@ -133,7 +138,7 @@ bool GlobalStore::have_seen(SEXP val) const {
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
 
-  if(it != nullptr) {
+  if(it != types.end()) {
     store_index = it->second;
   }
   else {
@@ -148,7 +153,7 @@ SEXP GlobalStore::get_metadata(SEXP val) const {
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
 
-  if(it != nullptr) {
+  if(it != types.end()) {
     store_index = it->second;
   }
   else {
