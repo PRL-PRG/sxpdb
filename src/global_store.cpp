@@ -115,6 +115,11 @@ bool GlobalStore::merge_in(GlobalStore& gstore) {
 }
 
 bool GlobalStore::add_value(SEXP val) {
+  // Ignore environments
+  if(TYPEOF(val) == ENVSXP) {
+    return false;  
+  }
+  
   // we assume there is at least a "any" store
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
