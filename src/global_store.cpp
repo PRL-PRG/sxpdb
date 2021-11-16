@@ -79,7 +79,7 @@ void GlobalStore::create() {
   stores.push_back(std::make_unique<DefaultStore>(configuration_path.parent_path().append("generic"), "any"));
   types["any"] = 0;
 
-  src_refs = std::make_unique<SourceRefs>(configuration_path.parent_path().append("locations"));
+  src_refs = std::make_shared<SourceRefs>(configuration_path.parent_path().append("locations"));
 
   write_configuration();
 }
@@ -114,12 +114,12 @@ bool GlobalStore::merge_in(GlobalStore& gstore) {
   return true;
 }
 
-bool GlobalStore::add_value(SEXP val) {
+std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val) {
   // Ignore environments
   if(TYPEOF(val) == ENVSXP) {
-    return false;  
+    return std::make_pair(nullptr, false);
   }
-  
+
   // we assume there is at least a "any" store
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
@@ -132,17 +132,29 @@ bool GlobalStore::add_value(SEXP val) {
     // or just return false to indicate that we could not store it?
   }
 
-  bool added = stores[store_index]->add_value(val);
+  auto added = stores[store_index]->add_value(val);
 
-  if(added) {
+  if(added.second) {
     total_values++;
-    return true;
   }
 
-  return false;
+  return added;
 }
 
-bool GlobalStore::have_seen(SEXP val) const {
+std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name) {
+  // Ignore environments
+  if(TYPEOF(val) == ENVSXP) {
+    return std::make_pair(nullptr, false);
+  }
+
+  auto hash = add_value(val);
+  assert(hash.first != nullptr);
+  src_refs->add_value(*hash.first, pkg_name, func_name, arg_name);
+
+  return hash;
+}
+
+bool  GlobalStore::have_seen(SEXP val) const {
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
 

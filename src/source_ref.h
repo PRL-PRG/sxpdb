@@ -5,6 +5,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "hasher.h"
+#include "store.h"
 
 #include <filesystem>
 #include <string>
@@ -22,6 +23,10 @@ struct location_t {
   uint32_t package;
   uint32_t function;
   uint32_t argument;
+
+  bool operator== (const location_t& loc) const  {
+    return package == loc.package && function == loc.function && argument == loc.argument;
+  }
 };
 
 namespace std
@@ -36,15 +41,6 @@ struct hash<location_t>
     hash_combine(result, c.function);
     hash_combine(result, c.argument);
     return result;
-  }
-};
-
-template <>
-struct equal_to<location_t>
-{
-  constexpr bool operator()(const location_t& loc1, const location_t& loc2) const
-  {
-    return loc1.package == loc2.package && loc1.function == loc2.function && loc1.argument == loc2.argument;
   }
 };
 }
@@ -82,8 +78,8 @@ private:
 
 
 
-  std::unordered_map<std::array<char, 20>, std::unordered_set<location_t>, container_hasher> index;
-  std::unordered_map<std::array<char, 20>, size_t,container_hasher> offsets;
+  std::unordered_map<sexp_hash, std::unordered_set<location_t>, container_hasher> index;
+  std::unordered_map<sexp_hash, size_t,container_hasher> offsets;
 
   static size_t inline add_name(const std::string& name, std::unordered_map<std::string, size_t>& unique_names, std::vector<const std::string*>& ordering);
 
@@ -92,17 +88,17 @@ public:
 
   void merge_in(SourceRefs& srcrefs);
 
-  bool add_value(const std::array<char, 20>& key, const std::string& package_name, const std::string& function_name, const std::string& argument_name);
+  bool add_value(const sexp_hash& key, const std::string& package_name, const std::string& function_name, const std::string& argument_name);
 
-  const std::unordered_set<location_t> get_locs(const std::array<char, 20>& key) const;
+  const std::unordered_set<location_t> get_locs(const sexp_hash& key) const;
 
-  const std::vector<const std::string*> pkg_names(const std::array<char, 20>& key) const;
-  const std::vector<const std::string*> func_names(const std::array<char, 20>& key) const;
-  const std::vector<const std::string*> arg_names(const std::array<char, 20>& key) const;
+  const std::vector<const std::string*> pkg_names(const sexp_hash& key) const;
+  const std::vector<const std::string*> func_names(const sexp_hash& key) const;
+  const std::vector<const std::string*> arg_names(const sexp_hash& key) const;
 
-  const std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> source_locations(const std::array<char, 20>& key) const;
+  const std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> source_locations(const sexp_hash& key) const;
 
-  size_t get_offset(const std::array<char, 20>& key) const;
+  size_t get_offset(const sexp_hash& key) const;
 
   const fs::path& description_path() const { return config_path;}
 

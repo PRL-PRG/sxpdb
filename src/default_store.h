@@ -16,7 +16,7 @@
 
 
 class DefaultStore : public Store {
-private:
+protected:
   fs::path configuration_path;
   std::string type;
   std::string index_name;
@@ -28,9 +28,9 @@ private:
 
   // it means that the order in the hash map won't necessary be the order of offsets
   // it that bad because of data locality?
-  std::unordered_map<std::array<char, 20>, size_t, container_hasher> index;
+  std::unordered_map<sexp_hash, size_t, container_hasher> index;
   // new during that session or not
-  std::unordered_map<std::array<char, 20>, bool, container_hasher> newly_seen;
+  std::unordered_map<sexp_hash, bool, container_hasher> newly_seen;
 
   size_t bytes_read;
 
@@ -55,7 +55,7 @@ public:
 
   virtual bool merge_in(DefaultStore& other);
 
-  virtual bool add_value(SEXP val);
+  virtual  std::pair<const sexp_hash*, bool> add_value(SEXP val);
   virtual bool have_seen(SEXP val) const;
 
   virtual size_t nb_values() const { return n_values; }

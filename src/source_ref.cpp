@@ -5,6 +5,7 @@
 #include <sstream>
 #include <cassert>
 
+
 SourceRefs::SourceRefs(fs::path config_path) {
   // load the configuration and srcrefs if they exist
   if(std::filesystem::exists(config_path)) {
@@ -46,7 +47,7 @@ size_t SourceRefs::add_name(const std::string& name, std::unordered_map<std::str
 }
 
 
-bool SourceRefs::add_value(const std::array<char, 20>& key, const std::string& package_name, const std::string& function_name, const std::string& argument_name) {
+bool SourceRefs::add_value(const sexp_hash& key, const std::string& package_name, const std::string& function_name, const std::string& argument_name) {
   size_t pkg_id = add_name(package_name, pkg_names_u, package_names);
   size_t fun_id = add_name(function_name, function_names_u, function_names);
   size_t arg_id = add_name(argument_name, arg_names_u, argument_names);
@@ -124,7 +125,7 @@ void SourceRefs::load_index() {
   // offsets should be initalized there
   assert(offsets.size() > 0);
 
-  std::unordered_map<size_t, const std::array<char, 20>&> inv_offsets;
+  std::unordered_map<size_t, const sexp_hash&> inv_offsets;
   inv_offsets.reserve(offsets.size());
   for(auto& it : offsets) {
     inv_offsets.insert(std::make_pair(it.second, it.first));
@@ -164,7 +165,7 @@ void SourceRefs::load_configuration() {
   n_args = std::stoul(conf["nb_arguments"]);
 }
 
-const std::unordered_set<location_t> SourceRefs::get_locs(const std::array<char, 20>& key) const {
+const std::unordered_set<location_t> SourceRefs::get_locs(const sexp_hash& key) const {
   auto it = index.find(key);
 
   if(it != index.end()) {
@@ -175,7 +176,7 @@ const std::unordered_set<location_t> SourceRefs::get_locs(const std::array<char,
   }
 }
 
-const std::vector<const std::string*> SourceRefs::pkg_names(const std::array<char, 20>& key) const {
+const std::vector<const std::string*> SourceRefs::pkg_names(const sexp_hash& key) const {
   auto it = index.find(key);
 
   if(it == index.end()) {
@@ -193,7 +194,7 @@ const std::vector<const std::string*> SourceRefs::pkg_names(const std::array<cha
 }
 
 
-const std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> SourceRefs::source_locations(const std::array<char, 20>& key) const {
+const std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> SourceRefs::source_locations(const sexp_hash& key) const {
   auto locs = get_locs(key);
 
   std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> res;

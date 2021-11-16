@@ -90,7 +90,7 @@ bool DefaultStore::load() {
 
 void DefaultStore::load_index() {
   index.reserve(n_values);
-  std::array<char, 20> hash;
+  sexp_hash hash;
   size_t offset = 0;
 
   for(size_t i = 0; i < n_values ; i++) {
@@ -123,12 +123,12 @@ void DefaultStore::write_index() {
   }
 }
 
-bool DefaultStore::add_value(SEXP val) {
+std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
   auto start = std::chrono::high_resolution_clock::now();
 
   const std::vector<std::byte>& buf = ser.serialize(val);
 
-  std::array<char, 20> key;
+  sexp_hash key;
   sha1_context ctx;
   sha1_starts(&ctx);
   sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
@@ -137,7 +137,7 @@ bool DefaultStore::add_value(SEXP val) {
   auto it = index.find(key);
   if(it == index.end()) { // the value is not in the database
     // add it to the index
-    index[key] = store_file.tellp();
+    auto res = index.insert(std::make_pair(key, store_file.tellp()));
 
     //write the value
     size_t size = buf.size();
@@ -156,18 +156,18 @@ bool DefaultStore::add_value(SEXP val) {
     // Welford's algorithm for the average (numerically stable)
     add_time += (std::chrono::duration_cast<std::chrono::microseconds>(end - start) - add_time) / n_values;
 
-    return true;
+    return std::make_pair(&res.first->first, true);
   }
 
 
-  return false;
+  return std::make_pair(&it->first, false);
 }
 
 
 bool DefaultStore::have_seen(SEXP val) const {
   const std::vector<std::byte>& buf = ser.serialize(val);
 
-  std::array<char, 20> key;
+  sexp_hash key;
   sha1_context ctx;
   sha1_starts(&ctx);
   sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
@@ -179,7 +179,7 @@ bool DefaultStore::have_seen(SEXP val) const {
 SEXP DefaultStore::get_metadata(SEXP val) const {
   const std::vector<std::byte>& buf = ser.serialize(val);
 
-  std::array<char, 20> key;
+  sexp_hash key;
   sha1_context ctx;
   sha1_starts(&ctx);
   sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());

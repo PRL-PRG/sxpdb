@@ -2,6 +2,8 @@
 
 #include "global_store.h"
 
+#include <algorithm>
+
 SEXP open_db(SEXP filename) {
   GlobalStore* db = new GlobalStore(CHAR(STRING_ELT(filename, 0)));
   if(db == nullptr) {
@@ -44,8 +46,15 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
   }
   GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
 
-  if(db->add_value(val)) {
-    return val;
+  auto hash = db->add_value(val);
+
+  if(hash.first != nullptr) {
+    SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, hash.first->size()));
+    Rbyte* bytes= RAW(hash_s);
+
+    std::copy_n(hash.first->begin(), hash.first->size(),bytes);
+
+    return hash_s;
   }
 
   return R_NilValue;

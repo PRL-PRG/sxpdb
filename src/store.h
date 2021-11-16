@@ -8,9 +8,12 @@
 #include <filesystem>
 #include <string>
 #include <chrono>
+#include <optional>
 
 namespace fs = std::filesystem;
 
+
+typedef std::array<char, 20> sexp_hash;
 
 class Store {
 private:
@@ -22,7 +25,10 @@ public:
     // virtual bool merge_in(const std::string& filename) = 0;
     Store(const std::string& kind) : store_k(kind) {}
 
-    virtual bool add_value(SEXP val) = 0 ;
+    //returns the hash of the value, and true if is newly inserted, false if it was already there
+    // hash will be nullptr if we don't want to compute it at all
+    virtual std::pair<const sexp_hash*, bool> add_value(SEXP val) = 0 ;
+    //virtual std::pair<const sexp_hash*, bool> add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name) = 0;
     virtual bool have_seen(SEXP val) const = 0;
 
     virtual const std::string& sexp_type() const = 0;// the return type will be more complex when we deal with richer queries

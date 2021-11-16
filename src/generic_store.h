@@ -2,6 +2,10 @@
 #define SXPDB_GENERIC_STORE_H
 
 #include "default_store.h"
+#include "source_ref.h"
+#include "hasher.h"
+
+#include <memory>
 
 
 // A generic store that stores more metadata that the default store
@@ -12,29 +16,27 @@ private:
     SEXPTYPE sexptype;
     size_t size;
   };
-  std::unordered_map<std::array<std::byte, 20>, metadata_t, container_hasher> metadata;
+  std::unordered_map<sexp_hash, metadata_t, container_hasher> metadata;
+  std::shared_ptr<SourceRefs> src_locs;
 
 protected:
 
   //virtual void create();
 
 public:
-  GenericStore(const fs::path& config_path);
+  GenericStore(const fs::path& config_path, std::shared_ptr<SourceRefs> source_locations);
 
-  // virtual bool add_value(SEXP val);
-  // virtual bool have_seen(SEXP val) const;
-  //
-  // virtual const std::string& sexp_type() const;
-  //
-  // virtual SEXP get_value(size_t index);
-  //
-  // virtual size_t nb_values() const;
-  //
-  // virtual SEXP get_metadata(SEXP val) const;
-  //
+  virtual std::pair<const sexp_hash*, bool> add_value(SEXP val);
+
+  virtual const std::string& sexp_type() const {
+          static const std::string any = "any";
+          return any;
+  }
+
+
+  virtual SEXP get_metadata(SEXP val) const;
+
   // virtual const fs::path& description_path() const ;
-  //
-  // virtual SEXP sample_value();
 
   virtual ~GenericStore() {};
 };
