@@ -4,6 +4,7 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
+#include "hasher.h"
 
 #include <filesystem>
 #include <string>
@@ -15,9 +16,7 @@
 #include <tuple>
 #include <optional>
 
-extern void hash_combine(std::size_t& seed, std::size_t value);
 
-struct container_hasher;
 
 struct location_t {
   uint32_t package;
@@ -37,6 +36,15 @@ struct hash<location_t>
     hash_combine(result, c.function);
     hash_combine(result, c.argument);
     return result;
+  }
+};
+
+template <>
+struct equal_to<location_t>
+{
+  constexpr bool operator()(const location_t& loc1, const location_t& loc2) const
+  {
+    return loc1.package == loc2.package && loc1.function == loc2.function && loc1.argument == loc2.argument;
   }
 };
 }
@@ -86,13 +94,13 @@ public:
 
   bool add_value(const std::array<char, 20>& key, const std::string& package_name, const std::string& function_name, const std::string& argument_name);
 
-  std::optional<const location_t&> get_loc(const std::array<char, 20>& key) const;
+  const std::unordered_set<location_t> get_locs(const std::array<char, 20>& key) const;
 
-  const std::string& package_name(const std::array<char, 20>& key) const;
-  const std::string& function_name(const std::array<char, 20>& key) const;
-  const std::string& argument_name(const std::array<char, 20>& key) const;
+  const std::vector<const std::string*> pkg_names(const std::array<char, 20>& key) const;
+  const std::vector<const std::string*> func_names(const std::array<char, 20>& key) const;
+  const std::vector<const std::string*> arg_names(const std::array<char, 20>& key) const;
 
-  const std::tuple<const std::string&, const std::string&, const std::string&> source_location(const std::array<char, 20>& key) const;
+  const std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> source_locations(const std::array<char, 20>& key) const;
 
   size_t get_offset(const std::array<char, 20>& key) const;
 

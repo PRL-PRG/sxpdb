@@ -31,6 +31,7 @@ void SourceRefs::write_configuration() {
   config.write(config_path);
 }
 
+
 size_t SourceRefs::add_name(const std::string& name, std::unordered_map<std::string, size_t>& unique_names, std::vector<const std::string*>& ordering) {
   auto it = unique_names.find(name);
   if(it == unique_names.end()) {
@@ -43,6 +44,7 @@ size_t SourceRefs::add_name(const std::string& name, std::unordered_map<std::str
 
   return it->second;
 }
+
 
 bool SourceRefs::add_value(const std::array<char, 20>& key, const std::string& package_name, const std::string& function_name, const std::string& argument_name) {
   size_t pkg_id = add_name(package_name, pkg_names_u, package_names);
@@ -60,7 +62,7 @@ bool SourceRefs::add_value(const std::array<char, 20>& key, const std::string& p
     it->second.insert(loc);
   }
   else {
-    index.emplace(std::make_pair(key, std::vector<location_t>(1, loc)));
+    index.emplace(std::make_pair(key, std::unordered_set<location_t>({loc})));
   }
 
   return true;
@@ -105,15 +107,15 @@ void SourceRefs::load_store() {
 void SourceRefs::write_index() {
   std::ofstream file(index_path, std::ofstream::trunc | std::ofstream::binary);
 
-  for(auto& key: index) {
-    const auto& source_locations = key->second;
-    offsets[key] = file.tellp();
+  for(auto& it: index) {
+    const auto& source_locations = it.second;
+    offsets[it.first] = file.tellp();
 
     size_t size = source_locations.size();
     file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
 
     for(auto& loc : source_locations) {
-      file.write(reinterpret_cast<char*>(&loc), sizeof(loc));
+      file.write(reinterpret_cast<const char*>(&loc), sizeof(location_t));
     }
   }
 }
@@ -162,30 +164,48 @@ void SourceRefs::load_configuration() {
   n_args = std::stoul(conf["nb_arguments"]);
 }
 
-std::optional<const location_t&> SourceRefs::get_loc(const std::array<char, 20>& key) const {
+const std::unordered_set<location_t> SourceRefs::get_locs(const std::array<char, 20>& key) const {
+  auto it = index.find(key);
+
+  if(it != index.end()) {
+    return it->second;
+  }
+  else {
+    return std::unordered_set<location_t>();
+  }
+}
+
+const std::vector<const std::string*> SourceRefs::pkg_names(const std::array<char, 20>& key) const {
   auto it = index.find(key);
 
   if(it == index.end()) {
-    return std::optional<const location_t&>();
+    return std::vector<const std::string*>();
   }
-  else {
-    return  std::make_optional<const location_t&>(it->second);
+
+  std::vector<const std::string*> res;
+  res.reserve(it->second.size());
+
+  for(auto loc : it->second) {
+    res.push_back(package_names[loc.package]);
   }
+
+  return res;
 }
 
-const std::string& SourceRefs::package_name(const std::array<char, 20>& key) const {
-  auto loc = get_loc(key);
 
-  if(loc) {
-    return *package_names[loc->package];
-  }
-  else {
-    return
+const std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> SourceRefs::source_locations(const std::array<char, 20>& key) const {
+  auto locs = get_locs(key);
+
+  std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> res;
+  res.reserve(locs.size());
+
+  for(auto loc : locs) {
+    res.push_back(std::make_tuple(std::ref(*package_names[loc.package]), std::ref(*function_names[loc.function]), std::ref(*argument_names[loc.argument])));
   }
 
+  return res;
 }
-const std::string& function_name(const std::array<char, 20>& key) const;
-const std::string& argument_name(const std::array<char, 20>& key) const;
 
-const std::tuple<const std::string&, const std::string&, const std::string&> source_location(const std::array<char, 20>& key) const;
+
+
 
