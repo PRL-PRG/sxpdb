@@ -10,7 +10,6 @@
 #include <array>
 #include <random>
 
-
 // from boost::hash_combine
 void hash_combine(std::size_t& seed, std::size_t value);
 
@@ -26,6 +25,7 @@ struct container_hasher {
     return seed;
   }
 };
+
 
 class DefaultStore : public Store {
 private:
@@ -48,6 +48,8 @@ private:
 
   mutable Serializer ser;
   std::default_random_engine rand_engine;
+
+  std::chrono::microseconds add_time;
 
 protected:
   virtual void load_index();
@@ -78,6 +80,8 @@ public:
 
   virtual SEXP get_metadata(SEXP val) const;
   virtual SEXP get_metadata(size_t index) const;
+
+  virtual std::chrono::microseconds avg_insertion_duration() const;
 
   // Pass it a Description and a Distribution that precises what kind of values
   // we want

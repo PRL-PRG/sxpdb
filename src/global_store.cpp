@@ -22,7 +22,13 @@ GlobalStore::GlobalStore(const std::string& filename) :
     for(auto& row : config.get_rows()) {
       fs::path config_path = configuration_path.parent_path().append(row.at(0));
 
-      std::cout << "Loading store at " << config_path << " with type " <<
+      if(row.at(3) == "locations") {
+        std::cout << "Loading source locations at " << config_path << "from " << row.at(2) << "packages" << std::endl;
+        src_refs = std::make_unique<SourceRefs>(config_path);
+        continue;
+      }
+
+      std::cout << "Loading " << row.at(3) << "store at " << config_path << " with type " <<
         row.at(1) << " with " << row.at(2) << " values." << std::endl;
 
       stores.push_back(std::make_unique<DefaultStore>(config_path));
@@ -66,12 +72,14 @@ GlobalStore::GlobalStore(const std::string& filename) :
 }
 
 void GlobalStore::create() {
-  // Just create a generic default store
+  // Just create a generic default store and a location store
 
   assert(stores.size() == 0);
 
   stores.push_back(std::make_unique<DefaultStore>(configuration_path.parent_path().append("generic"), "any"));
   types["any"] = 0;
+
+  src_refs = std::make_unique<SourceRefs>(configuration_path.parent_path().append("locations"));
 
   write_configuration();
 }
@@ -111,7 +119,7 @@ bool GlobalStore::add_value(SEXP val) {
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
 
-  if(it != nullptr) {
+  if(it != types.end()) {
     store_index = it->second;
   }
   else {
@@ -133,7 +141,7 @@ bool GlobalStore::have_seen(SEXP val) const {
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
 
-  if(it != nullptr) {
+  if(it != types.end()) {
     store_index = it->second;
   }
   else {
@@ -148,7 +156,7 @@ SEXP GlobalStore::get_metadata(SEXP val) const {
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
 
-  if(it != nullptr) {
+  if(it != types.end()) {
     store_index = it->second;
   }
   else {
@@ -206,6 +214,15 @@ SEXP GlobalStore::sample_value() {
   return get_value(dist(rand_engine));
 }
 
+std::chrono::microseconds GlobalStore::avg_insertion_duration() const {
+  std::chrono::microseconds avg_dur;
+
+  for(auto& store : stores) {
+    avg_dur += store->avg_insertion_duration() * store->nb_values();
+  }
+  return avg_dur / total_values;
+}
+
 void GlobalStore::write_configuration() {
   CSVFile file;
   std::vector<std::string> row(4);
@@ -216,6 +233,14 @@ void GlobalStore::write_configuration() {
     row[3] = store->store_kind();
     file.add_row(std::move(row));
   }
+
+  // Source locations
+  row[0] = src_refs->description_path().filename().string();
+  row[1] = "";
+  row[2] = src_refs->nb_packages();
+  row[3] = "locations";
+  file.add_row(std::move(row));
+
   file.write(configuration_path);
 }
 

@@ -32,7 +32,8 @@ class GlobalStore : Store {
     virtual void write_configuration();
     virtual void create();
 
-    SourceRefs src_refs;//TODO
+    std::unique_ptr<SourceRefs> src_refs;
+
 
   public:
     GlobalStore(const std::string& description_name);
@@ -55,8 +56,8 @@ class GlobalStore : Store {
     virtual SEXP get_metadata(SEXP val) const;
     virtual SEXP get_metadata(size_t index) const;
 
-    // Pass it a Description and a Distribution that precises what kind of values
-    // we want
+    virtual std::chrono::microseconds avg_insertion_duration() const;
+
     virtual SEXP sample_value();
 
     virtual ~GlobalStore();

@@ -136,3 +136,14 @@ SEXP get_meta_idx(SEXP sxpdb, SEXP idx) {
 
   return db->get_metadata(Rf_asInteger(idx));
 }
+
+
+SEXP avg_insertion_duration(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+
+  return Rf_ScalarReal(db->avg_insertion_duration().count());
+}

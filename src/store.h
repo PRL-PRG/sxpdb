@@ -7,9 +7,10 @@
 #include <Rinternals.h>
 #include <filesystem>
 #include <string>
-
+#include <chrono>
 
 namespace fs = std::filesystem;
+
 
 class Store {
 private:
@@ -35,6 +36,8 @@ public:
     virtual SEXP get_metadata(size_t index) const = 0;
 
     virtual const fs::path& description_path() const = 0;
+
+    virtual std::chrono::microseconds avg_insertion_duration() const = 0;
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
