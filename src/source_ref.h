@@ -50,12 +50,15 @@ namespace fs = std::filesystem;
 class SourceRefs {
 private:
   fs::path config_path;
+  fs::path offsets_path;//offsets to the list of source locations per value
   fs::path index_path;//the list of source locations per value (as serialized location_t)
   fs::path store_path;//all the components of a source location
 
   size_t n_packages;
   size_t n_functions;
   size_t n_args;
+
+  size_t n_values;
 
 
   void load_configuration();
@@ -103,6 +106,8 @@ public:
   const fs::path& description_path() const { return config_path;}
 
   size_t nb_packages() const { return package_names.size(); }
+
+  virtual ~SourceRefs();
 };
 
 

@@ -14,6 +14,13 @@ SourceRefs::SourceRefs(fs::path config_path) {
     load_store();
   }else {
       //no packages and no srcrefs so far!
+      index_path = fs::absolute(config_path).parent_path().append("src_index.bin");
+      offsets_path = fs::absolute(config_path).parent_path().append("src_offsets.bin");
+      store_path = fs::absolute(config_path).parent_path().append("src_store.bin");
+      n_values = 0;
+      n_packages = 0;
+      n_functions = 0;
+      n_args = 0;
   }
 }
 
@@ -22,8 +29,10 @@ void SourceRefs::write_configuration() {
   // names of the two auxiliary stores
   std::unordered_map<std::string, std::string> conf;
   conf["kind"] = "locations";
+  conf["offsets"] = offsets_path.filename().string();
   conf["index"] = index_path.filename().string();
   conf["store"] = store_path.filename().string();
+  conf["nb_values"] = std::to_string(n_values);
   conf["nb_packages"] = std::to_string(package_names.size());
   conf["nb_functions"] = std::to_string(function_names.size());
   conf["nb_arguments"] = std::to_string(argument_names.size());
@@ -64,7 +73,9 @@ bool SourceRefs::add_value(const sexp_hash& key, const std::string& package_name
   }
   else {
     index.emplace(std::make_pair(key, std::unordered_set<location_t>({loc})));
+    n_values++;
   }
+
 
   return true;
 }
@@ -72,6 +83,7 @@ bool SourceRefs::add_value(const sexp_hash& key, const std::string& package_name
 
 void SourceRefs::write_store() {
   std::ofstream store_file(store_path, std::ofstream::trunc);
+  store_file.exceptions(std::fstream::failbit);
   // TODO: do no write again everything each time
 
   for(auto& pkg : package_names) {
@@ -89,6 +101,7 @@ void SourceRefs::write_store() {
 
 void SourceRefs::load_store() {
   std::ifstream store_file(store_path);
+  store_file.exceptions(std::fstream::failbit);
 
   std::string buf;
 
@@ -106,7 +119,21 @@ void SourceRefs::load_store() {
 }
 
 void SourceRefs::write_index() {
+  //Also write the offsets here
+  std::ofstream offset_file(offsets_path, std::ofstream::trunc | std::ofstream::binary);
+  offset_file.exceptions(std::fstream::failbit);
+
+  for(auto it : offsets) {
+    // no newly_seen here, as the offset could change
+    offset_file.write(it.first.data(), it.first.size());
+    offset_file.write(reinterpret_cast<char*>(&it.second), sizeof(size_t));
+  }
+
+  offset_file.close();
+
   std::ofstream file(index_path, std::ofstream::trunc | std::ofstream::binary);
+  file.exceptions(std::fstream::failbit);
+
 
   for(auto& it: index) {
     const auto& source_locations = it.second;
@@ -122,19 +149,34 @@ void SourceRefs::write_index() {
 }
 
 void SourceRefs::load_index() {
-  // offsets should be initalized there
-  assert(offsets.size() > 0);
+  // Read the offsets from the offset file
+  //open the file, read the offsets and populate the offsets hashmap
+  std::ifstream offset_file(offsets_path, std::ofstream::binary);
+  offset_file.exceptions(std::fstream::failbit);
 
-  std::unordered_map<size_t, const sexp_hash&> inv_offsets;
-  inv_offsets.reserve(offsets.size());
-  for(auto& it : offsets) {
-    inv_offsets.insert(std::make_pair(it.second, it.first));
+  sexp_hash hash;
+  assert(hash.size() == 20);
+  size_t offset = 0;
+
+  offsets.reserve(n_values);
+
+  for(size_t i = 0; i < n_values ; i++) {
+    offset_file.read(hash.data(), hash.size());
+    offset_file.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
+    offsets[hash] = offset;
   }
 
-  std::ifstream file(index_path, std::ofstream::binary);
+  offset_file.close();
+  assert(offsets.size() > 0);
 
-  for(auto it : inv_offsets) { // Maybe we should sort the offset here? or use a map instead of an unordered_map?
+  std::ifstream file(index_path, std::ofstream::binary);
+  file.exceptions(std::fstream::failbit);
+
+  // Maybe we should sort the offset here? or use a map instead of an unordered_map?
+  // (after inverting the mapping hash -> offset)
+  for(auto it : offsets) {
     size_t size = 0;
+    file.seekg(it.second);// go the offset of that record
     file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
     assert(size > 0);
 
@@ -146,10 +188,10 @@ void SourceRefs::load_index() {
       locations.insert(loc);
     }
 
-    index[it.second] = locations;
+    index[it.first] = locations;
   }
 
-  offsets.clear();
+  offsets.clear();// necessary?
 }
 
 
@@ -158,8 +200,11 @@ void SourceRefs::load_configuration() {
 
   assert(conf["kind"] == "locations");
 
-  index_path = conf["index"];
-  store_path = conf["store"];
+  //TODO: reconstruct the full path from the configuration file path
+  index_path = fs::absolute(config_path).parent_path().append(conf["index"]);
+  store_path = fs::absolute(config_path).parent_path().append(conf["store"]);
+  offsets_path = fs::absolute(config_path).parent_path().append(conf["offsets"]);
+  n_values = std::stoul(conf["nb_values"]);
   n_packages = std::stoul(conf["nb_packages"]);
   n_functions = std::stoul(conf["nb_functions"]);
   n_args = std::stoul(conf["nb_arguments"]);
@@ -207,6 +252,12 @@ const std::vector<std::tuple<const std::string&, const std::string&, const std::
   return res;
 }
 
+
+SourceRefs::~SourceRefs() {
+  write_store();
+  write_index();
+  write_configuration();
+}
 
 
 

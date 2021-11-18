@@ -91,10 +91,11 @@ bool DefaultStore::load() {
 void DefaultStore::load_index() {
   index.reserve(n_values);
   sexp_hash hash;
+  assert(hash.size() == 20);
   size_t offset = 0;
 
   for(size_t i = 0; i < n_values ; i++) {
-    index_file.read(hash.data(), 20);
+    index_file.read(hash.data(), hash.size());
     index_file.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
     index[hash] = offset;
 
