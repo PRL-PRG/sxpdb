@@ -18,11 +18,12 @@
 #include <optional>
 
 
+constexpr inline uint32_t return_value =std::numeric_limits<uint32_t>::max();
 
 struct location_t {
   uint32_t package;
   uint32_t function;
-  uint32_t argument;
+  uint32_t argument;//std::numeric_limits<uint32_t>::max() will be the magic value to indicate that it is a return value
 
   bool operator== (const location_t& loc) const  {
     return package == loc.package && function == loc.function && argument == loc.argument;

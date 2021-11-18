@@ -46,9 +46,9 @@ class GlobalStore : Store {
     }
 
     virtual std::pair<const sexp_hash*, bool> add_value(SEXP val);
+    // if arg_name == "", then it is a return value, not an argument
     virtual std::pair<const sexp_hash*, bool> add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
     virtual bool have_seen(SEXP val) const;
-
 
     virtual const fs::path& description_path() const {return configuration_path; }
     virtual size_t nb_values() const {return total_values; }

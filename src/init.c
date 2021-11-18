@@ -14,6 +14,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"open_db",					(DL_FUNC) &open_db,					1},
 	{"close_db",				(DL_FUNC) &close_db,				1},
 	{"add_val",					(DL_FUNC) &add_val,					2},
+	{"add_val_origin",  (DL_FUNC) &add_val_origin,	5},
 	{"have_seen",				(DL_FUNC) &have_seen,				2},
 	{"sample_val",				(DL_FUNC) &sample_val,				1},
 	{"get_val",					(DL_FUNC) &get_val,					2},
@@ -31,5 +32,6 @@ void R_init_sxpdb(DllInfo* dll) {
 	R_registerRoutines(dll, NULL, callMethods, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
 	R_RegisterCCallable("sxpdb", "add_val", (DL_FUNC) &add_val);
+	R_RegisterCCallable("sxpdb", "add_val_origin", (DL_FUNC) &add_val_origin);
 }
 

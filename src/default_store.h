@@ -41,7 +41,6 @@ protected:
 
 protected:
   virtual void load_index();
-  virtual void load_metadata();
   virtual void write_index();
   virtual void create();
   virtual void write_configuration();

@@ -59,7 +59,9 @@ size_t SourceRefs::add_name(const std::string& name, std::unordered_map<std::str
 bool SourceRefs::add_value(const sexp_hash& key, const std::string& package_name, const std::string& function_name, const std::string& argument_name) {
   size_t pkg_id = add_name(package_name, pkg_names_u, package_names);
   size_t fun_id = add_name(function_name, function_names_u, function_names);
-  size_t arg_id = add_name(argument_name, arg_names_u, argument_names);
+  //we use a magic value for a return value
+  size_t arg_id = (argument_name == "") ? return_value : add_name(argument_name, arg_names_u, argument_names);
+  assert(argument_names.size() != return_value); // If there are too many different argument names, it could clash with the return value magic value
 
   location_t loc;
   loc.package = pkg_id;
@@ -119,17 +121,6 @@ void SourceRefs::load_store() {
 }
 
 void SourceRefs::write_index() {
-  //Also write the offsets here
-  std::ofstream offset_file(offsets_path, std::ofstream::trunc | std::ofstream::binary);
-  offset_file.exceptions(std::fstream::failbit);
-
-  for(auto it : offsets) {
-    // no newly_seen here, as the offset could change
-    offset_file.write(it.first.data(), it.first.size());
-    offset_file.write(reinterpret_cast<char*>(&it.second), sizeof(size_t));
-  }
-
-  offset_file.close();
 
   std::ofstream file(index_path, std::ofstream::trunc | std::ofstream::binary);
   file.exceptions(std::fstream::failbit);
@@ -145,6 +136,18 @@ void SourceRefs::write_index() {
     for(auto& loc : source_locations) {
       file.write(reinterpret_cast<const char*>(&loc), sizeof(location_t));
     }
+  }
+
+  file.close();
+
+  //Now write the offsets here
+  std::ofstream offset_file(offsets_path, std::ofstream::trunc | std::ofstream::binary);
+  offset_file.exceptions(std::fstream::failbit);
+
+  for(auto it : offsets) {
+    // no newly_seen here, as the offset could change
+    offset_file.write(it.first.data(), it.first.size());
+    offset_file.write(reinterpret_cast<char*>(&it.second), sizeof(size_t));
   }
 }
 
@@ -168,6 +171,9 @@ void SourceRefs::load_index() {
 
   offset_file.close();
   assert(offsets.size() > 0);
+
+
+  // Now read the source location indices from the index
 
   std::ifstream file(index_path, std::ofstream::binary);
   file.exceptions(std::fstream::failbit);
@@ -240,13 +246,17 @@ const std::vector<const std::string*> SourceRefs::pkg_names(const sexp_hash& key
 
 
 const std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> SourceRefs::source_locations(const sexp_hash& key) const {
+  static const std::string return_value_str = "";
+
   auto locs = get_locs(key);
 
   std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> res;
   res.reserve(locs.size());
 
   for(auto loc : locs) {
-    res.push_back(std::make_tuple(std::ref(*package_names[loc.package]), std::ref(*function_names[loc.function]), std::ref(*argument_names[loc.argument])));
+    res.push_back(std::make_tuple(std::ref(*package_names[loc.package]),
+                                  std::ref(*function_names[loc.function]),
+                                  (loc.argument == return_value) ? std::ref(return_value_str) : std::ref(*argument_names[loc.argument])));
   }
 
   return res;

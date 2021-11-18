@@ -60,6 +60,34 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
   return R_NilValue;
 }
 
+SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+
+  const char* package_name = CHAR(STRING_ELT(package, 0));
+  const char* function_name = CHAR(STRING_ELT(package, 0));
+
+  // if empty string or NA, treat it as a return value
+  SEXP arg_sexp = STRING_ELT(argument, 0);
+  std::string argument_name = (arg_sexp == NA_STRING) ? "" : CHAR(arg_sexp);
+
+  auto hash = db->add_value(val, package_name, function_name, argument_name);
+
+  if(hash.first != nullptr) {
+    SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, hash.first->size()));
+    Rbyte* bytes= RAW(hash_s);
+
+    std::copy_n(hash.first->begin(), hash.first->size(),bytes);
+
+    return hash_s;
+  }
+
+  return R_NilValue;
+}
+
 
 SEXP have_seen(SEXP sxpdb, SEXP val) {
   void* ptr = R_ExternalPtrAddr(sxpdb);

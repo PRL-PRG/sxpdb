@@ -30,6 +30,12 @@ add_val <- function(db, val) {
 }
 
 #' @export
+add_val_origin <- function(db, val, package, func, argument) {
+  stopifnot(is.character(package), is.character(func), is.character(argument))
+  .Call(SXPDB_add_val_origin, db, val, package, func, argument)
+}
+
+#' @export
 sample_val <- function(db) {
   .Call(SXPDB_sample_val, db)
 }

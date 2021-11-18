@@ -30,11 +30,6 @@ public:
 
   virtual std::pair<const sexp_hash*, bool> add_value(SEXP val);
 
-  virtual const std::string& sexp_type() const {
-          static const std::string any = "any";
-          return any;
-  }
-
 
   virtual SEXP get_metadata(SEXP val) const;
 

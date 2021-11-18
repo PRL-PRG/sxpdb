@@ -108,6 +108,18 @@ SEXP get_meta_idx(SEXP db, SEXP idx);
  */
 SEXP avg_insertion_duration(SEXP sxpdb);
 
+/**
+ * Add a value along with origin information
+ * @method add_val_origin
+ * @param db external pointer to the target database
+ * @param val value to insert
+ * @param package name
+ * @param function name
+ * @param argument name ; "" or NA mean that it is a return value
+ * @return average duration in milliseconds
+ */
+SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

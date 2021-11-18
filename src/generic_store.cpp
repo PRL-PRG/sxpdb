@@ -7,9 +7,22 @@
 GenericStore::GenericStore(const fs::path& config_path, std::shared_ptr<SourceRefs> source_locations) :
   DefaultStore(config_path), src_locs(source_locations) {
   set_kind("generic");
+  type = "any";
+
+  //The database already exists
+  if(std::filesystem::exists(config_path)) {
+    load();
+  }
+  else {
+    create();
+  }
 }
 
+void GenericStore::create() {
+  DefaultStore::create();
 
+  // init metadata
+}
 
 std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
   auto added =  DefaultStore::add_value(val);
@@ -123,4 +136,6 @@ void GenericStore::load_metadata() {
 
 GenericStore::~GenericStore() {
   write_metadata();
+  write_index();
+  write_configuration();
 }

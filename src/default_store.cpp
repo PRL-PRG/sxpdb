@@ -16,14 +16,17 @@ DefaultStore::DefaultStore(const fs::path& config_path) :
   configuration_path(config_path), bytes_read(0), ser(256),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
 {
-  Config config(configuration_path);
-  type = config["type"];
-  index_name = config["index"];
-  store_name = config["store"];
-  metadata_name = config["metadata"];
-  n_values = std::stoul(config["nb_values"]);
-  set_kind(config["kind"]);
-  load();
+
+  if(std::filesystem::exists(config_path)) {
+    Config config(configuration_path);
+    type = config["type"];
+    index_name = config["index"];
+    store_name = config["store"];
+    metadata_name = config["metadata"];
+    n_values = std::stoul(config["nb_values"]);
+    set_kind(config["kind"]);
+    load();
+  }
 }
 
 DefaultStore::DefaultStore(const fs::path& config_path, const std::string& type_) :
@@ -81,8 +84,14 @@ bool DefaultStore::load() {
   index_file.exceptions(std::fstream::failbit);
   store_file.exceptions(std::fstream::failbit);
 
+  newly_seen.reserve(n_values);
+
+  for(auto& it : index) {
+    newly_seen[it.first] = false;
+  }
+
   load_index();
-  load_metadata();
+
 
   return true;
 }
@@ -103,13 +112,6 @@ void DefaultStore::load_index() {
   }
 }
 
-void DefaultStore::load_metadata() {
-  newly_seen.reserve(n_values);
-
-  for(auto& it : index) {
-    newly_seen[it.first] = false;
-  }
-}
 
 void DefaultStore::write_index() {
   // Only write values that were newly discovered during this run
