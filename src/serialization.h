@@ -34,6 +34,8 @@ public:
 
   SEXP unserialize(std::vector<std::byte>& buffer);
 
+  size_t current_buf_size() const{ return buf.size(); }
+
 };
 
 #endif

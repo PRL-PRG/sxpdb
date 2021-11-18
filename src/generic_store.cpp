@@ -14,11 +14,17 @@ GenericStore::GenericStore(const fs::path& config_path, std::shared_ptr<SourceRe
 std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
   auto added =  DefaultStore::add_value(val);
 
-  if(added.second) {
+  if(!added.second) {// value already seen
     //update metadata
     metadata[*added.first].n_calls++;
-    assert(metadata[*added.first].size = buf.size());// buffer is still the same
+    assert(metadata[*added.first].size = ser.current_buf_size());// buffer is still the same
     assert(metadata[*added.first].sexptype == TYPEOF(val));
+  }
+  else {
+    metadata_t meta;
+    meta.n_calls = 1;
+    meta.size = ser.current_buf_size();
+    meta.sexptype = TYPEOF(val);
   }
 
   return added;
@@ -63,4 +69,58 @@ SEXP GenericStore::get_metadata(SEXP val) const {
   UNPROTECT(5);
 
   return res;
+}
+
+
+void GenericStore::write_metadata() {
+  fs::path meta_path = fs::absolute(configuration_path).parent_path().append(metadata_name);
+  std::ofstream meta_file(meta_path, std::fstream::out | std::fstream::binary | std::fstream::trunc);
+
+  meta_file.exceptions(std::fstream::failbit);
+
+  // we cannot just append the new ones, because n_calls might have changed
+  // TODO: we could patch in n_calls though
+  // it would require to store the offset of the metadata in the file, and then
+  // seek to it to modify in place
+  for(auto& it: metadata) {
+    // write the hash
+    meta_file.write(it.first.data(), it.first.size());
+    // And now the metadata
+    meta_file.write(reinterpret_cast<char*>(&it.second.n_calls), sizeof(it.second.n_calls));
+    meta_file.write(reinterpret_cast<char*>(&it.second.size), sizeof(it.second.size));
+    meta_file.write(reinterpret_cast<char*>(&it.second.sexptype), sizeof(it.second.sexptype));
+  }
+}
+
+void GenericStore::load_metadata() {
+  fs::path meta_path = fs::absolute(configuration_path).parent_path().append(metadata_name);
+  std::ifstream meta_file(meta_path, std::fstream::out | std::fstream::binary);
+
+  meta_file.exceptions(std::fstream::failbit);
+
+  metadata.reserve(n_values);
+
+  sexp_hash hash;
+  assert(hash.size() == 20);
+
+  metadata_t meta;
+
+  for(size_t i = 0; i < n_values ; i++) {
+    auto pos = meta_file.tellg();
+
+    meta_file.read(hash.data(), hash.size());
+    meta_file.read(reinterpret_cast<char*>(&meta.n_calls), sizeof(meta.n_calls));
+    meta_file.read(reinterpret_cast<char*>(&meta.size), sizeof(meta.size));
+    meta_file.read(reinterpret_cast<char*>(&meta.sexptype), sizeof(meta.sexptype));
+
+    metadata[hash] = meta;
+
+    bytes_read += meta_file.tellg() - pos;
+    assert(meta_file.tellg() - pos == hash.size() + sizeof(meta.n_calls) + sizeof(meta.size) + sizeof(meta.sexptype));
+  }
+}
+
+
+GenericStore::~GenericStore() {
+  write_metadata();
 }

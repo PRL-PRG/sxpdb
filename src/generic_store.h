@@ -20,8 +20,10 @@ private:
   std::shared_ptr<SourceRefs> src_locs;
 
 protected:
+  virtual void load_metadata();
+  virtual void write_metadata();
 
-  //virtual void create();
+  virtual void create();
 
 public:
   GenericStore(const fs::path& config_path, std::shared_ptr<SourceRefs> source_locations);
@@ -36,9 +38,8 @@ public:
 
   virtual SEXP get_metadata(SEXP val) const;
 
-  // virtual const fs::path& description_path() const ;
 
-  virtual ~GenericStore() {};
+  virtual ~GenericStore();
 };
 
 #endif
