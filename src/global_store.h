@@ -3,6 +3,7 @@
 
 #include "store.h"
 #include "default_store.h"
+#include "generic_store.h"
 #include "source_ref.h"
 
 #include <vector>
@@ -18,7 +19,7 @@ class GlobalStore : Store {
     fs::path configuration_path;
 
     // to preserve the order
-    std::vector<std::unique_ptr<DefaultStore>> stores;
+    std::vector<std::unique_ptr<GenericStore>> stores;
     std::unordered_map<std::string, size_t> types;
 
 
@@ -55,12 +56,17 @@ class GlobalStore : Store {
 
     virtual SEXP get_value(size_t index);
 
+
     virtual SEXP get_metadata(SEXP val) const;
     virtual SEXP get_metadata(size_t index) const;
 
     virtual std::chrono::microseconds avg_insertion_duration() const;
 
     virtual SEXP sample_value();
+
+    const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(const sexp_hash& key) const {
+        return src_refs->source_locations(key);
+    }
 
     virtual ~GlobalStore();
 };

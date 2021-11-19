@@ -9,7 +9,7 @@
 
 
 // A generic store that stores more metadata that the default store
-class GenericStore : protected DefaultStore {
+class GenericStore : public DefaultStore {
 private:
   struct metadata_t {
     size_t n_calls;
@@ -32,6 +32,7 @@ public:
 
 
   virtual SEXP get_metadata(SEXP val) const;
+  virtual SEXP get_metadata(size_t idx) const;
 
 
   virtual ~GenericStore();

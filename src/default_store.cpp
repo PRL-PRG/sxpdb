@@ -73,10 +73,10 @@ bool DefaultStore::load() {
   index_file.open(index_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
   store_file.open(store_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
   if(!index_file) {
-    std::cerr << "Failed to open index file " << index_name << std::endl;
+    std::cerr << "Failed to open index file " << index_name << "at path " << index_path << std::endl;
   }
   if(!store_file) {
-    std::cerr << "Failed to open store file " << store_name << std::endl;
+    std::cerr << "Failed to open store file " << store_name << "at path " << store_path << std::endl;
     exit(1);
   }
   if(!index_file) exit(1);

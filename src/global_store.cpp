@@ -31,7 +31,8 @@ GlobalStore::GlobalStore(const std::string& filename) :
       std::cout << "Loading " << row.at(3) << "store at " << config_path << " with type " <<
         row.at(1) << " with " << row.at(2) << " values." << std::endl;
 
-      stores.push_back(std::make_unique<DefaultStore>(config_path));
+      stores.push_back(std::make_unique<GenericStore>(config_path, src_refs));
+
 
 
       //Check if the types in the configuration file and in the CSV are coherent
@@ -76,10 +77,10 @@ void GlobalStore::create() {
 
   assert(stores.size() == 0);
 
-  stores.push_back(std::make_unique<DefaultStore>(configuration_path.parent_path().append("generic"), "any"));
-  types["any"] = 0;
-
   src_refs = std::make_shared<SourceRefs>(configuration_path.parent_path().append("locations"));
+
+  stores.push_back(std::make_unique<GenericStore>(configuration_path.parent_path().append("generic"), src_refs));
+  types["any"] = 0;
 
   write_configuration();
 }
@@ -108,6 +109,9 @@ bool GlobalStore::merge_in(GlobalStore& gstore) {
   // Update the configuration information
   assert(new_total_values >= total_values);
   total_values = new_total_values;
+
+  // update the origin locations
+  src_refs->merge_in(*gstore.src_refs);
 
   write_configuration();// might be redundant (or rather, the destructor might be redundant)
 
@@ -253,8 +257,8 @@ void GlobalStore::write_configuration() {
 
   // Source locations
   row[0] = src_refs->description_path().filename().string();
-  row[1] = "";
-  row[2] = src_refs->nb_packages();
+  row[1] = "str";
+  row[2] = std::to_string(src_refs->nb_packages());
   row[3] = "locations";
   file.add_row(std::move(row));
 

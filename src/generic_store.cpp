@@ -9,11 +9,14 @@ GenericStore::GenericStore(const fs::path& config_path, std::shared_ptr<SourceRe
   set_kind("generic");
   type = "any";
 
-  //The database already exists
   if(std::filesystem::exists(config_path)) {
     load();
   }
   else {
+    index_name = config_path.filename().string() + "_index.bin";
+    store_name = config_path.filename().string() + "_store.bin";
+    metadata_name = config_path.filename().string() + "_meta.bin";
+    n_values = 0;
     create();
   }
 }
@@ -43,6 +46,38 @@ std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
   return added;
 }
 
+SEXP GenericStore::get_metadata(size_t idx) const {
+  auto it = index.begin();
+  std::advance(it, idx);
+  sexp_hash key = it->first;
+
+  auto it2 = metadata.find(key);
+  if(it2 == metadata.end()) {
+    return R_NilValue;
+  }
+
+  const metadata_t& meta = it2->second;
+
+
+  const char*names[] = {"newly_seen", "size", "n", "type", ""};
+  SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
+
+  SEXP n_seen = PROTECT(Rf_ScalarLogical(it->second));
+  SET_VECTOR_ELT(res, 0, n_seen);
+
+  SEXP s_size = PROTECT(Rf_ScalarInteger(meta.size));
+  SET_VECTOR_ELT(res, 1, s_size);
+
+  SEXP n_calls = PROTECT(Rf_ScalarInteger(meta.n_calls));
+  SET_VECTOR_ELT(res, 2, n_calls);
+
+  SEXP s_type = PROTECT(Rf_ScalarInteger(meta.sexptype));
+  SET_VECTOR_ELT(res, 3, s_type);
+
+  UNPROTECT(5);
+
+  return res;
+}
 
 SEXP GenericStore::get_metadata(SEXP val) const {
   const std::vector<std::byte>& buf = ser.serialize(val);
@@ -61,6 +96,12 @@ SEXP GenericStore::get_metadata(SEXP val) const {
 
   auto it2 = metadata.find(key);
   assert(it2 != metadata.end());
+
+  if(it2 == metadata.end()) {
+    return R_NilValue;
+  }
+
+
   const metadata_t& meta = it2->second;
 
 

@@ -2,6 +2,7 @@
 #define SXPDB_HASHER_H
 
 #include <iostream>
+#include <memory>
 
 // from boost::hash_combine
 void hash_combine(std::size_t& seed, std::size_t value);
@@ -18,5 +19,14 @@ struct container_hasher {
     return seed;
   }
 };
+
+struct unique_string_hasher {
+    std::size_t operator()(const std::shared_ptr<const std::string>& c) const
+    {
+      std::hash<std::string> hasher;
+      return hasher(*c);
+    }
+};
+
 
 #endif

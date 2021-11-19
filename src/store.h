@@ -29,6 +29,7 @@ public:
     // hash will be nullptr if we don't want to compute it at all
     virtual std::pair<const sexp_hash*, bool> add_value(SEXP val) = 0 ;
     virtual bool have_seen(SEXP val) const = 0;
+    //virtual const sexp_hash& get_sexp_hash(SEXP val) = 0;
 
     virtual const std::string& sexp_type() const = 0;// the return type will be more complex when we deal with richer queries
     virtual const std::string& store_kind() const { return store_k;};// typed, generic, specialized...

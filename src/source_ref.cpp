@@ -42,12 +42,13 @@ void SourceRefs::write_configuration() {
 }
 
 
-size_t SourceRefs::add_name(const std::string& name, std::unordered_map<std::string, size_t>& unique_names, std::vector<const std::string*>& ordering) {
-  auto it = unique_names.find(name);
+size_t SourceRefs::add_name(const std::string& name, unique_names_t& unique_names, ordered_names_t& ordering) {
+  auto pname = std::make_shared<const std::string>(name);//Copy the string into a newly allocated string
+  auto it = unique_names.find(pname);
   if(it == unique_names.end()) {
-    size_t idx = ordering.size() + 1;
-    auto p = unique_names.insert(std::make_pair(name, idx));
-    ordering.push_back(&p.first->first);// we need to the actual key in the set
+    size_t idx = ordering.size();// index, not size, but the size has not been increased yet
+    unique_names[pname] = idx;
+    ordering.push_back(pname);
 
     return idx;
   }
@@ -227,14 +228,15 @@ const std::unordered_set<location_t> SourceRefs::get_locs(const sexp_hash& key) 
   }
 }
 
-const std::vector<const std::string*> SourceRefs::pkg_names(const sexp_hash& key) const {
+const SourceRefs::ordered_names_t SourceRefs::pkg_names(const sexp_hash& key) const {
   auto it = index.find(key);
 
   if(it == index.end()) {
-    return std::vector<const std::string*>();
+    return ordered_names_t();
   }
 
-  std::vector<const std::string*> res;
+
+  ordered_names_t res;
   res.reserve(it->second.size());
 
   for(auto loc : it->second) {
@@ -245,18 +247,18 @@ const std::vector<const std::string*> SourceRefs::pkg_names(const sexp_hash& key
 }
 
 
-const std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> SourceRefs::source_locations(const sexp_hash& key) const {
+const std::vector<std::tuple<const std::string, const std::string, const std::string>> SourceRefs::source_locations(const sexp_hash& key) const {
   static const std::string return_value_str = "";
 
   auto locs = get_locs(key);
 
-  std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> res;
+  std::vector<std::tuple<const std::string, const std::string, const std::string>> res;
   res.reserve(locs.size());
 
   for(auto loc : locs) {
-    res.push_back(std::make_tuple(std::ref(*package_names[loc.package]),
-                                  std::ref(*function_names[loc.function]),
-                                  (loc.argument == return_value) ? std::ref(return_value_str) : std::ref(*argument_names[loc.argument])));
+    res.push_back(std::make_tuple(*package_names[loc.package],
+                                  *function_names[loc.function],
+                                  (loc.argument == return_value) ? return_value_str : *argument_names[loc.argument]));
   }
 
   return res;
@@ -269,5 +271,16 @@ SourceRefs::~SourceRefs() {
   write_configuration();
 }
 
+
+void SourceRefs::merge_in(SourceRefs& srcrefs) {
+  for(auto& value : srcrefs.index) {
+    const auto& locs = value.second;// set of locations
+    for(auto& loc : locs ) {
+      add_value(value.first, *srcrefs.package_names[loc.package],
+                *srcrefs.function_names[loc.function],
+                *srcrefs.argument_names[loc.argument]);
+    }
+  }
+}
 
 

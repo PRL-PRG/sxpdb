@@ -103,3 +103,9 @@ view_meta_db <- function(db) {
 avg_duration <- function(db) {
     .Call(SXPDB_avg_insertion_duration, db)
 }
+
+#' @export
+val_origins <- function(db, hash) {
+  stopifnot(is.raw(hash))
+  .Call(SXPDB_val_origins, db, hash)
+}

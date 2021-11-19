@@ -17,6 +17,7 @@
 #include <tuple>
 #include <optional>
 
+#include "hasher.h"
 
 constexpr inline uint32_t return_value =std::numeric_limits<uint32_t>::max();
 
@@ -44,6 +45,7 @@ struct hash<location_t>
     return result;
   }
 };
+
 }
 
 namespace fs = std::filesystem;
@@ -71,21 +73,23 @@ private:
   void write_index();
   void write_configuration();
 
+  typedef std::unordered_map<std::shared_ptr<const std::string>, size_t, unique_string_hasher> unique_names_t;
+  typedef std::vector<std::shared_ptr<const std::string>> ordered_names_t;
 
   // Set to get a stable order on it
-  std::vector<const std::string*> package_names;
-  std::vector<const std::string*> function_names;
-  std::vector<const std::string*> argument_names;
-  std::unordered_map<std::string, size_t> pkg_names_u;
-  std::unordered_map<std::string, size_t> function_names_u;
-  std::unordered_map<std::string, size_t> arg_names_u;
+  ordered_names_t package_names;
+  ordered_names_t function_names;
+  ordered_names_t argument_names;
+  unique_names_t pkg_names_u;
+  unique_names_t function_names_u;
+  unique_names_t arg_names_u;
 
 
 
   std::unordered_map<sexp_hash, std::unordered_set<location_t>, container_hasher> index;
   std::unordered_map<sexp_hash, size_t,container_hasher> offsets;
 
-  static size_t inline add_name(const std::string& name, std::unordered_map<std::string, size_t>& unique_names, std::vector<const std::string*>& ordering);
+  static size_t inline add_name(const std::string& name, unique_names_t& unique_names, ordered_names_t& ordering);
 
 public:
   SourceRefs(fs::path config_path);
@@ -96,11 +100,9 @@ public:
 
   const std::unordered_set<location_t> get_locs(const sexp_hash& key) const;
 
-  const std::vector<const std::string*> pkg_names(const sexp_hash& key) const;
-  const std::vector<const std::string*> func_names(const sexp_hash& key) const;
-  const std::vector<const std::string*> arg_names(const sexp_hash& key) const;
+  const ordered_names_t pkg_names(const sexp_hash& key) const;
 
-  const std::vector<std::tuple<const std::string&, const std::string&, const std::string&>> source_locations(const sexp_hash& key) const;
+  const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(const sexp_hash& key) const;
 
   size_t get_offset(const sexp_hash& key) const;
 

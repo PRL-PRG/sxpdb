@@ -120,6 +120,15 @@ SEXP avg_insertion_duration(SEXP sxpdb);
  */
 SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument);
 
+/**
+ * Get the origins of a value using its hash
+ * @method val_origins
+ * @param sxpdb external pointer to the target database
+ * @param hash_s hash of a value
+ * @return data frame with columns package, function, argument. Argument is NA_String if it is a return value
+ */
+SEXP val_origins(SEXP sxpdb, SEXP hash_s);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

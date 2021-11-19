@@ -3,6 +3,8 @@
 #include "global_store.h"
 
 #include <algorithm>
+#include <cassert>
+
 
 SEXP open_db(SEXP filename) {
   GlobalStore* db = new GlobalStore(CHAR(STRING_ELT(filename, 0)));
@@ -28,7 +30,7 @@ SEXP close_db(SEXP sxpdb) {
     return R_NilValue;
   }
 
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
   delete db;
 
 
@@ -44,7 +46,7 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
   auto hash = db->add_value(val);
 
@@ -53,6 +55,8 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
     Rbyte* bytes= RAW(hash_s);
 
     std::copy_n(hash.first->begin(), hash.first->size(),bytes);
+
+    UNPROTECT(1);
 
     return hash_s;
   }
@@ -65,10 +69,12 @@ SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argu
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  // TODO: also handle symbols
 
   const char* package_name = CHAR(STRING_ELT(package, 0));
-  const char* function_name = CHAR(STRING_ELT(package, 0));
+  const char* function_name = CHAR(STRING_ELT(function, 0));
 
   // if empty string or NA, treat it as a return value
   SEXP arg_sexp = STRING_ELT(argument, 0);
@@ -82,10 +88,57 @@ SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argu
 
     std::copy_n(hash.first->begin(), hash.first->size(),bytes);
 
+    UNPROTECT(1);
+
     return hash_s;
   }
 
   return R_NilValue;
+}
+
+SEXP val_origins(SEXP sxpdb, SEXP hash_s) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  sexp_hash hash;
+  assert(Rf_length(hash_s) == hash.size());
+  std::copy_n(RAW(hash_s), Rf_length(hash_s), hash.begin());
+
+  auto src_locs = db->source_locations(hash);
+
+  const char*names[] = {"package", "function", "argument", ""};
+  SEXP origs = PROTECT(Rf_mkNamed(VECSXP, names));
+
+  SEXP packages = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+  SEXP functions = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+  SEXP arguments = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+
+  SEXP row_names = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+
+  int i = 0;
+  for(auto loc : src_locs) {
+    SET_STRING_ELT(packages, i, Rf_mkChar(std::get<0>(loc).c_str()));
+    SET_STRING_ELT(functions, i, Rf_mkChar(std::get<1>(loc).c_str()));
+    SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).c_str()));
+    SET_STRING_ELT(row_names, i, Rf_mkChar(std::to_string(i).c_str()));
+  }
+
+  SET_VECTOR_ELT(origs, 0, packages);
+  SET_VECTOR_ELT(origs, 1, functions);
+  SET_VECTOR_ELT(origs, 2, arguments);
+
+  // make it a dataframe
+  Rf_classgets(origs, Rf_mkString("data.frame"));// no need to protect because it is directly inserted
+  Rf_setAttrib(origs, R_RowNamesSymbol, row_names);// the data frame needs to have row names
+  //Rf_setAttrib(origs, R_RowNamesSymbol, R_NilValue);
+
+  UNPROTECT(5);
+
+  return origs;
 }
 
 
@@ -94,7 +147,7 @@ SEXP have_seen(SEXP sxpdb, SEXP val) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
   SEXP res = PROTECT(Rf_ScalarLogical(db->have_seen(val)));
 
@@ -108,7 +161,7 @@ SEXP sample_val(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
 
   return db->sample_value();
@@ -120,7 +173,7 @@ SEXP get_val(SEXP sxpdb, SEXP i) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
   int index = Rf_asInteger(i);
   return db->get_value(index);
@@ -131,13 +184,13 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
   if(ptr1== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db1 = reinterpret_cast<GlobalStore*>(ptr1);
+  GlobalStore* db1 = static_cast<GlobalStore*>(ptr1);
 
   void* ptr2 = R_ExternalPtrAddr(sxpdb2);
   if(ptr2== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db2 = reinterpret_cast<GlobalStore*>(ptr2);
+  GlobalStore* db2 = static_cast<GlobalStore*>(ptr2);
 
   db1->merge_in(*db2);
 
@@ -149,7 +202,7 @@ SEXP size_db(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
   return Rf_ScalarInteger(db->nb_values());
 }
@@ -159,7 +212,7 @@ SEXP get_meta(SEXP sxpdb, SEXP val) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
   return db->get_metadata(val);
 }
@@ -169,7 +222,7 @@ SEXP get_meta_idx(SEXP sxpdb, SEXP idx) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
   return db->get_metadata(Rf_asInteger(idx));
 }
@@ -180,7 +233,7 @@ SEXP avg_insertion_duration(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = reinterpret_cast<GlobalStore*>(ptr);
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
   return Rf_ScalarReal(db->avg_insertion_duration().count());
 }
