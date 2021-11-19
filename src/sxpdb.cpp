@@ -71,14 +71,34 @@ SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argu
   }
   GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
+  std::string package_name = "";
+  std::string function_name = "";
+  std::string argument_name = "";
+
+
   // TODO: also handle symbols
+  if(TYPEOF(package) == STRSXP) {
+    package_name = CHAR(STRING_ELT(package, 0));
+  }
+  else if (TYPEOF(package) == SYMSXP) {
+    package_name = CHAR(PRINTNAME(package));
+  }
 
-  const char* package_name = CHAR(STRING_ELT(package, 0));
-  const char* function_name = CHAR(STRING_ELT(function, 0));
+  if(TYPEOF(function) == STRSXP) {
+    function_name = CHAR(STRING_ELT(function, 0));
+  }
+  else if (TYPEOF(function) == SYMSXP) {
+    function_name = CHAR(PRINTNAME(function));
+  }
 
-  // if empty string or NA, treat it as a return value
-  SEXP arg_sexp = STRING_ELT(argument, 0);
-  std::string argument_name = (arg_sexp == NA_STRING) ? "" : CHAR(arg_sexp);
+  if(TYPEOF(argument) == STRSXP) {
+    // if empty string or NA, treat it as a return value
+    SEXP arg_sexp = STRING_ELT(argument, 0);
+    argument_name = (arg_sexp == NA_STRING) ? "" : CHAR(arg_sexp);
+  }
+  else if (TYPEOF(argument) == SYMSXP) {
+    argument_name = CHAR(PRINTNAME(argument));// a symbol cannot be NA
+  }
 
   auto hash = db->add_value(val, package_name, function_name, argument_name);
 

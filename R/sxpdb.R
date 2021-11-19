@@ -32,8 +32,8 @@ add_val <- function(db, val) {
 
 #' @export
 add_val_origin <- function(db, val, package, func, argument) {
-  stopifnot(is.character(package), is.character(func), is.character(argument))
-  .Call(SXPDB_add_val_origin, db, val, package, func, argument)
+  stopifnot(is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
+  .Call(SXPDB_add_val_origin, db, val, package, func, if(is.na(argument)) NA_character_ else argument)
 }
 
 #' @export
