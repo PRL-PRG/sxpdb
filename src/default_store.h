@@ -39,11 +39,18 @@ protected:
 
   std::chrono::microseconds add_time;
 
+  // Optimization
+  // we store the hash of the addresses of the sexp during a session
+  // also involves setting the tracing bit
+  mutable std::unordered_map<SEXP, sexp_hash> sexp_adresses;
+
 protected:
   virtual void load_index();
   virtual void write_index();
   virtual void create();
   virtual void write_configuration();
+
+  const sexp_hash& compute_hash(SEXP val) const;
 
 public:
   DefaultStore(const fs::path& description_name);

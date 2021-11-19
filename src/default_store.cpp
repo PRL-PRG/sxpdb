@@ -166,6 +166,34 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
   return std::make_pair(&it->first, false);
 }
 
+const sexp_hash& DefaultStore::compute_hash(SEXP val) const {
+  // Check if we already know the address of that SEXP
+  // R has copy semantics except for environments
+  assert(TYPEOF(val) != ENVSXP);
+
+  auto it = sexp_adresses.find(val);
+
+  // in the hashmap and has the tracing bit
+  if(it != sexp_adresses.end() && RTRACE(val)) {
+    return it->second;
+  } // either address not seen or already seen but without tracing bit; it means it's a new value that has been allocated here
+  else { // We have to compute the actual hash of the serialized value
+    const std::vector<std::byte>& buf = ser.serialize(val);
+
+    sexp_hash ser_hash;
+    sha1_context ctx;
+    sha1_starts(&ctx);
+    sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
+    sha1_finish(&ctx, reinterpret_cast<uint8*>(ser_hash.data()));
+
+    auto res = sexp_adresses.insert(std::make_pair(val, ser_hash));
+
+    SET_RTRACE(val, 1);// set the tracing bit to show later that it is a value we actually touched
+
+    return res.first->second;
+  }
+}
+
 
 bool DefaultStore::have_seen(SEXP val) const {
   const std::vector<std::byte>& buf = ser.serialize(val);

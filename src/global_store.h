@@ -29,6 +29,8 @@ class GlobalStore : Store {
 
     std::default_random_engine rand_engine;
 
+
+
   protected:
     virtual void write_configuration();
     virtual void create();
