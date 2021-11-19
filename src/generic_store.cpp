@@ -9,10 +9,8 @@ GenericStore::GenericStore(const fs::path& config_path, std::shared_ptr<SourceRe
   set_kind("generic");
   type = "any";
 
-  if(std::filesystem::exists(config_path)) {
-    load();
-  }
-  else {
+  // if it exists, the DefaultStore has already done the loading
+  if(!std::filesystem::exists(config_path)) {
     index_name = config_path.filename().string() + "_index.bin";
     store_name = config_path.filename().string() + "_store.bin";
     metadata_name = config_path.filename().string() + "_meta.bin";
@@ -21,11 +19,6 @@ GenericStore::GenericStore(const fs::path& config_path, std::shared_ptr<SourceRe
   }
 }
 
-void GenericStore::create() {
-  DefaultStore::create();
-
-  // init metadata
-}
 
 std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
   auto added =  DefaultStore::add_value(val);

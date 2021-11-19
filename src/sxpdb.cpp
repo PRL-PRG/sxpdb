@@ -117,14 +117,15 @@ SEXP val_origins(SEXP sxpdb, SEXP hash_s) {
   SEXP functions = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
   SEXP arguments = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
 
-  SEXP row_names = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+
+
 
   int i = 0;
-  for(auto loc : src_locs) {
+  for(auto& loc : src_locs) {
     SET_STRING_ELT(packages, i, Rf_mkChar(std::get<0>(loc).c_str()));
     SET_STRING_ELT(functions, i, Rf_mkChar(std::get<1>(loc).c_str()));
     SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).c_str()));
-    SET_STRING_ELT(row_names, i, Rf_mkChar(std::to_string(i).c_str()));
+    i++;
   }
 
   SET_VECTOR_ELT(origs, 0, packages);
@@ -133,8 +134,14 @@ SEXP val_origins(SEXP sxpdb, SEXP hash_s) {
 
   // make it a dataframe
   Rf_classgets(origs, Rf_mkString("data.frame"));// no need to protect because it is directly inserted
-  Rf_setAttrib(origs, R_RowNamesSymbol, row_names);// the data frame needs to have row names
-  //Rf_setAttrib(origs, R_RowNamesSymbol, R_NilValue);
+
+  // the data frame needs to have row names but we can put a special value for this attribute
+  // see .set_row_names
+  SEXP row_names = PROTECT(Rf_allocVector(INTSXP, 2));
+  INTEGER(row_names)[0] = NA_INTEGER;
+  INTEGER(row_names)[1] = -src_locs.size();
+
+  Rf_setAttrib(origs, R_RowNamesSymbol, row_names);
 
   UNPROTECT(5);
 

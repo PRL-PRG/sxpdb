@@ -24,6 +24,7 @@ close_db <- function(db) {
   .Call(SXPDB_close_db, db)
 }
 
+
 #' @export
 add_val <- function(db, val) {
   .Call(SXPDB_add_val, db, val)

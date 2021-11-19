@@ -23,12 +23,12 @@ GlobalStore::GlobalStore(const std::string& filename) :
       fs::path config_path = configuration_path.parent_path().append(row.at(0));
 
       if(row.at(3) == "locations") {
-        std::cout << "Loading source locations at " << config_path << "from " << row.at(2) << "packages" << std::endl;
+        std::cout << "Loading source locations at " << config_path << "from " << row.at(2) << " packages" << std::endl;
         src_refs = std::make_unique<SourceRefs>(config_path);
         continue;
       }
 
-      std::cout << "Loading " << row.at(3) << "store at " << config_path << " with type " <<
+      std::cout << "Loading " << row.at(3) << " store at " << config_path << " with type " <<
         row.at(1) << " with " << row.at(2) << " values." << std::endl;
 
       stores.push_back(std::make_unique<GenericStore>(config_path, src_refs));
@@ -43,7 +43,7 @@ GlobalStore::GlobalStore(const std::string& filename) :
       }
 
       //Check if the kinds of stores in the configuration file and in the CSV are coherent
-      if(row.at(3) != stores.back()->sexp_type()) {
+      if(row.at(3) != stores.back()->store_kind()) {
         std::cerr << "Inconsistent kinds of stores in the global configuration file and the store configuration file: " <<
           row.at(3) << " vs " << stores.back()->store_kind() << std::endl;
         exit(1);

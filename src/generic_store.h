@@ -23,8 +23,6 @@ protected:
   virtual void load_metadata();
   virtual void write_metadata();
 
-  virtual void create();
-
 public:
   GenericStore(const fs::path& config_path, std::shared_ptr<SourceRefs> source_locations);
 
