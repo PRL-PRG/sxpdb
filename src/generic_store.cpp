@@ -9,8 +9,11 @@ GenericStore::GenericStore(const fs::path& config_path, std::shared_ptr<SourceRe
   set_kind("generic");
   type = "any";
 
-  // if it exists, the DefaultStore has already done the loading
-  if(!std::filesystem::exists(config_path)) {
+  // if it exists, the DefaultStore has already done the loading for the store and indices and we just need to load the metadata
+  if(std::filesystem::exists(config_path)) {
+      load_metadata();
+  }
+  else {
     index_name = config_path.filename().string() + "_index.bin";
     store_name = config_path.filename().string() + "_store.bin";
     metadata_name = config_path.filename().string() + "_meta.bin";
@@ -30,10 +33,12 @@ std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
     assert(metadata[*added.first].sexptype == TYPEOF(val));
   }
   else {
+    // not seen so add metadata
     metadata_t meta;
     meta.n_calls = 1;
     meta.size = ser.current_buf_size();
     meta.sexptype = TYPEOF(val);
+    metadata[*added.first] = meta;
   }
 
   return added;
@@ -167,6 +172,37 @@ void GenericStore::load_metadata() {
   }
 }
 
+
+bool GenericStore::merge_in(GenericStore& other) {
+  bool res = DefaultStore::merge_in(other);
+
+  // Merge metadata
+  for(auto& val : other.metadata) {
+      auto it = metadata.find(val.first);
+      if(it == metadata.end()) { // New value so we just add it
+        metadata[val.first] = val.second;
+      }
+      else {
+        // Check they are compatible
+        if(it->second.sexptype != val.second.sexptype) {
+          Rf_error("Two values with same hash with different types %s and %s",
+                   Rf_type2char(it->second.sexptype),
+                   Rf_type2char(val.second.sexptype));
+        }
+        if(it->second.size != val.second.size) {
+          Rf_error("Two values with same hash with different sizes %s and %s",
+                   it->second.size,
+                   val.second.size);
+        }
+
+        // update the number of calls
+        it->second.n_calls += val.second.n_calls;
+      }
+  }
+
+
+  return res;
+}
 
 GenericStore::~GenericStore() {
   write_metadata();

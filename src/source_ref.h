@@ -73,7 +73,8 @@ private:
   void write_index();
   void write_configuration();
 
-  typedef std::unordered_map<std::shared_ptr<const std::string>, size_t, unique_string_hasher> unique_names_t;
+  // the custom hasher and comparison directly work on the value pointed to, not on the pointer
+  typedef std::unordered_map<std::shared_ptr<const std::string>, size_t, unique_string_hasher, unique_string_equal> unique_names_t;
   typedef std::vector<std::shared_ptr<const std::string>> ordered_names_t;
 
   // Set to get a stable order on it

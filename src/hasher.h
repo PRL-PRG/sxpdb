@@ -28,5 +28,12 @@ struct unique_string_hasher {
     }
 };
 
+struct unique_string_equal {
+  std::size_t operator()(const std::shared_ptr<const std::string>& s1, const std::shared_ptr<const std::string>& s2) const
+  {
+    return *s1 == * s2;
+  }
+};
+
 
 #endif

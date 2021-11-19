@@ -28,6 +28,7 @@ public:
 
   virtual std::pair<const sexp_hash*, bool> add_value(SEXP val);
 
+  virtual bool merge_in(GenericStore& other);
 
   virtual SEXP get_metadata(SEXP val) const;
   virtual SEXP get_metadata(size_t idx) const;
