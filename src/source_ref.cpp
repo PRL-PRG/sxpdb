@@ -248,7 +248,6 @@ const SourceRefs::ordered_names_t SourceRefs::pkg_names(const sexp_hash& key) co
 
 
 const std::vector<std::tuple<const std::string, const std::string, const std::string>> SourceRefs::source_locations(const sexp_hash& key) const {
-  static const std::string return_value_str = "";
 
   auto locs = get_locs(key);
 
@@ -260,6 +259,7 @@ const std::vector<std::tuple<const std::string, const std::string, const std::st
                                   *function_names[loc.function],
                                   (loc.argument == return_value) ? return_value_str : *argument_names[loc.argument]));
   }
+
 
   return res;
 }
@@ -278,7 +278,7 @@ void SourceRefs::merge_in(SourceRefs& srcrefs) {
     for(auto& loc : locs ) {
       add_value(value.first, *srcrefs.package_names[loc.package],
                 *srcrefs.function_names[loc.function],
-                *srcrefs.argument_names[loc.argument]);
+                (loc.argument == return_value) ? return_value_str : *srcrefs.argument_names[loc.argument]);
     }
   }
 }

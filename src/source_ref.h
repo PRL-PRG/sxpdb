@@ -20,6 +20,7 @@
 #include "hasher.h"
 
 constexpr inline uint32_t return_value =std::numeric_limits<uint32_t>::max();
+inline const std::string return_value_str = "";
 
 struct location_t {
   uint32_t package;
