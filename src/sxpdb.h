@@ -120,6 +120,9 @@ SEXP avg_insertion_duration(SEXP sxpdb);
  */
 SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument);
 
+SEXP add_val_origin_(SEXP sxpdb, SEXP val, 
+                     const char* package_name, const char* function_name, const char* argument_name);
+
 /**
  * Get the origins of a value using its hash
  * @method get_origins
