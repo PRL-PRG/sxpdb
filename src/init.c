@@ -34,6 +34,6 @@ void R_init_sxpdb(DllInfo* dll) {
 	R_registerRoutines(dll, NULL, callMethods, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
 	R_RegisterCCallable("sxpdb", "add_val", (DL_FUNC) &add_val);
-	R_RegisterCCallable("sxpdb", "add_val_origin", (DL_FUNC) &add_val_origin);
+	R_RegisterCCallable("sxpdb", "add_val_origin_", (DL_FUNC) &add_val_origin_);
 }
 

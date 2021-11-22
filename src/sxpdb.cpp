@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cassert>
 
+#define EMPTY_ORIGIN_PART "NA"
 
 SEXP open_db(SEXP filename) {
   GlobalStore* db = nullptr;
@@ -70,17 +71,46 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
   return R_NilValue;
 }
 
-SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument) {
+SEXP add_val_origin_(SEXP sxpdb, SEXP val, 
+                     const char* package_name, const char* function_nme, const char* argument_name) {
+
   void* ptr = R_ExternalPtrAddr(sxpdb);
   if(ptr== nullptr) {
     return R_NilValue;
   }
+
+  if (package_name == NULL) {
+    package_name = EMPTY_ORIGIN_PART;
+  }
+  if (function_nme == NULL) {
+    function_nme = EMPTY_ORIGIN_PART;
+  }
+  if (argument_name == NULL) {
+    argument_name = EMPTY_ORIGIN_PART;
+  }
+
   GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
-  std::string package_name = "";
-  std::string function_name = "";
-  std::string argument_name = "";
+  auto hash = db->add_value(val, package_name, function_nme, argument_name);
 
+  if(hash.first != nullptr) {
+    SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, hash.first->size()));
+    Rbyte* bytes= RAW(hash_s);
+
+    std::copy_n(hash.first->begin(), hash.first->size(),bytes);
+
+    UNPROTECT(1);
+
+    return hash_s;
+  }
+
+  return R_NilValue;
+}
+
+SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument) {
+  const char *package_name = EMPTY_ORIGIN_PART;
+  const char *function_name = EMPTY_ORIGIN_PART;
+  const char *argument_name = EMPTY_ORIGIN_PART;
 
   // TODO: also handle symbols
   if(TYPEOF(package) == STRSXP) {
@@ -100,26 +130,13 @@ SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argu
   if(TYPEOF(argument) == STRSXP) {
     // if empty string or NA, treat it as a return value
     SEXP arg_sexp = STRING_ELT(argument, 0);
-    argument_name = (arg_sexp == NA_STRING) ? "" : CHAR(arg_sexp);
+    argument_name = (arg_sexp == NA_STRING) ? EMPTY_ORIGIN_PART : CHAR(arg_sexp);
   }
   else if (TYPEOF(argument) == SYMSXP) {
     argument_name = CHAR(PRINTNAME(argument));// a symbol cannot be NA
   }
 
-  auto hash = db->add_value(val, package_name, function_name, argument_name);
-
-  if(hash.first != nullptr) {
-    SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, hash.first->size()));
-    Rbyte* bytes= RAW(hash_s);
-
-    std::copy_n(hash.first->begin(), hash.first->size(),bytes);
-
-    UNPROTECT(1);
-
-    return hash_s;
-  }
-
-  return R_NilValue;
+  return add_val_origin_(sxpdb, val, package_name, function_name, argument_name);
 }
 
 SEXP get_origins(SEXP sxpdb, SEXP hash_s) {
