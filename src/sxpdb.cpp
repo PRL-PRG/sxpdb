@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cassert>
 
-#define EMPTY_ORIGIN_PART "NA"
+#define EMPTY_ORIGIN_PART ""
 
 SEXP open_db(SEXP filename) {
   GlobalStore* db = nullptr;
@@ -17,7 +17,6 @@ SEXP open_db(SEXP filename) {
   }
   if(db == nullptr) {
     Rf_error("Could not allocate memory for database %s", CHAR(STRING_ELT(filename, 0)));
-    exit(1);
   }
   SEXP db_ptr = PROTECT(R_MakeExternalPtr(db, Rf_install("sxpdb"), R_NilValue));
 
@@ -71,37 +70,44 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
   return R_NilValue;
 }
 
-SEXP add_val_origin_(SEXP sxpdb, SEXP val, 
-                     const char* package_name, const char* function_nme, const char* argument_name) {
+SEXP add_val_origin_(SEXP sxpdb, SEXP val,
+                     const char* package_name, const char* function_name, const char* argument_name) {
 
   void* ptr = R_ExternalPtrAddr(sxpdb);
   if(ptr== nullptr) {
     return R_NilValue;
   }
 
-  if (package_name == NULL) {
+  if (package_name == nullptr) {
     package_name = EMPTY_ORIGIN_PART;
   }
-  if (function_nme == NULL) {
-    function_nme = EMPTY_ORIGIN_PART;
+  if (function_name == nullptr) {
+    function_name = EMPTY_ORIGIN_PART;
   }
-  if (argument_name == NULL) {
+  if (argument_name == nullptr) {
     argument_name = EMPTY_ORIGIN_PART;
   }
 
   GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
-  auto hash = db->add_value(val, package_name, function_nme, argument_name);
+  try {
 
-  if(hash.first != nullptr) {
-    SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, hash.first->size()));
-    Rbyte* bytes= RAW(hash_s);
+    auto hash = db->add_value(val, package_name, function_name, argument_name);
 
-    std::copy_n(hash.first->begin(), hash.first->size(),bytes);
+    if(hash.first != nullptr) {
+      SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, hash.first->size()));
+      Rbyte* bytes= RAW(hash_s);
 
-    UNPROTECT(1);
+      std::copy_n(hash.first->begin(), hash.first->size(),bytes);
 
-    return hash_s;
+      UNPROTECT(1);
+
+      return hash_s;
+    }
+  }
+  catch(std::exception e) {
+    Rf_error("Error adding value from package %s, function %s and argument %s, into the database: %s\n",
+             package_name, function_name, argument_name, e.what());
   }
 
   return R_NilValue;
@@ -112,7 +118,6 @@ SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argu
   const char *function_name = EMPTY_ORIGIN_PART;
   const char *argument_name = EMPTY_ORIGIN_PART;
 
-  // TODO: also handle symbols
   if(TYPEOF(package) == STRSXP) {
     package_name = CHAR(STRING_ELT(package, 0));
   }
