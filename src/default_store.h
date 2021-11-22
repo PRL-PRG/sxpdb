@@ -50,7 +50,11 @@ protected:
   virtual void create();
   virtual void write_configuration();
 
-  const sexp_hash& compute_hash(SEXP val) const;
+  sexp_hash* const cached_hash(SEXP val) const;
+
+  const sexp_hash compute_hash(SEXP val) const;
+
+  sexp_hash* const compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const;
 
 public:
   DefaultStore(const fs::path& description_name);

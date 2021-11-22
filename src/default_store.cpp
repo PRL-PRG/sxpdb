@@ -5,8 +5,11 @@
 #include <algorithm>
 #include <cctype>
 #include <locale>
-#include <cassert>
+
 #include <chrono>
+
+
+#include <cassert>
 
 #include "sha1.h"
 
@@ -70,7 +73,7 @@ bool DefaultStore::load() {
   fs::path index_path = fs::absolute(configuration_path).parent_path().append(index_name);
   fs::path store_path = fs::absolute(configuration_path).parent_path().append(store_name);
 
-  index_file.open(index_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
+  index_file.open(index_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);//because we just add the new values
   store_file.open(store_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
   if(!index_file) {
     std::cerr << "Failed to open index file " << index_name << "at path " << index_path << std::endl;
@@ -129,26 +132,29 @@ void DefaultStore::write_index() {
 std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
   auto start = std::chrono::high_resolution_clock::now();
 
-  const std::vector<std::byte>& buf = ser.serialize(val);
+  sexp_hash* key = cached_hash(val);
+  const std::vector<std::byte>*  buf = nullptr;
 
-  sexp_hash key;
-  sha1_context ctx;
-  sha1_starts(&ctx);
-  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
-  sha1_finish(&ctx, reinterpret_cast<uint8*>(key.data()));
+  if(key == nullptr) {
+    const std::vector<std::byte>& buffer = ser.serialize(val);
+    key = compute_cached_hash(val, buffer);
+    buf= &buffer;
+  }
 
-  auto it = index.find(key);
+  auto it = index.find(*key);
   if(it == index.end()) { // the value is not in the database
+    assert(buf != nullptr); // If the value was deemed as "cached", it means that it should be in the database already
+
     // add it to the index
-    auto res = index.insert(std::make_pair(key, store_file.tellp()));
+    auto res = index.insert(std::make_pair(*key, store_file.tellp()));
 
     //write the value
-    size_t size = buf.size();
+    size_t size = buf->size();
     store_file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
-    store_file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
+    store_file.write(reinterpret_cast<const char*>(buf->data()), buf->size());
 
     // new value in that session
-    newly_seen[key] = true;
+    newly_seen[*key] = true;
 
     n_values++;
 
@@ -166,20 +172,37 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
   return std::make_pair(&it->first, false);
 }
 
-const sexp_hash& DefaultStore::compute_hash(SEXP val) const {
+
+
+sexp_hash* const DefaultStore::cached_hash(SEXP val) const {
   // Check if we already know the address of that SEXP
   // R has copy semantics except for environments
-  assert(TYPEOF(val) != ENVSXP);
+  if(TYPEOF(val) == ENVSXP) {
+    return nullptr;
+  }
 
   auto it = sexp_adresses.find(val);
 
-  // in the hashmap and has the tracing bit
   if(it != sexp_adresses.end() && RTRACE(val)) {
-    return it->second;
-  } // either address not seen or already seen but without tracing bit; it means it's a new value that has been allocated here
-  else { // We have to compute the actual hash of the serialized value
-    const std::vector<std::byte>& buf = ser.serialize(val);
+    return &it->second;
+  }
 
+  return nullptr;
+}
+
+const sexp_hash DefaultStore::compute_hash(SEXP val) const {
+  const std::vector<std::byte>& buf = ser.serialize(val);
+
+  sexp_hash ser_hash;
+  sha1_context ctx;
+  sha1_starts(&ctx);
+  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
+  sha1_finish(&ctx, reinterpret_cast<uint8*>(ser_hash.data()));
+
+  return ser_hash;
+}
+
+sexp_hash* const DefaultStore::compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const {
     sexp_hash ser_hash;
     sha1_context ctx;
     sha1_starts(&ctx);
@@ -188,41 +211,39 @@ const sexp_hash& DefaultStore::compute_hash(SEXP val) const {
 
     auto res = sexp_adresses.insert(std::make_pair(val, ser_hash));
 
+    assert(res.second);
+    std::cerr << "inserted? " << res.second << " with address " << &res.first->second << std::endl;
+
     SET_RTRACE(val, 1);// set the tracing bit to show later that it is a value we actually touched
 
-    return res.first->second;
-  }
+    return &res.first->second;
 }
 
 
 bool DefaultStore::have_seen(SEXP val) const {
-  const std::vector<std::byte>& buf = ser.serialize(val);
+  sexp_hash* key = cached_hash(val);
 
-  sexp_hash key;
-  sha1_context ctx;
-  sha1_starts(&ctx);
-  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
-  sha1_finish(&ctx, reinterpret_cast<uint8*>(key.data()));
+  if(key == nullptr) {
+    *key = compute_hash(val);
+  }
 
-  return index.find(key) != index.end();
+  return index.find(*key) == index.end();
 }
 
 SEXP DefaultStore::get_metadata(SEXP val) const {
-  const std::vector<std::byte>& buf = ser.serialize(val);
+  sexp_hash* key = cached_hash(val);
 
-  sexp_hash key;
-  sha1_context ctx;
-  sha1_starts(&ctx);
-  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
-  sha1_finish(&ctx, reinterpret_cast<uint8*>(key.data()));
+  if(key == nullptr) {
+    *key = compute_hash(val);
+  }
 
-  auto it = newly_seen.find(key);
+  auto it = newly_seen.find(*key);
 
   if(it == newly_seen.end()) {
     return R_NilValue;
   }
 
-  auto it2 = index.find(key);
+  auto it2 = index.find(*key);
   size_t offset = it2->second;
 
   store_file.seekg(offset);
