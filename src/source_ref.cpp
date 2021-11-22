@@ -104,6 +104,10 @@ void SourceRefs::write_store() {
 
 void SourceRefs::load_store() {
   std::ifstream store_file(store_path);
+  if(!store_file) {
+    Rf_error("Impossible to open the origin store file %s\n", store_path.filename().c_str());
+  }
+
   store_file.exceptions(std::fstream::failbit);
 
   std::string buf;
@@ -156,6 +160,10 @@ void SourceRefs::load_index() {
   // Read the offsets from the offset file
   //open the file, read the offsets and populate the offsets hashmap
   std::ifstream offset_file(offsets_path, std::ofstream::binary);
+  if(!offset_file) {
+    Rf_error("Impossible to open the origin offsets file %s\n", offsets_path.filename().c_str());
+  }
+
   offset_file.exceptions(std::fstream::failbit);
 
   sexp_hash hash;
@@ -177,6 +185,9 @@ void SourceRefs::load_index() {
   // Now read the source location indices from the index
 
   std::ifstream file(index_path, std::ofstream::binary);
+  if(!offset_file) {
+    Rf_error("Impossible to open the origin index file %s\n", index_path.filename().c_str());
+  }
   file.exceptions(std::fstream::failbit);
 
   // Maybe we should sort the offset here? or use a map instead of an unordered_map?
@@ -207,7 +218,6 @@ void SourceRefs::load_configuration() {
 
   assert(conf["kind"] == "locations");
 
-  //TODO: reconstruct the full path from the configuration file path
   index_path = fs::absolute(config_path).parent_path().append(conf["index"]);
   store_path = fs::absolute(config_path).parent_path().append(conf["store"]);
   offsets_path = fs::absolute(config_path).parent_path().append(conf["offsets"]);

@@ -5,6 +5,9 @@
 #include <sstream>
 #include <algorithm>
 
+#define R_NO_REMAP
+#include <Rinternals.h>
+
 // trim from start (in place)
 inline void ltrim(std::string &s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
@@ -28,8 +31,7 @@ inline void trim(std::string &s) {
 Config::Config(const std::string& filename) {
   std::ifstream description_file(filename);
   if(!description_file) {
-    std::cerr << "No description file " << filename << std::endl;
-    exit(1);
+   Rf_error("No configuration file %s\n", filename.c_str());
   }
 
   std::string line;
