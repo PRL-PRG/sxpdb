@@ -212,7 +212,6 @@ sexp_hash* const DefaultStore::compute_cached_hash(SEXP val, const std::vector<s
     auto res = sexp_adresses.insert(std::make_pair(val, ser_hash));
 
     assert(res.second);
-    std::cerr << "inserted? " << res.second << " with address " << &res.first->second << std::endl;
 
     SET_RTRACE(val, 1);// set the tracing bit to show later that it is a value we actually touched
 
