@@ -122,12 +122,21 @@ SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argu
 
 /**
  * Get the origins of a value using its hash
- * @method val_origins
+ * @method get_origins
  * @param sxpdb external pointer to the target database
  * @param hash_s hash of a value
  * @return data frame with columns package, function, argument. Argument is NA_String if it is a return value
  */
-SEXP val_origins(SEXP sxpdb, SEXP hash_s);
+SEXP get_origins(SEXP sxpdb, SEXP hash_s);
+
+/**
+ * Get the origins of a value using its index
+ * @method get_origins_idx
+ * @param sxpdb external pointer to the target database
+ * @param idx index in the database (should be < to the number of values)
+ * @return data frame with columns package, function, argument. Argument is NA_String if it is a return value
+ */
+SEXP get_origins_idx(SEXP sxpdb, SEXP idx);
 
 #ifdef __cplusplus
 } // extern "C"

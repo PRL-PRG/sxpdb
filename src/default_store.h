@@ -74,6 +74,9 @@ public:
 
   virtual SEXP get_value(size_t index);
 
+  virtual const sexp_hash& get_hash(size_t index) const;
+
+
   virtual const fs::path& description_path() const  { return configuration_path; }
 
   virtual SEXP get_metadata(SEXP val) const;

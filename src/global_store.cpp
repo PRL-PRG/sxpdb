@@ -227,6 +227,27 @@ SEXP GlobalStore::get_value(size_t index) {
 }
 
 
+const sexp_hash& GlobalStore::get_hash(size_t index) const {
+  size_t store_index = 0;
+  size_t values = stores[store_index]->nb_values();
+
+  while(values < index) {
+    store_index++;
+    if(store_index >= stores.size()) {
+      break;
+    }
+    values += stores[store_index]->nb_values();
+  }
+
+  size_t index_in_store = index - (values - stores[store_index]->nb_values());
+
+  return stores[store_index]->get_hash(index_in_store);
+}
+
+const std::vector<std::tuple<const std::string, const std::string, const std::string>> GlobalStore::source_locations(size_t index) const {
+  return source_locations(get_hash(index));
+}
+
 SEXP GlobalStore::sample_value() {
   //TODO: or seed it just at the beginning and have it as a class member?
 

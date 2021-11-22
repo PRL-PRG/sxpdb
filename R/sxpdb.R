@@ -90,7 +90,7 @@ view_db <- function(db) {
 	if(size_db(db) == 0) {
 		viewer <- list()
 	} else {
-		viewer <- lapply(seq(from=0, to=size_db(db)-1), function(i) .Call(SXPDB_get_val, db, i))
+		viewer <- lapply(seq.int(0, size_db(db)-1), function(i) .Call(SXPDB_get_val, db, i))
 	}
 	viewer
 }
@@ -106,7 +106,18 @@ avg_duration <- function(db) {
 }
 
 #' @export
-val_origins <- function(db, hash) {
+get_origins <- function(db, hash) {
   stopifnot(is.raw(hash))
-  .Call(SXPDB_val_origins, db, hash)
+  .Call(SXPDB_get_origins, db, hash)
+}
+
+#' @export
+get_origins_idx <- function(db, i) {
+  stopifnot(is.numeric(i))
+  .Call(SXPDB_get_origins_idx, db, i)
+}
+
+#' @export
+view_origins_db <- function(db) {
+  lapply(seq.int(0, size_db(db) - 1), function(i) as.data.frame(.Call(SXPDB_get_origins_idx, db, i)))
 }

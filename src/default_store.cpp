@@ -312,6 +312,13 @@ SEXP DefaultStore::get_value(size_t idx) {
   return ser.unserialize(buf);
 }
 
+const sexp_hash& DefaultStore::get_hash(size_t idx) const {
+  auto it = index.begin();
+  std::advance(it, idx);
+
+  return it->first;
+}
+
 SEXP DefaultStore::sample_value() {
   std::uniform_int_distribution<size_t> dist(0, n_values - 1);
 

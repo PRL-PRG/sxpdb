@@ -58,6 +58,8 @@ class GlobalStore : Store {
 
     virtual SEXP get_value(size_t index);
 
+    virtual const sexp_hash& get_hash(size_t index) const;
+
 
     virtual SEXP get_metadata(SEXP val) const;
     virtual SEXP get_metadata(size_t index) const;
@@ -69,6 +71,8 @@ class GlobalStore : Store {
     const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(const sexp_hash& key) const {
         return src_refs->source_locations(key);
     }
+
+    const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(size_t index) const;
 
     virtual ~GlobalStore();
 };
