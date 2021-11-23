@@ -45,7 +45,6 @@ if (T) {
     test_that("add 102 vals and record 101", {
         db = open_db("test_db/4_size_db/size-101")
         for(i in 1:100) {
-            print(i)
             add_val(db, i)
         }
         add_val(db, c("a","b","c"))
