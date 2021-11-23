@@ -24,6 +24,9 @@ document:
 test:
 	$Rscript -e 'devtools::test()'
 
+clean_test:
+	-rm -rf tests/testthat/test_db*
+
 trace:
 	strace Rscript -e 'devtools::test()' 2> trace
 
