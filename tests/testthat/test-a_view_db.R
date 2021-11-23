@@ -1,4 +1,4 @@
-if (T) {
+if (F) {
 
 test_that("view db", {
 	open_db("test_db/a_view_db/view_db", create = TRUE)

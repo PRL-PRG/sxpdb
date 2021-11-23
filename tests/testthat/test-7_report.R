@@ -1,4 +1,4 @@
-if (T) {
+if (F) {
 
 test_that("print some report", {
 	print("Call report() before opening a new database")
