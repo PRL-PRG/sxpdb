@@ -168,8 +168,8 @@ SEXP get_origins(SEXP sxpdb, SEXP hash_s) {
 
   int i = 0;
   for(auto& loc : src_locs) {
-    SET_STRING_ELT(packages, i, Rf_mkChar(std::get<0>(loc).c_str()));
-    SET_STRING_ELT(functions, i, Rf_mkChar(std::get<1>(loc).c_str()));
+    SET_STRING_ELT(packages, i, std::get<0>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<0>(loc).c_str()));
+    SET_STRING_ELT(functions, i, std::get<1>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<1>(loc).c_str()));
     SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).c_str()));
     i++;
   }
@@ -215,8 +215,8 @@ SEXP get_origins_idx(SEXP sxpdb, SEXP idx) {
 
   int i = 0;
   for(auto& loc : src_locs) {
-    SET_STRING_ELT(packages, i, Rf_mkChar(std::get<0>(loc).c_str()));
-    SET_STRING_ELT(functions, i, Rf_mkChar(std::get<1>(loc).c_str()));
+    SET_STRING_ELT(packages, i, std::get<0>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<0>(loc).c_str()));
+    SET_STRING_ELT(functions, i, std::get<1>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<1>(loc).c_str()));
     SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).c_str()));
     i++;
   }
