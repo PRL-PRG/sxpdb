@@ -1,4 +1,4 @@
-if (T) {
+if (F) {
 
 test_that("have seen nothing", {
 	open_db("test_db/5_have_seen/nothing", create = TRUE)

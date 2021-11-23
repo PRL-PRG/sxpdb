@@ -1,4 +1,4 @@
-if (T) {
+if (F) {
 
 ## Stress Test Section
 
@@ -103,4 +103,3 @@ test_that("add empty string", {
 })
 
 }
-
