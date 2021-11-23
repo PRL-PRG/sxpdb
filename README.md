@@ -10,6 +10,8 @@ db <- open_db("cran_db")
 add_val(db, 45)
 add_val(db, list(a = 34, b = c(34.5, 45), c = "test"))
 
+add_val_origin(db, 450, "pkg", "fun", "arg1")
+
 print(sample_val(db))
 
 db2 <- open_db("db2")

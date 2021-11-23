@@ -54,6 +54,11 @@ have_seen <- function(db, val) {
 }
 
 #' @export
+get_value_idx <- function(db, idx) {
+  .Call(SXPDB_get_val, db, idx)
+}
+
+#' @export
 get_meta <- function(db, val) {
   .Call(SXPDB_get_meta, db, val)
 }
