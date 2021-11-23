@@ -41,6 +41,8 @@ std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
     metadata[*added.first] = meta;
   }
 
+  new_elements = true;// there is at least n_calls which has changed
+
   return added;
 }
 
@@ -197,6 +199,7 @@ bool GenericStore::merge_in(GenericStore& other) {
 
         // update the number of calls
         it->second.n_calls += val.second.n_calls;
+        new_elements = true;
       }
   }
 
@@ -205,7 +208,9 @@ bool GenericStore::merge_in(GenericStore& other) {
 }
 
 GenericStore::~GenericStore() {
-  write_metadata();
-  write_index();
-  write_configuration();
+  if(new_elements || n_values == 0) {
+    write_metadata();
+    write_index();
+    write_configuration();
+  }
 }

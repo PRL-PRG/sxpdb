@@ -139,6 +139,7 @@ std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val) {
   auto added = stores[store_index]->add_value(val);
 
   if(added.second) {
+    new_elements = true;
     total_values++;
   }
 
@@ -287,6 +288,8 @@ void GlobalStore::write_configuration() {
 }
 
 GlobalStore::~GlobalStore() {
-  write_configuration();
+  if(new_elements || total_values == 0) {
+    write_configuration();
+  }
 }
 

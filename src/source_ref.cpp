@@ -72,11 +72,15 @@ bool SourceRefs::add_value(const sexp_hash& key, const std::string& package_name
   auto it = index.find(key);
 
   if(it != index.end()) {
-    it->second.insert(loc);
+    auto res = it->second.insert(loc);
+    if(res.second) { // the location did not already exist
+      new_elements = true;
+    }
   }
   else {
     index.emplace(std::make_pair(key, std::unordered_set<location_t>({loc})));
     n_values++;
+    new_elements = true;
   }
 
 
@@ -276,9 +280,11 @@ const std::vector<std::tuple<const std::string, const std::string, const std::st
 
 
 SourceRefs::~SourceRefs() {
-  write_store();
-  write_index();
-  write_configuration();
+  if(new_elements || n_values == 0) {
+    write_store();
+    write_index();
+    write_configuration();
+  }
 }
 
 

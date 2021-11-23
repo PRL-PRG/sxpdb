@@ -63,6 +63,7 @@ private:
   size_t n_args;
 
   size_t n_values;
+  bool new_elements = false;
 
 
   void load_configuration();

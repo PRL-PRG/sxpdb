@@ -20,6 +20,7 @@ private:
     std::string store_k;
 protected:
     virtual void create() = 0;
+    bool new_elements = false;
     void set_kind(const std::string& kind) {store_k = kind;}
 public:
     // virtual bool merge_in(const std::string& filename) = 0;

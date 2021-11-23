@@ -50,8 +50,10 @@ void DefaultStore::create() {
 }
 
 DefaultStore::~DefaultStore() {
-  write_index();
-  write_configuration();
+  if(new_elements || n_values == 0) {
+    write_index();
+    write_configuration();
+  }
 }
 
 void DefaultStore::write_configuration() {
@@ -157,6 +159,7 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
     newly_seen[*key] = true;
 
     n_values++;
+    new_elements = true;
 
     assert(index.size() == n_values);
 
@@ -356,6 +359,7 @@ bool DefaultStore::merge_in(DefaultStore& other) {
       store_file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
 
       n_values++;
+      new_elements = true;
       newly_seen[it.first] = true;
 
     }
