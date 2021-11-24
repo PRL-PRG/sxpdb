@@ -41,6 +41,7 @@ class GlobalStore : Store {
   public:
     GlobalStore(const std::string& description_name);
 
+    virtual bool merge_in(Store& store);
     virtual bool merge_in(GlobalStore& store);
 
     virtual const std::string& sexp_type() const {

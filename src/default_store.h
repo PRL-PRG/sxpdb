@@ -63,6 +63,7 @@ public:
 
   virtual bool load();
 
+  virtual bool merge_in(Store& other);
   virtual bool merge_in(DefaultStore& other);
 
   virtual  std::pair<const sexp_hash*, bool> add_value(SEXP val);

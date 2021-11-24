@@ -23,7 +23,7 @@ GlobalStore::GlobalStore(const std::string& filename) :
       fs::path config_path = configuration_path.parent_path().append(row.at(0));
 
       if(row.at(3) == "locations") {
-        std::cout << "Loading source locations at " << config_path << "from " << row.at(2) << " packages" << std::endl;
+        std::cout << "Loading source locations at " << config_path << " from " << row.at(2) << " packages" << std::endl;
         src_refs = std::make_unique<SourceRefs>(config_path);
         continue;
       }
@@ -116,6 +116,16 @@ bool GlobalStore::merge_in(GlobalStore& gstore) {
   write_configuration();// might be redundant (or rather, the destructor might be redundant)
 
   return true;
+}
+
+bool GlobalStore::merge_in(Store& store) {
+  GlobalStore* st = dynamic_cast<GlobalStore*>(&store);
+  if(st == nullptr) {
+    Rf_warning("Cannot merge a global store with a store of kind", store.store_kind().c_str());
+    return false;
+  }
+
+  return merge_in(*st);
 }
 
 std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val) {

@@ -48,6 +48,8 @@ public:
 
     virtual std::chrono::microseconds avg_insertion_duration() const = 0;
 
+    virtual bool merge_in(Store& store) = 0;
+
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
     virtual SEXP sample_value() = 0;

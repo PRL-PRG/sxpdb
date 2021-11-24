@@ -207,6 +207,16 @@ bool GenericStore::merge_in(GenericStore& other) {
   return res;
 }
 
+bool GenericStore::merge_in(Store& store) {
+  GenericStore* st = dynamic_cast<GenericStore*>(&store);
+  if(st == nullptr) {
+    Rf_warning("Cannot merge a store with kind %s with a store of kind", store_kind().c_str(), store.store_kind().c_str());
+    return false;
+  }
+
+  return merge_in(*st);
+}
+
 GenericStore::~GenericStore() {
   if(new_elements || n_values == 0) {
     write_metadata();

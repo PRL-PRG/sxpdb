@@ -78,10 +78,10 @@ bool DefaultStore::load() {
   index_file.open(index_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);//because we just add the new values
   store_file.open(store_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
   if(!index_file) {
-    std::cerr << "Failed to open index file " << index_name << "at path " << index_path << std::endl;
+    std::cerr << "Failed to open index file " << index_name << " at path " << index_path << std::endl;
   }
   if(!store_file) {
-    std::cerr << "Failed to open store file " << store_name << "at path " << store_path << std::endl;
+    std::cerr << "Failed to open store file " << store_name << " at path " << store_path << std::endl;
     exit(1);
   }
   if(!index_file) exit(1);
@@ -368,6 +368,16 @@ bool DefaultStore::merge_in(DefaultStore& other) {
   write_index();
 
   return true;
+}
+
+bool DefaultStore::merge_in(Store& store) {
+  DefaultStore* st = dynamic_cast<DefaultStore*>(&store);
+  if(st == nullptr) {
+    Rf_warning("Cannot merge a store with kind %s with a store of kind", store_kind().c_str(), store.store_kind().c_str());
+    return false;
+  }
+
+  return merge_in(*st);
 }
 
 

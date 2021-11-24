@@ -13,7 +13,7 @@ SEXP open_db(SEXP filename) {
     db = new GlobalStore(CHAR(STRING_ELT(filename, 0)));
   }
   catch(std::exception e) {
-    Rf_error("Error opening the database: %s\n", e.what());
+    Rf_error("Error opening the database %s : %s\n", CHAR(STRING_ELT(filename, 0)), e.what());
   }
   if(db == nullptr) {
     Rf_error("Could not allocate memory for database %s", CHAR(STRING_ELT(filename, 0)));
