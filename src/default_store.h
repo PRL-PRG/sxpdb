@@ -28,7 +28,7 @@ protected:
 
   // it means that the order in the hash map won't necessary be the order of offsets
   // it that bad because of data locality?
-  std::unordered_map<sexp_hash, size_t, container_hasher> index;
+  std::unordered_map<sexp_hash, uint64_t, container_hasher> index;
   // new during that session or not
   std::unordered_map<sexp_hash, bool, container_hasher> newly_seen;
 
@@ -73,15 +73,15 @@ public:
 
   virtual const std::string& sexp_type() const { return type; };
 
-  virtual SEXP get_value(size_t index);
+  virtual SEXP get_value(uint64_t index);
 
-  virtual const sexp_hash& get_hash(size_t index) const;
+  virtual const sexp_hash& get_hash(uint64_t index) const;
 
 
   virtual const fs::path& description_path() const  { return configuration_path; }
 
   virtual SEXP get_metadata(SEXP val) const;
-  virtual SEXP get_metadata(size_t index) const;
+  virtual SEXP get_metadata(uint64_t index) const;
 
   virtual std::chrono::microseconds avg_insertion_duration() const;
 

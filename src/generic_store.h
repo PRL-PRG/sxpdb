@@ -12,9 +12,9 @@
 class GenericStore : public DefaultStore {
 private:
   struct metadata_t {
-    size_t n_calls;
+    uint64_t n_calls;
     SEXPTYPE sexptype;
-    size_t size;
+    uint64_t size;
   };
   std::unordered_map<sexp_hash, metadata_t, container_hasher> metadata;
   std::shared_ptr<SourceRefs> src_locs;
@@ -32,7 +32,7 @@ public:
   virtual bool merge_in(GenericStore& other);
 
   virtual SEXP get_metadata(SEXP val) const;
-  virtual SEXP get_metadata(size_t idx) const;
+  virtual SEXP get_metadata(uint64_t idx) const;
 
 
   virtual ~GenericStore();

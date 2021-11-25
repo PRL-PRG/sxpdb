@@ -42,11 +42,11 @@ void SourceRefs::write_configuration() {
 }
 
 
-size_t SourceRefs::add_name(const std::string& name, unique_names_t& unique_names, ordered_names_t& ordering) {
+uint64_t SourceRefs::add_name(const std::string& name, unique_names_t& unique_names, ordered_names_t& ordering) {
   auto pname = std::make_shared<const std::string>(name);//Copy the string into a newly allocated string
   auto it = unique_names.find(pname);
   if(it == unique_names.end()) {
-    size_t idx = ordering.size();// index, not size, but the size has not been increased yet
+    uint64_t idx = ordering.size();// index, not size, but the size has not been increased yet
     unique_names[pname] = idx;
     ordering.push_back(pname);
 
@@ -58,10 +58,10 @@ size_t SourceRefs::add_name(const std::string& name, unique_names_t& unique_name
 
 
 bool SourceRefs::add_value(const sexp_hash& key, const std::string& package_name, const std::string& function_name, const std::string& argument_name) {
-  size_t pkg_id = add_name(package_name, pkg_names_u, package_names);
-  size_t fun_id = add_name(function_name, function_names_u, function_names);
+  uint64_t pkg_id = add_name(package_name, pkg_names_u, package_names);
+  uint64_t fun_id = add_name(function_name, function_names_u, function_names);
   //we use a magic value for a return value
-  size_t arg_id = (argument_name == "") ? return_value : add_name(argument_name, arg_names_u, argument_names);
+  uint64_t arg_id = (argument_name == "") ? return_value : add_name(argument_name, arg_names_u, argument_names);
   assert(argument_names.size() != return_value); // If there are too many different argument names, it could clash with the return value magic value
 
   location_t loc;
@@ -139,8 +139,8 @@ void SourceRefs::write_index() {
     const auto& source_locations = it.second;
     offsets[it.first] = file.tellp();
 
-    size_t size = source_locations.size();
-    file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
+    uint64_t size = source_locations.size();
+    file.write(reinterpret_cast<char*>(&size), sizeof(uint64_t));
 
     for(auto& loc : source_locations) {
       file.write(reinterpret_cast<const char*>(&loc), sizeof(location_t));
@@ -156,7 +156,7 @@ void SourceRefs::write_index() {
   for(auto it : offsets) {
     // no newly_seen here, as the offset could change
     offset_file.write(it.first.data(), it.first.size());
-    offset_file.write(reinterpret_cast<char*>(&it.second), sizeof(size_t));
+    offset_file.write(reinterpret_cast<char*>(&it.second), sizeof(uint64_t));
   }
 }
 
@@ -172,13 +172,13 @@ void SourceRefs::load_index() {
 
   sexp_hash hash;
   assert(hash.size() == 20);
-  size_t offset = 0;
+  uint64_t offset = 0;
 
   offsets.reserve(n_values);
 
   for(size_t i = 0; i < n_values ; i++) {
     offset_file.read(hash.data(), hash.size());
-    offset_file.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
+    offset_file.read(reinterpret_cast<char*>(&offset), sizeof(uint64_t));
     offsets[hash] = offset;
   }
 
@@ -197,14 +197,14 @@ void SourceRefs::load_index() {
   // Maybe we should sort the offset here? or use a map instead of an unordered_map?
   // (after inverting the mapping hash -> offset)
   for(auto it : offsets) {
-    size_t size = 0;
+    uint64_t size = 0;
     file.seekg(it.second);// go the offset of that record
-    file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+    file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
     assert(size > 0);
 
     std::unordered_set<location_t> locations;
 
-    for(size_t i = 0; i < size; i++) {
+    for(uint64_t i = 0; i < size; i++) {
       location_t loc;
       file.read(reinterpret_cast<char*>(&loc), sizeof(loc));
       locations.insert(loc);

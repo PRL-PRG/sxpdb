@@ -76,7 +76,7 @@ private:
   void write_configuration();
 
   // the custom hasher and comparison directly work on the value pointed to, not on the pointer
-  typedef std::unordered_map<std::shared_ptr<const std::string>, size_t, unique_string_hasher, unique_string_equal> unique_names_t;
+  typedef std::unordered_map<std::shared_ptr<const std::string>, uint64_t, unique_string_hasher, unique_string_equal> unique_names_t;
   typedef std::vector<std::shared_ptr<const std::string>> ordered_names_t;
 
   // Set to get a stable order on it
@@ -90,9 +90,9 @@ private:
 
 
   std::unordered_map<sexp_hash, std::unordered_set<location_t>, container_hasher> index;
-  std::unordered_map<sexp_hash, size_t,container_hasher> offsets;
+  std::unordered_map<sexp_hash, uint64_t,container_hasher> offsets;
 
-  static size_t inline add_name(const std::string& name, unique_names_t& unique_names, ordered_names_t& ordering);
+  static uint64_t inline add_name(const std::string& name, unique_names_t& unique_names, ordered_names_t& ordering);
 
 public:
   SourceRefs(fs::path config_path);
@@ -107,7 +107,7 @@ public:
 
   const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(const sexp_hash& key) const;
 
-  size_t get_offset(const sexp_hash& key) const;
+  uint64_t get_offset(const sexp_hash& key) const;
 
   const fs::path& description_path() const { return config_path;}
 

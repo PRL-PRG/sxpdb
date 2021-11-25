@@ -126,8 +126,8 @@ bool GlobalStore::merge_in(Store& store) {
 }
 
 std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val) {
-  // Ignore environments
-  if(TYPEOF(val) == ENVSXP) {
+  // Ignore environments and closures
+  if(TYPEOF(val) == ENVSXP || TYPEOF(val) == CLOSXP) {
     return std::make_pair(nullptr, false);
   }
 
@@ -155,7 +155,7 @@ std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val) {
 
 std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name) {
   // Ignore environments
-  if(TYPEOF(val) == ENVSXP) {
+  if(TYPEOF(val) == ENVSXP || TYPEOF(val) == CLOSXP) {
     return std::make_pair(nullptr, false);
   }
 
@@ -196,7 +196,7 @@ SEXP GlobalStore::get_metadata(SEXP val) const {
   return stores[store_index]->get_metadata(val);
 }
 
-SEXP GlobalStore::get_metadata(size_t index) const {
+SEXP GlobalStore::get_metadata(uint64_t index) const {
   size_t store_index = 0;
   size_t values = stores[store_index]->nb_values(); // we assume there is at least one store
 
@@ -208,13 +208,13 @@ SEXP GlobalStore::get_metadata(size_t index) const {
     values += stores[store_index]->nb_values();
   }
 
-  size_t index_in_store = index - (values - stores[store_index]->nb_values());
+  uint64_t index_in_store = index - (values - stores[store_index]->nb_values());
 
   return stores[store_index]->get_metadata(index_in_store);
 }
 
 
-SEXP GlobalStore::get_value(size_t index) {
+SEXP GlobalStore::get_value(uint64_t index) {
   size_t store_index = 0;
   size_t values = stores[store_index]->nb_values(); // we assume there is at least one store
 
@@ -226,7 +226,7 @@ SEXP GlobalStore::get_value(size_t index) {
     values += stores[store_index]->nb_values();
   }
 
-  size_t index_in_store = index - (values - stores[store_index]->nb_values());
+  uint64_t index_in_store = index - (values - stores[store_index]->nb_values());
 
   // TODO: handle case when the value is out of bounds!!
   // Or just leave it to the default store to panic and handle it?
@@ -235,7 +235,7 @@ SEXP GlobalStore::get_value(size_t index) {
 }
 
 
-const sexp_hash& GlobalStore::get_hash(size_t index) const {
+const sexp_hash& GlobalStore::get_hash(uint64_t index) const {
   size_t store_index = 0;
   size_t values = stores[store_index]->nb_values();
 
@@ -247,19 +247,19 @@ const sexp_hash& GlobalStore::get_hash(size_t index) const {
     values += stores[store_index]->nb_values();
   }
 
-  size_t index_in_store = index - (values - stores[store_index]->nb_values());
+  uint64_t index_in_store = index - (values - stores[store_index]->nb_values());
 
   return stores[store_index]->get_hash(index_in_store);
 }
 
-const std::vector<std::tuple<const std::string, const std::string, const std::string>> GlobalStore::source_locations(size_t index) const {
+const std::vector<std::tuple<const std::string, const std::string, const std::string>> GlobalStore::source_locations(uint64_t index) const {
   return source_locations(get_hash(index));
 }
 
 SEXP GlobalStore::sample_value() {
   //TODO: or seed it just at the beginning and have it as a class member?
 
-  std::uniform_int_distribution<size_t> dist(0, total_values - 1);
+  std::uniform_int_distribution<uint64_t> dist(0, total_values - 1);
 
   return get_value(dist(rand_engine));
 }

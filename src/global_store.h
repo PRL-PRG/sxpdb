@@ -20,7 +20,7 @@ class GlobalStore : Store {
 
     // to preserve the order
     std::vector<std::unique_ptr<GenericStore>> stores;
-    std::unordered_map<std::string, size_t> types;
+    std::unordered_map<std::string, uint64_t> types;
 
 
     size_t bytes_read;
@@ -57,13 +57,13 @@ class GlobalStore : Store {
     virtual const fs::path& description_path() const {return configuration_path; }
     virtual size_t nb_values() const {return total_values; }
 
-    virtual SEXP get_value(size_t index);
+    virtual SEXP get_value(uint64_t index);
 
-    virtual const sexp_hash& get_hash(size_t index) const;
+    virtual const sexp_hash& get_hash(uint64_t index) const;
 
 
     virtual SEXP get_metadata(SEXP val) const;
-    virtual SEXP get_metadata(size_t index) const;
+    virtual SEXP get_metadata(uint64_t index) const;
 
     virtual std::chrono::microseconds avg_insertion_duration() const;
 

@@ -46,7 +46,7 @@ std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
   return added;
 }
 
-SEXP GenericStore::get_metadata(size_t idx) const {
+SEXP GenericStore::get_metadata(uint64_t idx) const {
   auto it = index.begin();
   std::advance(it, idx);
   sexp_hash key = it->first;
@@ -159,7 +159,7 @@ void GenericStore::load_metadata() {
 
   metadata_t meta;
 
-  for(size_t i = 0; i < n_values ; i++) {
+  for(uint64_t i = 0; i < n_values ; i++) {
     auto pos = meta_file.tellg();
 
     meta_file.read(hash.data(), hash.size());

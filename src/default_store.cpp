@@ -109,14 +109,14 @@ void DefaultStore::load_index() {
   index.reserve(n_values);
   sexp_hash hash;
   assert(hash.size() == 20);
-  size_t offset = 0;
+  uint64_t offset = 0;
 
-  for(size_t i = 0; i < n_values ; i++) {
+  for(uint64_t i = 0; i < n_values ; i++) {
     index_file.read(hash.data(), hash.size());
-    index_file.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
+    index_file.read(reinterpret_cast<char*>(&offset), sizeof(uint64_t));
     index[hash] = offset;
 
-    bytes_read += 20 + sizeof(offset);
+    bytes_read += 20 + sizeof(uint64_t);
   }
 }
 
@@ -128,7 +128,7 @@ void DefaultStore::write_index() {
     auto not_seen = newly_seen[it.first];
     if(not_seen) {
       index_file.write(it.first.data(), it.first.size());
-      index_file.write(reinterpret_cast<char*>(&it.second), sizeof(size_t));
+      index_file.write(reinterpret_cast<char*>(&it.second), sizeof(uint64_t));
       newly_seen[it.first] = false;// now written so should not be written next time
     }
   }
@@ -154,8 +154,8 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
     auto res = index.insert(std::make_pair(*key, store_file.tellp()));
 
     //write the value
-    size_t size = buf->size();
-    store_file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
+    uint64_t size = buf->size();
+    store_file.write(reinterpret_cast<char*>(&size), sizeof(uint64_t));
     store_file.write(reinterpret_cast<const char*>(buf->data()), buf->size());
 
     // new value in that session
@@ -249,11 +249,11 @@ SEXP DefaultStore::get_metadata(SEXP val) const {
   }
 
   auto it2 = index.find(*key);
-  size_t offset = it2->second;
+  uint64_t offset = it2->second;
 
   store_file.seekg(offset);
-  size_t size = 0;
-  store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+  uint64_t size = 0;
+  store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
   assert(size> 0);
 
   const char*names[] = {"newly_seen", "size", ""};
@@ -270,10 +270,10 @@ SEXP DefaultStore::get_metadata(SEXP val) const {
   return res;
 }
 
-SEXP DefaultStore::get_metadata(size_t idx) const {
+SEXP DefaultStore::get_metadata(uint64_t idx) const {
   auto it = index.begin();
   std::advance(it, idx);
-  size_t offset = it->second;
+  uint64_t offset = it->second;
 
   auto it2 = newly_seen.find(it->first);
 
@@ -282,8 +282,8 @@ SEXP DefaultStore::get_metadata(size_t idx) const {
   }
 
   store_file.seekg(offset);
-  size_t size = 0;
-  store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+  uint64_t size = 0;
+  store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
   assert(size> 0);
 
   const char*names[] = {"newly_seen", "size", ""};
@@ -301,14 +301,14 @@ SEXP DefaultStore::get_metadata(size_t idx) const {
 }
 
 
-SEXP DefaultStore::get_value(size_t idx) {
+SEXP DefaultStore::get_value(uint64_t idx) {
   auto it = index.begin();
   std::advance(it, idx);
-  size_t offset = it->second;
+  uint64_t offset = it->second;
 
   store_file.seekg(offset);
-  size_t size = 0;
-  store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+  uint64_t size = 0;
+  store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
   assert(size> 0);
 
   std::vector<std::byte> buf(size);//or expose the internal buffer of the serializer?
@@ -317,7 +317,7 @@ SEXP DefaultStore::get_value(size_t idx) {
   return ser.unserialize(buf);
 }
 
-const sexp_hash& DefaultStore::get_hash(size_t idx) const {
+const sexp_hash& DefaultStore::get_hash(uint64_t idx) const {
   auto it = index.begin();
   std::advance(it, idx);
 
@@ -325,7 +325,7 @@ const sexp_hash& DefaultStore::get_hash(size_t idx) const {
 }
 
 SEXP DefaultStore::sample_value() {
-  std::uniform_int_distribution<size_t> dist(0, n_values - 1);
+  std::uniform_int_distribution<uint64_t> dist(0, n_values - 1);
 
   return get_value(dist(rand_engine));
 }
@@ -345,10 +345,10 @@ bool DefaultStore::merge_in(DefaultStore& other) {
     //Check if the hash is not in the index
     if(index.find(it.first) == index.end()) {
       // read the value from other
-      size_t offset = it.second;
+      uint64_t offset = it.second;
       other.store_file.seekg(offset);
-      size_t size = 0;
-      other.store_file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+      uint64_t size = 0;
+      other.store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
       assert(size> 0);
 
       buf.resize(size);
@@ -358,7 +358,7 @@ bool DefaultStore::merge_in(DefaultStore& other) {
       index[it.first] = store_file.tellp();
 
       //write the value
-      store_file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
+      store_file.write(reinterpret_cast<char*>(&size), sizeof(uint64_t));
       store_file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
 
       n_values++;
