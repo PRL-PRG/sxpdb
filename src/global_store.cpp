@@ -23,7 +23,7 @@ GlobalStore::GlobalStore(const std::string& filename) :
       fs::path config_path = configuration_path.parent_path().append(row.at(0));
 
       if(row.at(3) == "locations") {
-        std::cout << "Loading source locations at " << config_path << " from " << row.at(2) << " packages" << std::endl;
+        Rprintf("Loading source locations at ", config_path.c_str(), " from ", row.at(2).c_str(), " packages\n");
         src_refs = std::make_unique<SourceRefs>(config_path);
         continue;
       }
@@ -37,16 +37,14 @@ GlobalStore::GlobalStore(const std::string& filename) :
 
       //Check if the types in the configuration file and in the CSV are coherent
       if(row.at(1) != stores.back()->sexp_type()) {
-        std::cerr << "Inconsistent types in the global configuration file and the store configuration file: " <<
-          row.at(1) << " vs " << stores.back()->sexp_type() << std::endl;
-          exit(1);
+        Rf_error("Inconsistent types in the global configuration file and the store configuration file: ",
+          row.at(1).c_str(), " vs ", stores.back()->sexp_type().c_str(), "\n");
       }
 
       //Check if the kinds of stores in the configuration file and in the CSV are coherent
       if(row.at(3) != stores.back()->store_kind()) {
-        std::cerr << "Inconsistent kinds of stores in the global configuration file and the store configuration file: " <<
-          row.at(3) << " vs " << stores.back()->store_kind() << std::endl;
-        exit(1);
+        Rf_error("Inconsistent kinds of stores in the global configuration file and the store configuration file: ",
+          row.at(3).c_str(),  " vs ", stores.back()->store_kind().c_str(), "\n");
       }
 
       types[row.at(1)] = stores.size() - 1;//index of the element that was just inserted
@@ -54,16 +52,15 @@ GlobalStore::GlobalStore(const std::string& filename) :
       size_t nb_values = std::stoul(row.at(2));
 
       if(nb_values != stores.back()->nb_values()) {
-        std::cerr << "Inconsistent number of values in the global configuration file and the store configuration file: " <<
-          nb_values << " vs " << stores.back()->nb_values() << std::endl;
-          exit(1);
+        Rf_error("Inconsistent number of values in the global configuration file and the store configuration file: ",
+          std::to_string(nb_values).c_str(), " vs ", std::to_string(stores.back()->nb_values()).c_str(), "\n");
       }
 
       total_values += nb_values;
     }
   }
   else {
-    std::cerr << "Configuration file does not exist. Creating new database " << filename << std::endl;
+    Rf_warning("Configuration file does not exist. Creating new database ", filename.c_str(), "\n");
 
     create();
   }

@@ -5,10 +5,13 @@
 #include <sstream>
 #include <cassert>
 
+#define R_NO_REMAP
+#include <Rinternals.h>
+
 CSVFile::CSVFile(const std::string& filename) {
   std::ifstream file(filename);
   if(!file) {
-    std::cerr << "Impossible to open file " << filename << std::endl;
+    Rf_error("Impossible to open file ", filename.c_str(), "\n");
   }
 
   // read line by line
@@ -57,7 +60,7 @@ void CSVFile::add_row(std::vector<std::string>&& row) {
 void CSVFile::write(const std::string& filename) {
   std::ofstream file(filename,std::ofstream::out | std::ofstream::trunc);
   if(!file) {
-    std::cerr << "Impossible to open for write CSV file " << filename << std::endl;
+    Rf_error("Impossible to open for write CSV file ", filename.c_str(), "\n");
   }
 
   for(auto& row: rows) {

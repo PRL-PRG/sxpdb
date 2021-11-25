@@ -77,14 +77,17 @@ bool DefaultStore::load() {
 
   index_file.open(index_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);//because we just add the new values
   store_file.open(store_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
+
+  std::ostringstream out;
   if(!index_file) {
-    std::cerr << "Failed to open index file " << index_name << " at path " << index_path << std::endl;
+    out << "Failed to open index file " << index_name << " at path " << index_path << std::endl;
   }
   if(!store_file) {
-    std::cerr << "Failed to open store file " << store_name << " at path " << store_path << std::endl;
-    exit(1);
+    out << "Failed to open store file " << store_name << " at path " << store_path << std::endl;
   }
-  if(!index_file) exit(1);
+  if(!index_file || !store_file)  {
+    Rf_error(out.str().c_str());
+  }
 
   index_file.exceptions(std::fstream::failbit);
   store_file.exceptions(std::fstream::failbit);
