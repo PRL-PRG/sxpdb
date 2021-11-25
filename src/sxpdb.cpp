@@ -113,6 +113,69 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
   return R_NilValue;
 }
 
+SEXP add_origin_(SEXP sxpdb, const void * hash, const char* package_name, const char* function_name, const char* argument_name) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+
+  if (package_name == nullptr) {
+    package_name = EMPTY_ORIGIN_PART;
+  }
+  if (function_name == nullptr) {
+    function_name = EMPTY_ORIGIN_PART;
+  }
+  if (argument_name == nullptr) {
+    argument_name = EMPTY_ORIGIN_PART;
+  }
+
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  try {
+    return Rf_ScalarLogical(db->add_origins(*static_cast<const sexp_hash*>(hash), package_name, function_name, argument_name));
+  }
+  catch(std::exception e) {
+    Rf_error("Error adding value from package %s, function %s and argument %s, into the database: %s\n",
+             package_name, function_name, argument_name, e.what());
+  }
+
+  return Rf_ScalarLogical(FALSE);
+}
+
+SEXP add_origin(SEXP sxpdb, SEXP hash, SEXP package, SEXP function, SEXP argument) {
+  const char *package_name = EMPTY_ORIGIN_PART;
+  const char *function_name = EMPTY_ORIGIN_PART;
+  const char *argument_name = EMPTY_ORIGIN_PART;
+
+  if(TYPEOF(package) == STRSXP) {
+    package_name = CHAR(STRING_ELT(package, 0));
+  }
+  else if (TYPEOF(package) == SYMSXP) {
+    package_name = CHAR(PRINTNAME(package));
+  }
+
+  if(TYPEOF(function) == STRSXP) {
+    function_name = CHAR(STRING_ELT(function, 0));
+  }
+  else if (TYPEOF(function) == SYMSXP) {
+    function_name = CHAR(PRINTNAME(function));
+  }
+
+  if(TYPEOF(argument) == STRSXP) {
+    // if empty string or NA, treat it as a return value
+    SEXP arg_sexp = STRING_ELT(argument, 0);
+    argument_name = (arg_sexp == NA_STRING) ? EMPTY_ORIGIN_PART : CHAR(arg_sexp);
+  }
+  else if (TYPEOF(argument) == SYMSXP) {
+    argument_name = CHAR(PRINTNAME(argument));// a symbol cannot be NA
+  }
+
+  sexp_hash h;
+  std::copy_n(RAW(hash), h.size(), h.data());
+
+  return add_origin_(sxpdb, &h, package_name, function_name, argument_name);
+}
+
 SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument) {
   const char *package_name = EMPTY_ORIGIN_PART;
   const char *function_name = EMPTY_ORIGIN_PART;

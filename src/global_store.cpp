@@ -166,6 +166,10 @@ std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val, const std::st
   return hash;
 }
 
+bool GlobalStore::add_origins(const sexp_hash& hash, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name) {
+  return src_refs->add_value(hash, pkg_name, func_name, arg_name);
+}
+
 bool  GlobalStore::have_seen(SEXP val) const {
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;

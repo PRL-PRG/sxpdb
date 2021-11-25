@@ -69,6 +69,8 @@ class GlobalStore : Store {
 
     virtual SEXP sample_value();
 
+    virtual bool add_origins(const sexp_hash& hash, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
+
     const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(const sexp_hash& key) const {
         return src_refs->source_locations(key);
     }

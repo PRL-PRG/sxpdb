@@ -71,10 +71,15 @@ bool SourceRefs::add_value(const sexp_hash& key, const std::string& package_name
 
   auto it = index.find(key);
 
+  bool r = true;//true if it is a new origin
+
   if(it != index.end()) {
     auto res = it->second.insert(loc);
     if(res.second) { // the location did not already exist
       new_elements = true;
+    }
+    else {
+      r = false;
     }
   }
   else {
@@ -84,7 +89,7 @@ bool SourceRefs::add_value(const sexp_hash& key, const std::string& package_name
   }
 
 
-  return true;
+  return r;
 }
 
 

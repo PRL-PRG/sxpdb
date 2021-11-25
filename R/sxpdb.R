@@ -36,6 +36,12 @@ add_val_origin <- function(db, val, package, func, argument) {
   .Call(SXPDB_add_val_origin, db, val, package, func, if(is.na(argument)) NA_character_ else argument)
 }
 
+#' export
+add_origin <- function(db, hash, package, func, argument) {
+  stopifnot(is.raw(hash) && length(hash) == 20, is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
+  .Call(SXPDB_add_origin, db, hash, package, func, if(is.na(argument)) NA_character_ else argument)
+}
+
 #' @export
 sample_val <- function(db) {
   .Call(SXPDB_sample_val, db)

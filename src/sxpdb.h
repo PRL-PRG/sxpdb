@@ -120,7 +120,7 @@ SEXP avg_insertion_duration(SEXP sxpdb);
  */
 SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument);
 
-SEXP add_val_origin_(SEXP sxpdb, SEXP val, 
+SEXP add_val_origin_(SEXP sxpdb, SEXP val,
                      const char* package_name, const char* function_name, const char* argument_name);
 
 /**
@@ -140,6 +140,21 @@ SEXP get_origins(SEXP sxpdb, SEXP hash_s);
  * @return data frame with columns package, function, argument. Argument is NA_String if it is a return value
  */
 SEXP get_origins_idx(SEXP sxpdb, SEXP idx);
+
+
+/**
+ * Add origins to a value identified by its hash
+ * @method get_origins_idx
+ * @param sxpdb external pointer to the target database
+ * @param hash pointer to a sexp_hash
+ * @param package name
+ * @param function name
+ * @param argument name ; "" or NA mean that it is a return value
+ * @return Boolean TRUE if its a new origin for this hash
+ */
+SEXP add_origin_(SEXP sxpdb, const void* hash, const char* package_name, const char* function_name, const char* argument_name);
+
+SEXP add_origin(SEXP sxpdb, SEXP hash, SEXP package, SEXP function, SEXP argument);
 
 #ifdef __cplusplus
 } // extern "C"
