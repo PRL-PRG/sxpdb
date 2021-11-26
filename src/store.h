@@ -46,8 +46,6 @@ public:
 
     virtual const fs::path& description_path() const = 0;
 
-    virtual std::chrono::microseconds avg_insertion_duration() const = 0;
-
     virtual bool merge_in(Store& store) = 0;
 
     // Pass it a Description and a Distribution that precises what kind of values

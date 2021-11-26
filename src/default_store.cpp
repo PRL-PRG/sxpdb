@@ -135,8 +135,6 @@ void DefaultStore::write_index() {
 }
 
 std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
-  auto start = std::chrono::high_resolution_clock::now();
-
   sexp_hash* key = cached_hash(val);
   const std::vector<std::byte>*  buf = nullptr;
 
@@ -165,11 +163,6 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
     new_elements = true;
 
     assert(index.size() == n_values);
-
-    // We only record the time of inserting the value (which means that if the value is already there...)
-    auto end = std::chrono::high_resolution_clock::now();
-    // Welford's algorithm for the average (numerically stable)
-    add_time += (std::chrono::duration_cast<std::chrono::microseconds>(end - start) - add_time) / n_values;
 
     return std::make_pair(&res.first->first, true);
   }
@@ -330,9 +323,6 @@ SEXP DefaultStore::sample_value() {
   return get_value(dist(rand_engine));
 }
 
-std::chrono::microseconds DefaultStore::avg_insertion_duration() const {
-  return add_time;
-}
 
 
 bool DefaultStore::merge_in(DefaultStore& other) {

@@ -25,7 +25,6 @@ static const R_CallMethodDef callMethods[] = {
 	{"get_meta_idx",   (DL_FUNC) &get_meta_idx,        2},
 	{"get_origins",    (DL_FUNC) &get_origins,        2},
 	{"get_origins_idx",    (DL_FUNC) &get_origins_idx,        2},
-	{"avg_insertion_duration", (DL_FUNC) &avg_insertion_duration, 1},
 
 	// Must have at the end
 	{NULL,						NULL,								0}

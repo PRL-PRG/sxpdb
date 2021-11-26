@@ -24,11 +24,16 @@ GenericStore::GenericStore(const fs::path& config_path, std::shared_ptr<SourceRe
 
 
 std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
+  auto start = std::chrono::steady_clock::now();
   auto added =  DefaultStore::add_value(val);
+  auto end = std::chrono::steady_clock::now();
 
   if(!added.second) {// value already seen
+    metadata_t& meta = metadata[*added.first];
+    // do not take into account the first insertion for the average
+    meta.next_seen_dur += (std::chrono::duration_cast<std::chrono::nanoseconds>(end - start) - meta.next_seen_dur) / meta.n_calls;
     //update metadata
-    metadata[*added.first].n_calls++;
+    meta.n_calls++;
     assert(metadata[*added.first].size = ser.current_buf_size());// buffer is still the same
     assert(metadata[*added.first].sexptype == TYPEOF(val));
   }
@@ -38,8 +43,14 @@ std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
     meta.n_calls = 1;
     meta.size = ser.current_buf_size();
     meta.sexptype = TYPEOF(val);
+    meta.first_seen_dur = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    meta.next_seen_dur =  std::chrono::nanoseconds::zero();
+    meta.n_merges = 0;
     metadata[*added.first] = meta;
   }
+
+
+
 
   new_elements = true;// there is at least n_calls which has changed
 
@@ -59,7 +70,7 @@ SEXP GenericStore::get_metadata(uint64_t idx) const {
   const metadata_t& meta = it2->second;
 
 
-  const char*names[] = {"newly_seen", "size", "n", "type", ""};
+  const char*names[] = {"newly_seen", "size", "n", "type", "first_seen_dur", "next_seen_dur", "n_merges", ""};
   SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
 
   SEXP n_seen = PROTECT(Rf_ScalarLogical(it->second));
@@ -74,7 +85,16 @@ SEXP GenericStore::get_metadata(uint64_t idx) const {
   SEXP s_type = PROTECT(Rf_ScalarInteger(meta.sexptype));
   SET_VECTOR_ELT(res, 3, s_type);
 
-  UNPROTECT(5);
+  SEXP first_seen_dur = PROTECT(Rf_ScalarInteger(meta.first_seen_dur.count()));
+  SET_VECTOR_ELT(res, 4, first_seen_dur);
+
+  SEXP next_seen_dur = PROTECT(Rf_ScalarInteger(meta.next_seen_dur.count()));
+  SET_VECTOR_ELT(res, 5, next_seen_dur);
+
+  SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
+  SET_VECTOR_ELT(res, 6, n_merges);
+
+  UNPROTECT(8);
 
   return res;
 }
@@ -105,7 +125,7 @@ SEXP GenericStore::get_metadata(SEXP val) const {
   const metadata_t& meta = it2->second;
 
 
-  const char*names[] = {"newly_seen", "size", "n", "type", ""};
+  const char*names[] = {"newly_seen", "size", "n", "type", "first_seen_dur", "next_seen_dur", "n_merges", """"};
   SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
 
   SEXP n_seen = PROTECT(Rf_ScalarLogical(it->second));
@@ -120,7 +140,16 @@ SEXP GenericStore::get_metadata(SEXP val) const {
   SEXP s_type = PROTECT(Rf_ScalarInteger(meta.sexptype));
   SET_VECTOR_ELT(res, 3, s_type);
 
-  UNPROTECT(5);
+  SEXP first_seen_dur = PROTECT(Rf_ScalarInteger(meta.first_seen_dur.count()));
+  SET_VECTOR_ELT(res, 4, first_seen_dur);
+
+  SEXP next_seen_dur = PROTECT(Rf_ScalarInteger(meta.next_seen_dur.count()));
+  SET_VECTOR_ELT(res, 5, next_seen_dur);
+
+  SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
+  SET_VECTOR_ELT(res, 6, n_merges);
+
+  UNPROTECT(8);
 
   return res;
 }
@@ -143,6 +172,9 @@ void GenericStore::write_metadata() {
     meta_file.write(reinterpret_cast<char*>(&it.second.n_calls), sizeof(it.second.n_calls));
     meta_file.write(reinterpret_cast<char*>(&it.second.size), sizeof(it.second.size));
     meta_file.write(reinterpret_cast<char*>(&it.second.sexptype), sizeof(it.second.sexptype));
+    meta_file.write(reinterpret_cast<char*>(&it.second.first_seen_dur), sizeof(it.second.first_seen_dur));
+    meta_file.write(reinterpret_cast<char*>(&it.second.next_seen_dur), sizeof(it.second.next_seen_dur));
+    meta_file.write(reinterpret_cast<char*>(&it.second.n_merges), sizeof(it.second.n_merges));
   }
 }
 
@@ -166,6 +198,9 @@ void GenericStore::load_metadata() {
     meta_file.read(reinterpret_cast<char*>(&meta.n_calls), sizeof(meta.n_calls));
     meta_file.read(reinterpret_cast<char*>(&meta.size), sizeof(meta.size));
     meta_file.read(reinterpret_cast<char*>(&meta.sexptype), sizeof(meta.sexptype));
+    meta_file.read(reinterpret_cast<char*>(&meta.first_seen_dur), sizeof(meta.first_seen_dur));
+    meta_file.read(reinterpret_cast<char*>(&meta.next_seen_dur), sizeof(meta.next_seen_dur));
+    meta_file.read(reinterpret_cast<char*>(&meta.n_merges), sizeof(meta.n_merges));
 
     metadata[hash] = meta;
 
@@ -199,6 +234,15 @@ bool GenericStore::merge_in(GenericStore& other) {
 
         // update the number of calls
         it->second.n_calls += val.second.n_calls;
+        // Update the number of merges
+        it->second.n_merges++;
+        // average the first seen time and the next seen time
+        it->second.first_seen_dur = (it->second.first_seen_dur * it->second.n_merges +
+          val.second.first_seen_dur * (val.second.n_merges + 1) ) /
+            (it->second.n_merges + val.second.n_merges + 1);
+        it->second.next_seen_dur = (it->second.next_seen_dur * (it->second.n_calls - it->second.n_merges) +
+          val.second.first_seen_dur * (it->second.n_calls - val.second.n_merges - 1) ) /
+            (it->second.n_calls + val.second.n_calls - it->second.n_merges - val.second.n_merges + 1);
         new_elements = true;
       }
   }

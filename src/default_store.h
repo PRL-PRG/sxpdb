@@ -37,7 +37,6 @@ protected:
   mutable Serializer ser;
   std::default_random_engine rand_engine;
 
-  std::chrono::microseconds add_time;
 
   // Optimization
   // we store the hash of the addresses of the sexp during a session
@@ -82,8 +81,6 @@ public:
 
   virtual SEXP get_metadata(SEXP val) const;
   virtual SEXP get_metadata(uint64_t index) const;
-
-  virtual std::chrono::microseconds avg_insertion_duration() const;
 
   // Pass it a Description and a Distribution that precises what kind of values
   // we want

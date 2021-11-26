@@ -268,14 +268,6 @@ SEXP GlobalStore::sample_value() {
   return get_value(dist(rand_engine));
 }
 
-std::chrono::microseconds GlobalStore::avg_insertion_duration() const {
-  std::chrono::microseconds avg_dur;
-
-  for(auto& store : stores) {
-    avg_dur += store->avg_insertion_duration() * store->nb_values();
-  }
-  return avg_dur / total_values;
-}
 
 void GlobalStore::write_configuration() {
   CSVFile file;

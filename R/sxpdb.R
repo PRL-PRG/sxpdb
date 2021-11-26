@@ -111,10 +111,6 @@ view_meta_db <- function(db) {
   do.call(rbind.data.frame, lapply(seq.int(0, size_db(db) - 1), function(i) as.data.frame(.Call(SXPDB_get_meta_idx, db, i))))
 }
 
-#' @export
-avg_duration <- function(db) {
-    .Call(SXPDB_avg_insertion_duration, db)
-}
 
 #' @export
 get_origins <- function(db, hash) {

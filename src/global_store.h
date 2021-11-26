@@ -65,8 +65,6 @@ class GlobalStore : Store {
     virtual SEXP get_metadata(SEXP val) const;
     virtual SEXP get_metadata(uint64_t index) const;
 
-    virtual std::chrono::microseconds avg_insertion_duration() const;
-
     virtual SEXP sample_value();
 
     virtual bool add_origins(const sexp_hash& hash, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);

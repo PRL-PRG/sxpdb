@@ -15,6 +15,9 @@ private:
     uint64_t n_calls;
     SEXPTYPE sexptype;
     uint64_t size;
+    uint32_t n_merges;
+    std::chrono::nanoseconds first_seen_dur;
+    std::chrono::nanoseconds next_seen_dur;
   };
   std::unordered_map<sexp_hash, metadata_t, container_hasher> metadata;
   std::shared_ptr<SourceRefs> src_locs;

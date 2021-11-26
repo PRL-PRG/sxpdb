@@ -100,13 +100,6 @@ SEXP get_meta(SEXP db, SEXP val);
  */
 SEXP get_meta_idx(SEXP db, SEXP idx);
 
-/**
- * Average duration for insertion of a new value
- * @method avg_insertion_duration
- * @param db external pointer to the target database
- * @return average duration in milliseconds
- */
-SEXP avg_insertion_duration(SEXP sxpdb);
 
 /**
  * Add a value along with origin information
