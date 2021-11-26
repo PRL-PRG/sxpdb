@@ -65,6 +65,7 @@ void DefaultStore::write_configuration() {
   conf["metadata"] = metadata_name;
   conf["nb_values"] = std::to_string(n_values);
   conf["kind"] = store_kind();
+  conf["compilation_time"] = std::string(__DATE__) + ":" + __TIME__;
 
   Config config(std::move(conf));
   config.write(configuration_path);
