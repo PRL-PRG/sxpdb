@@ -11,7 +11,7 @@
 CSVFile::CSVFile(const std::string& filename) {
   std::ifstream file(filename);
   if(!file) {
-    Rf_error("Impossible to open file ", filename.c_str(), "\n");
+    Rf_error("Impossible to open file %s \n", filename.c_str());
   }
 
   // read line by line
@@ -60,7 +60,7 @@ void CSVFile::add_row(std::vector<std::string>&& row) {
 void CSVFile::write(const std::string& filename) {
   std::ofstream file(filename,std::ofstream::out | std::ofstream::trunc);
   if(!file) {
-    Rf_error("Impossible to open for write CSV file ", filename.c_str(), "\n");
+    Rf_error("Impossible to open for write CSV file %s\n", filename.c_str());
   }
 
   for(auto& row: rows) {

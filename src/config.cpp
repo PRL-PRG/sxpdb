@@ -57,7 +57,7 @@ void Config::write(const std::string& filename) {
   std::ofstream file(filename,std::ofstream::out | std::ofstream::trunc);
 
   if(!file) {
-    Rf_error("Impossible to open for write config file ", filename.c_str(), "\n");
+    Rf_error("Impossible to open for write config file %s\n", filename.c_str());
   }
 
   for(auto& it : config) {

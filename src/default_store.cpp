@@ -366,7 +366,7 @@ bool DefaultStore::merge_in(DefaultStore& other) {
 bool DefaultStore::merge_in(Store& store) {
   DefaultStore* st = dynamic_cast<DefaultStore*>(&store);
   if(st == nullptr) {
-    Rf_warning("Cannot merge a store with kind %s with a store of kind", store_kind().c_str(), store.store_kind().c_str());
+    Rf_warning("Cannot merge a store with kind %s with a store of kind %s\n", store_kind().c_str(), store.store_kind().c_str());
     return false;
   }
 

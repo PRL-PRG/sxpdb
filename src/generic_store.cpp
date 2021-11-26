@@ -222,12 +222,12 @@ bool GenericStore::merge_in(GenericStore& other) {
       else {
         // Check they are compatible
         if(it->second.sexptype != val.second.sexptype) {
-          Rf_error("Two values with same hash with different types %s and %s",
+          Rf_error("Two values with same hash with different types %s and %s\n",
                    Rf_type2char(it->second.sexptype),
                    Rf_type2char(val.second.sexptype));
         }
         if(it->second.size != val.second.size) {
-          Rf_error("Two values with same hash with different sizes %s and %s",
+          Rf_error("Two values with same hash with different sizes %s and %s\n",
                    it->second.size,
                    val.second.size);
         }
@@ -254,7 +254,7 @@ bool GenericStore::merge_in(GenericStore& other) {
 bool GenericStore::merge_in(Store& store) {
   GenericStore* st = dynamic_cast<GenericStore*>(&store);
   if(st == nullptr) {
-    Rf_warning("Cannot merge a store with kind %s with a store of kind", store_kind().c_str(), store.store_kind().c_str());
+    Rf_warning("Cannot merge a store with kind %s with a store of kind %s\n", store_kind().c_str(), store.store_kind().c_str());
     return false;
   }
 
