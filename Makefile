@@ -26,6 +26,7 @@ test:
 
 clean_test:
 	-rm -rf tests/testthat/test_db*
+	-rm -rf tests/testthat/_snaps
 
 trace:
 	strace Rscript -e 'devtools::test()' 2> trace
