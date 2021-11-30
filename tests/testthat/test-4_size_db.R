@@ -55,24 +55,31 @@ if (T) {
         close_db(db)
     })
 
-    test_that("check s_i_size across sessions 1", {
+    test_that("check size across sessions 1", {
         db = open_db("test_db/4_size_db/size-101")
         expect_equal(size_db(db), 101)
         close_db(db)
     })
 
-    test_that("add 5000L and 5001L", {
-        db = open_db("test_db/4_size_db/size-ints")
-        add_val(db, 5000L)
-        add_val(db, 5001L)
-        expect_equal(size_db(db), 2)
+    test_that("add 102 vals and record 101", {
+        db = open_db("test_db/4_size_db/size-101-string")
+        for(i in 1:100) {
+            add_val(db, as.character(i))
+        }
+        add_val(db, c("a","b","c"))
+        expect_equal(size_db(db), 101)
+
+        add_val(db, c("a","b","c"))
+        expect_equal(size_db(db), 101)
         close_db(db)
     })
 
-    test_that("check s_i_size across sessions 2", {
-        db = open_db("test_db/4_size_db/size-ints")
-        expect_equal(size_db(db), 2)
+    test_that("check size across sessions 1", {
+        db = open_db("test_db/4_size_db/size-101-string")
+        expect_equal(size_db(db), 101)
         close_db(db)
     })
+
+
 
 }
