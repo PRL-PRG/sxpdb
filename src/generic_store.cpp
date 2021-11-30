@@ -1,5 +1,6 @@
 #include "generic_store.h"
 #include "sha1.h"
+#include "xxhash.h"
 
 #include <cassert>
 
@@ -102,11 +103,10 @@ SEXP GenericStore::get_metadata(uint64_t idx) const {
 SEXP GenericStore::get_metadata(SEXP val) const {
   const std::vector<std::byte>& buf = ser.serialize(val);
 
-  sexp_hash key;
-  sha1_context ctx;
-  sha1_starts(&ctx);
-  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
-  sha1_finish(&ctx, reinterpret_cast<uint8*>(key.data()));
+  sexp_hash key  = XXH3_128bits(buf.data(), buf.size());
+
+
+
 
   auto it = newly_seen.find(key);
 
@@ -161,13 +161,16 @@ void GenericStore::write_metadata() {
 
   meta_file.exceptions(std::fstream::failbit);
 
+  XXH128_canonical_t hash_buf;
+
   // we cannot just append the new ones, because n_calls might have changed
   // TODO: we could patch in n_calls though
   // it would require to store the offset of the metadata in the file, and then
   // seek to it to modify in place
   for(auto& it: metadata) {
     // write the hash
-    meta_file.write(it.first.data(), it.first.size());
+    meta_file.write(reinterpret_cast<const char*>(&it.first.low64), sizeof(it.first.low64));
+    meta_file.write(reinterpret_cast<const char*>(&it.first.high64), sizeof(it.first.high64));
     // And now the metadata
     meta_file.write(reinterpret_cast<char*>(&it.second.n_calls), sizeof(it.second.n_calls));
     meta_file.write(reinterpret_cast<char*>(&it.second.size), sizeof(it.second.size));
@@ -187,14 +190,15 @@ void GenericStore::load_metadata() {
   metadata.reserve(n_values);
 
   sexp_hash hash;
-  assert(hash.size() == 20);
 
   metadata_t meta;
 
   for(uint64_t i = 0; i < n_values ; i++) {
     auto pos = meta_file.tellg();
 
-    meta_file.read(hash.data(), hash.size());
+    meta_file.read(reinterpret_cast<char*>(&hash.low64), sizeof(hash.low64));
+    meta_file.read(reinterpret_cast<char*>(&hash.high64), sizeof(hash.high64));
+
     meta_file.read(reinterpret_cast<char*>(&meta.n_calls), sizeof(meta.n_calls));
     meta_file.read(reinterpret_cast<char*>(&meta.size), sizeof(meta.size));
     meta_file.read(reinterpret_cast<char*>(&meta.sexptype), sizeof(meta.sexptype));
@@ -205,7 +209,7 @@ void GenericStore::load_metadata() {
     metadata[hash] = meta;
 
     bytes_read += meta_file.tellg() - pos;
-    assert(meta_file.tellg() - pos == hash.size() + sizeof(meta.n_calls) + sizeof(meta.size) + sizeof(meta.sexptype));
+    assert(meta_file.tellg() - pos == sizeof(hash) + sizeof(meta.n_calls) + sizeof(meta.size) + sizeof(meta.sexptype));
   }
 }
 

@@ -89,8 +89,8 @@ private:
 
 
 
-  std::unordered_map<sexp_hash, std::unordered_set<location_t>, container_hasher> index;
-  std::unordered_map<sexp_hash, uint64_t,container_hasher> offsets;
+  std::unordered_map<sexp_hash, std::unordered_set<location_t>, xxh128_hasher> index;
+  std::unordered_map<sexp_hash, uint64_t,xxh128_hasher> offsets;
 
   static uint64_t inline add_name(const std::string& name, unique_names_t& unique_names, ordered_names_t& ordering);
 

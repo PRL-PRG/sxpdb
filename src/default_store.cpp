@@ -12,6 +12,7 @@
 #include <cassert>
 
 #include "sha1.h"
+#include "xxhash.h"
 
 
 DefaultStore::DefaultStore(const fs::path& config_path) :
@@ -113,8 +114,11 @@ void DefaultStore::load_index() {
   uint64_t offset = 0;
 
   for(uint64_t i = 0; i < n_values ; i++) {
-    index_file.read(hash.data(), hash.size());
+    index_file.read(reinterpret_cast<char*>(&hash.low64), sizeof(hash.low64));
+    index_file.read(reinterpret_cast<char*>(&hash.high64), sizeof(hash.high64));
+
     index_file.read(reinterpret_cast<char*>(&offset), sizeof(uint64_t));
+
     index[hash] = offset;
 
     bytes_read += 20 + sizeof(uint64_t);
@@ -128,7 +132,8 @@ void DefaultStore::write_index() {
   for(auto& it : index) {
     auto not_seen = newly_seen[it.first];
     if(not_seen) {
-      index_file.write(it.first.data(), it.first.size());
+      index_file.write(reinterpret_cast<const char*>(&it.first.low64), sizeof(it.first.low64));
+      index_file.write(reinterpret_cast<const char*>(&it.first.high64), sizeof(it.first.high64));
       index_file.write(reinterpret_cast<char*>(&it.second), sizeof(uint64_t));
       newly_seen[it.first] = false;// now written so should not be written next time
     }
@@ -193,21 +198,13 @@ sexp_hash* const DefaultStore::cached_hash(SEXP val) const {
 const sexp_hash DefaultStore::compute_hash(SEXP val) const {
   const std::vector<std::byte>& buf = ser.serialize(val);
 
-  sexp_hash ser_hash;
-  sha1_context ctx;
-  sha1_starts(&ctx);
-  sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
-  sha1_finish(&ctx, reinterpret_cast<uint8*>(ser_hash.data()));
+  sexp_hash ser_hash  = XXH3_128bits(buf.data(), buf.size());
 
   return ser_hash;
 }
 
 sexp_hash* const DefaultStore::compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const {
-    sexp_hash ser_hash;
-    sha1_context ctx;
-    sha1_starts(&ctx);
-    sha1_update(&ctx,  reinterpret_cast<uint8*>(const_cast<std::byte*>(buf.data())), buf.size());
-    sha1_finish(&ctx, reinterpret_cast<uint8*>(ser_hash.data()));
+    sexp_hash ser_hash  = XXH3_128bits(buf.data(), buf.size());
 
     auto res = sexp_adresses.insert(std::make_pair(val, ser_hash));
 

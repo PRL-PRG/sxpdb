@@ -160,7 +160,8 @@ void SourceRefs::write_index() {
 
   for(auto it : offsets) {
     // no newly_seen here, as the offset could change
-    offset_file.write(it.first.data(), it.first.size());
+    offset_file.write(reinterpret_cast<const char*>(&it.first.low64), sizeof(it.first.low64));
+    offset_file.write(reinterpret_cast<const char*>(&it.first.high64), sizeof(it.first.high64));
     offset_file.write(reinterpret_cast<char*>(&it.second), sizeof(uint64_t));
   }
 }
@@ -176,14 +177,17 @@ void SourceRefs::load_index() {
   offset_file.exceptions(std::fstream::failbit);
 
   sexp_hash hash;
-  assert(hash.size() == 20);
+
   uint64_t offset = 0;
 
   offsets.reserve(n_values);
 
   for(size_t i = 0; i < n_values ; i++) {
-    offset_file.read(hash.data(), hash.size());
+    offset_file.read(reinterpret_cast<char*>(&hash.low64), sizeof(hash.low64));
+    offset_file.read(reinterpret_cast<char*>(&hash.high64), sizeof(hash.high64));
+
     offset_file.read(reinterpret_cast<char*>(&offset), sizeof(uint64_t));
+
     offsets[hash] = offset;
   }
 

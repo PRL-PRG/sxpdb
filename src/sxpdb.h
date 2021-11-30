@@ -1,8 +1,9 @@
+#ifndef SXPDB_SXPDB_H
+#define SXPDB_SXPDB_H
+
 #define R_NO_REMAP
 #include <Rinternals.h>
 
-#ifndef SXPDB_SXPDB_H
-#define SXPDB_SXPDB_H
 
 #ifdef __cplusplus
 extern "C" {

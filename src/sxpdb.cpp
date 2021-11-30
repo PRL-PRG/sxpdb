@@ -57,10 +57,10 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
   auto hash = db->add_value(val);
 
   if(hash.first != nullptr) {
-    SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, hash.first->size()));
+    SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
     Rbyte* bytes= RAW(hash_s);
 
-    std::copy_n(hash.first->begin(), hash.first->size(),bytes);
+    XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *hash.first);
 
     UNPROTECT(1);
 
@@ -95,10 +95,10 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
     auto hash = db->add_value(val, package_name, function_name, argument_name);
 
     if(hash.first != nullptr) {
-      SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, hash.first->size()));
+      SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
       Rbyte* bytes= RAW(hash_s);
 
-      std::copy_n(hash.first->begin(), hash.first->size(),bytes);
+      XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *hash.first);
 
       UNPROTECT(1);
 
@@ -113,7 +113,7 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
   return R_NilValue;
 }
 
-SEXP add_origin_(SEXP sxpdb, const void * hash, const char* package_name, const char* function_name, const char* argument_name) {
+SEXP add_origin_(SEXP sxpdb, const void* hash, const char* package_name, const char* function_name, const char* argument_name) {
   void* ptr = R_ExternalPtrAddr(sxpdb);
   if(ptr== nullptr) {
     return R_NilValue;
@@ -170,8 +170,8 @@ SEXP add_origin(SEXP sxpdb, SEXP hash, SEXP package, SEXP function, SEXP argumen
     argument_name = CHAR(PRINTNAME(argument));// a symbol cannot be NA
   }
 
-  sexp_hash h;
-  std::copy_n(RAW(hash), h.size(), h.data());
+
+  sexp_hash h = XXH128_hashFromCanonical(reinterpret_cast<XXH128_canonical_t*>(RAW(hash)));
 
   return add_origin_(sxpdb, &h, package_name, function_name, argument_name);
 }
@@ -216,8 +216,8 @@ SEXP get_origins(SEXP sxpdb, SEXP hash_s) {
   GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
   sexp_hash hash;
-  assert(Rf_length(hash_s) == hash.size());
-  std::copy_n(RAW(hash_s), Rf_length(hash_s), hash.begin());
+  assert(Rf_length(hash_s) == sizeof(sexp_hash));
+  hash = XXH128_hashFromCanonical(reinterpret_cast<XXH128_canonical_t*>(RAW(hash_s)));
 
   auto src_locs = db->source_locations(hash);
 

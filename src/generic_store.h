@@ -19,7 +19,7 @@ private:
     std::chrono::nanoseconds first_seen_dur;
     std::chrono::nanoseconds next_seen_dur;
   };
-  std::unordered_map<sexp_hash, metadata_t, container_hasher> metadata;
+  std::unordered_map<sexp_hash, metadata_t, xxh128_hasher> metadata;
   std::shared_ptr<SourceRefs> src_locs;
 
 protected:

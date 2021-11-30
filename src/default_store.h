@@ -28,9 +28,9 @@ protected:
 
   // it means that the order in the hash map won't necessary be the order of offsets
   // it that bad because of data locality?
-  std::unordered_map<sexp_hash, uint64_t, container_hasher> index;
+  std::unordered_map<sexp_hash, uint64_t, xxh128_hasher> index;
   // new during that session or not
-  std::unordered_map<sexp_hash, bool, container_hasher> newly_seen;
+  std::unordered_map<sexp_hash, bool, xxh128_hasher> newly_seen;
 
   size_t bytes_read;
 

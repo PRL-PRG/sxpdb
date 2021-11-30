@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <memory>
+#include "store.h"
 
 // from boost::hash_combine
 void hash_combine(std::size_t& seed, std::size_t value);
@@ -19,6 +20,19 @@ struct container_hasher {
     return seed;
   }
 };
+
+struct xxh128_hasher {
+  std::size_t operator()(const sexp_hash& c) const
+  {
+    std::size_t result = 0;
+    hash_combine(result, c.low64);
+    hash_combine(result, c.high64);
+    return result;
+  }
+};
+
+bool operator==(const sexp_hash& h1, const sexp_hash& h2);
+
 
 struct unique_string_hasher {
     std::size_t operator()(const std::shared_ptr<const std::string>& c) const

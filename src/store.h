@@ -9,11 +9,13 @@
 #include <string>
 #include <chrono>
 #include <optional>
+#include "xxhash.h"
 
 namespace fs = std::filesystem;
 
 
-typedef std::array<char, 20> sexp_hash;
+//typedef std::array<char, 20> sexp_hash;
+typedef XXH128_hash_t sexp_hash;
 
 class Store {
 private:
