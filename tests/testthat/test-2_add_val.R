@@ -1,6 +1,6 @@
 if (T) {
 
-    ## Integer Section
+    ## Simple cases
 
     test_that("add simple int", {
         db = open_db("test_db/2_add_val/simple_int")
@@ -39,6 +39,16 @@ if (T) {
         expect_equal(sample_val(db), 1:10)
         close_db(db)
     })
+
+    ##  Environments
+
+    test_that("add environments", {
+        db = open_db("test_db/2_add_val/environment")
+        add_val(db, as.environment(1))
+        expect_error(sample_db(db))
+        close_db(db)
+    })
+
 
 }
 
