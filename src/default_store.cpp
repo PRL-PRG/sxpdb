@@ -17,7 +17,7 @@
 
 DefaultStore::DefaultStore(const fs::path& config_path) :
   Store(""),
-  configuration_path(config_path), bytes_read(0), ser(256),
+  configuration_path(config_path), bytes_read(0), ser(32768),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
 {
 
