@@ -3,7 +3,7 @@
 #include <cassert>
 
 
-Serializer::Serializer(size_t size) :  bytes_serialized(0), bytes_unserialized(0) {
+Serializer::Serializer(size_t size) {
   buf.reserve(size);
 }
 
@@ -15,26 +15,31 @@ void Serializer::append_byte(R_outpstream_t stream, int c)  { //add ints, not ch
 void Serializer::append_buf(R_outpstream_t stream, void *buffer, int length) {
   std::vector<std::byte>* buf = static_cast<std::vector<std::byte>*>(stream->data);
 
-  buf->reserve(buf->size() + length);
-  std::byte* cbuf = static_cast<std::byte*>(buffer);
+  /*buf->reserve(buf->size() + length);
+
+ std::byte* cbuf = static_cast<std::byte*>(buffer);
 
   for(int i = 0; i < length; i++) {
     buf->push_back(cbuf[i]);
-  }
+  }*/
+
+  std::byte* cbuf = static_cast<std::byte*>(buffer);
+
+  buf->insert(buf->end(), cbuf, cbuf+length);
 }
 
 int Serializer::get_byte(R_inpstream_t stream) {
-  read_buffer_t* rbf = static_cast<read_buffer_t*>(stream->data);
+  ReadBuffer* rbf = static_cast<ReadBuffer*>(stream->data);
 
-  return static_cast<int>(rbf->b->at(rbf->read_index++));
+  return static_cast<int>(rbf->b.at(rbf->read_index++));
 }
 
 
 void Serializer::get_buf(R_inpstream_t stream, void *buffer, int length) {
-  read_buffer_t* rbf = static_cast<read_buffer_t*>(stream->data);
+  ReadBuffer* rbf = static_cast<ReadBuffer*>(stream->data);
   std::byte* buf = static_cast<std::byte*>(buffer);
 
-  std::copy(rbf->b->begin() + rbf->read_index, rbf->b->begin() + rbf->read_index + length, buf);
+  std::copy(rbf->b.begin() + rbf->read_index, rbf->b.begin() + rbf->read_index + length, buf);
   rbf->read_index += length;
 }
 
@@ -59,8 +64,8 @@ const std::vector<std::byte>& Serializer::serialize(SEXP val) {
 SEXP Serializer::unserialize(std::vector<std::byte>& buffer) {
   R_inpstream_st in;
 
-  read_buffer.b = &buffer;
-  read_buffer.read_index = 0;
+  ReadBuffer read_buffer(buffer);
+
 
   R_InitInPStream(&in, reinterpret_cast<R_pstream_data_t>(&read_buffer),
                   R_pstream_binary_format,

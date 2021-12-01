@@ -13,13 +13,14 @@
 class Serializer {
 private:
   std::vector<std::byte> buf;
-  struct read_buffer_t {
-    std::vector<std::byte>* b;
-    size_t read_index;
-  } read_buffer;
+  struct ReadBuffer {
+    ReadBuffer(std::vector<std::byte>& v) : b(v) {}
+    std::vector<std::byte>& b;
+    size_t read_index  = 0;
+  } ;
 
-  size_t bytes_serialized;
-  size_t bytes_unserialized;
+  size_t bytes_serialized = 0;
+  size_t bytes_unserialized = 0;
 
 
   static void append_byte(R_outpstream_t stream, int c);
