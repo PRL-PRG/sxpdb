@@ -205,6 +205,7 @@ sexp_hash* const DefaultStore::cached_hash(SEXP val) const {
   }
 
   // Don't even do a lookup in that case
+  // if it is shared, then it might be copied
   if(MAYBE_SHARED(val) || RTRACE(val) == 0) {
     return nullptr;
   }
@@ -229,9 +230,7 @@ const sexp_hash DefaultStore::compute_hash(SEXP val) const {
 sexp_hash* const DefaultStore::compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const {
     sexp_hash ser_hash  = XXH3_128bits(buf.data(), buf.size());
 
-    auto res = sexp_adresses.insert(std::make_pair(val, ser_hash));
-
-    assert(res.second);
+    auto res = sexp_adresses.insert_or_assign(val, ser_hash);
 
     SET_RTRACE(val, 1);// set the tracing bit to show later that it is a value we actually touched
 
