@@ -128,3 +128,20 @@ get_origins_idx <- function(db, i) {
 view_origins_db <- function(db) {
   lapply(seq.int(0, size_db(db) - 1), function(i) as.data.frame(.Call(SXPDB_get_origins_idx, db, i)))
 }
+
+types_map <- c("NULL", "symbol", "pairlist", "closure", "environment", "promise",
+               "language", "special", "builtin", "char", "logical", "", "", "integer",
+               "real", "complex", "str", "...", "any", "list", "expression",
+               "bytecode", "externalpointer", "weakreference", "raw", "S4")
+
+#' @export
+string_sexp_type <- function(int_type) {
+  if(int_type < 0 || int_type > 25) {
+    return("")
+  }
+  else {
+    types_map[[int_type + 1]]
+  }
+}
+
+
