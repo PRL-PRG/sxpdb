@@ -43,6 +43,8 @@ protected:
   // also involves setting the tracing bit
   mutable std::unordered_map<SEXP, sexp_hash> sexp_adresses;
 
+
+
 protected:
   virtual void load_index();
   virtual void write_index();
@@ -54,6 +56,15 @@ protected:
   const sexp_hash compute_hash(SEXP val) const;
 
   sexp_hash* const compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const;
+
+// Some debuging counters
+#ifndef NDEBUG
+  struct debug_counters_t {
+    uint64_t n_maybe_shared = 0;// how many times MAYBE_SHARED(val) has been true on a SEXP that was being added
+    uint64_t n_sexp_address_opt = 0;// how many times we have been able to use the SEXP address optimization
+  };
+  std::unordered_map<sexp_hash, debug_counters_t, xxh128_hasher> debug_counters;
+#endif
 
 public:
   DefaultStore(const fs::path& description_name);

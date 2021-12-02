@@ -110,7 +110,6 @@ bool DefaultStore::load() {
 void DefaultStore::load_index() {
   index.reserve(n_values);
   sexp_hash hash;
-  assert(hash.size() == 20);
   uint64_t offset = 0;
 
   for(uint64_t i = 0; i < n_values ; i++) {
@@ -144,11 +143,30 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
   sexp_hash* key = cached_hash(val);
   const std::vector<std::byte>*  buf = nullptr;
 
+#ifndef NDEBUG
+  bool sexp_address_optim = key != nullptr;
+#endif
+
   if(key == nullptr) {
     const std::vector<std::byte>& buffer = ser.serialize(val);
     key = compute_cached_hash(val, buffer);
     buf= &buffer;
   }
+
+#ifndef NDEBUG
+  auto debug_it = debug_counters.find(*key);
+  if(debug_it != debug_counters.end()) {
+    debug_it->second.n_maybe_shared += MAYBE_SHARED(val) > 0;
+    debug_it->second.n_sexp_address_opt += sexp_address_optim;
+  }
+  else {
+    debug_counters_t d_counters;
+    d_counters.n_maybe_shared = MAYBE_SHARED(val) > 0;
+    d_counters.n_sexp_address_opt = sexp_address_optim;
+    debug_counters.insert(std::make_pair(*key, d_counters));
+  }
+#endif
+
 
   auto it = index.find(*key);
   if(it == index.end()) { // the value is not in the database
@@ -183,6 +201,11 @@ sexp_hash* const DefaultStore::cached_hash(SEXP val) const {
   // Check if we already know the address of that SEXP
   // R has copy semantics except for environments
   if(TYPEOF(val) == ENVSXP) {
+    return nullptr;
+  }
+
+  // Don't even do a lookup in that case
+  if(MAYBE_SHARED(val) || RTRACE(val) == 0) {
     return nullptr;
   }
 

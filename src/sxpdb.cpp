@@ -221,7 +221,7 @@ SEXP get_origins(SEXP sxpdb, SEXP hash_s) {
 
   auto src_locs = db->source_locations(hash);
 
-  const char*names[] = {"package", "function", "argument", ""};
+  const char*names[] = {"pkg", "fun", "param", ""};
   SEXP origs = PROTECT(Rf_mkNamed(VECSXP, names));
 
   SEXP packages = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
@@ -268,7 +268,7 @@ SEXP get_origins_idx(SEXP sxpdb, SEXP idx) {
 
   auto src_locs = db->source_locations(Rf_asInteger(idx));
 
-  const char*names[] = {"package", "function", "argument", ""};
+  const char*names[] = {"pkg", "fun", "param", ""};
   SEXP origs = PROTECT(Rf_mkNamed(VECSXP, names));
 
   SEXP packages = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
