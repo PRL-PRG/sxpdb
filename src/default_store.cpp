@@ -214,7 +214,7 @@ sexp_hash* const DefaultStore::cached_hash(SEXP val) const {
 
   auto it = sexp_adresses.find(val);
 
-  if(it != sexp_adresses.end() && RTRACE(val)) {
+  if(it != sexp_adresses.end()) {
     return &it->second;
   }
 

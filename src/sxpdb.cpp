@@ -3,6 +3,7 @@
 #include "global_store.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <cassert>
 
 #define EMPTY_ORIGIN_PART ""
@@ -390,4 +391,22 @@ SEXP get_meta_idx(SEXP sxpdb, SEXP idx) {
   return db->get_metadata(Rf_asInteger(idx));
 }
 
+
+SEXP path_db(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  // This returns the path of the description file
+  // so we just need to get the dirname
+  auto path = std::filesystem::absolute(db->description_path().parent_path());
+
+  SEXP res = PROTECT(Rf_mkString(path.c_str()));
+
+  UNPROTECT(1);
+
+  return res;
+}
 

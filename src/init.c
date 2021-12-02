@@ -17,14 +17,15 @@ static const R_CallMethodDef callMethods[] = {
 	{"add_val_origin",  (DL_FUNC) &add_val_origin,	5},
 	{"add_origin",      (DL_FUNC) &add_origin,      5},
 	{"have_seen",				(DL_FUNC) &have_seen,				2},
-	{"sample_val",				(DL_FUNC) &sample_val,				1},
+	{"sample_val",				(DL_FUNC) &sample_val,		1},
 	{"get_val",					(DL_FUNC) &get_val,					2},
-	{"merge_db",					(DL_FUNC) &merge_db,					2},
-	{"size_db",           (DL_FUNC) &size_db,					1},
+	{"merge_db",					(DL_FUNC) &merge_db,			2},
+	{"size_db",           (DL_FUNC) &size_db,			  1},
 	{"get_meta",        (DL_FUNC) &get_meta,        2},
-	{"get_meta_idx",   (DL_FUNC) &get_meta_idx,        2},
-	{"get_origins",    (DL_FUNC) &get_origins,        2},
-	{"get_origins_idx",    (DL_FUNC) &get_origins_idx,        2},
+	{"get_meta_idx",   (DL_FUNC) &get_meta_idx,     2},
+	{"get_origins",    (DL_FUNC) &get_origins,      2},
+	{"get_origins_idx", (DL_FUNC) &get_origins_idx, 2},
+	{"path_db",         (DL_FUNC) &path_db,         1},
 
 	// Must have at the end
 	{NULL,						NULL,								0}

@@ -150,6 +150,14 @@ SEXP add_origin_(SEXP sxpdb, const void* hash, const char* package_name, const c
 
 SEXP add_origin(SEXP sxpdb, SEXP hash, SEXP package, SEXP function, SEXP argument);
 
+/**
+ * Gives the path to the directory of the database
+ * @method path_db
+ * @param sxpdb external pointer to the target database
+ * @return character path to the database
+ */
+SEXP path_db(SEXP sxpdb);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

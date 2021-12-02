@@ -129,6 +129,13 @@ view_origins_db <- function(db) {
   lapply(seq.int(0, size_db(db) - 1), function(i) as.data.frame(.Call(SXPDB_get_origins_idx, db, i)))
 }
 
+#' @export
+path_db <- function(db) {
+  .Call(SXPDB_path_db, db)
+}
+
+## Utilities
+
 types_map <- c("NULL", "symbol", "pairlist", "closure", "environment", "promise",
                "language", "special", "builtin", "char", "logical", "", "", "integer",
                "real", "complex", "str", "...", "any", "list", "expression",
