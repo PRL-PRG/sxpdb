@@ -57,6 +57,10 @@ protected:
 
   sexp_hash* const compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const;
 
+  // if we see a value, it means it was passed as an argumen of a function call
+  // to its refcount has been incremented anyway.
+  static inline const bool maybe_shared(SEXP val) { return REFCNT(val) - 1 > 1; }
+
 // Some debuging counters
 #ifndef NDEBUG
   struct debug_counters_t {

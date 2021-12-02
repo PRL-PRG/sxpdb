@@ -156,12 +156,12 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
 #ifndef NDEBUG
   auto debug_it = debug_counters.find(*key);
   if(debug_it != debug_counters.end()) {
-    debug_it->second.n_maybe_shared += MAYBE_SHARED(val) > 0;
+    debug_it->second.n_maybe_shared += maybe_shared(val) > 0;
     debug_it->second.n_sexp_address_opt += sexp_address_optim;
   }
   else {
     debug_counters_t d_counters;
-    d_counters.n_maybe_shared = MAYBE_SHARED(val) > 0;
+    d_counters.n_maybe_shared = maybe_shared(val) > 0;
     d_counters.n_sexp_address_opt = sexp_address_optim;
     debug_counters.insert(std::make_pair(*key, d_counters));
   }
@@ -205,8 +205,10 @@ sexp_hash* const DefaultStore::cached_hash(SEXP val) const {
   }
 
   // Don't even do a lookup in that case
-  // if it is shared, then it might be copied
-  if(MAYBE_SHARED(val) || RTRACE(val) == 0) {
+  // if the tracing bit is not set, we have not seen the value for sure
+  // if the value is not shared, then its content can be modified in place
+  // so we should hash the value again anyway
+  if(!maybe_shared(val) || RTRACE(val) == 0 ) {
     return nullptr;
   }
 
