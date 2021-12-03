@@ -156,12 +156,12 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
 #ifndef NDEBUG
   auto debug_it = debug_counters.find(*key);
   if(debug_it != debug_counters.end()) {
-    debug_it->second.n_maybe_shared += maybe_shared(val) > 0;
+    debug_it->second.n_maybe_shared += maybe_shared(val);
     debug_it->second.n_sexp_address_opt += sexp_address_optim;
   }
   else {
     debug_counters_t d_counters;
-    d_counters.n_maybe_shared = maybe_shared(val) > 0;
+    d_counters.n_maybe_shared = maybe_shared(val);
     d_counters.n_sexp_address_opt = sexp_address_optim;
     debug_counters.insert(std::make_pair(*key, d_counters));
   }
