@@ -191,8 +191,8 @@ void SourceRefs::load_index() {
     offsets[hash] = offset;
   }
 
+  assert(offset_file.tellg() == 0 || offsets.size() > 0);
   offset_file.close();
-  assert(offsets.size() > 0);
 
 
   // Now read the source location indices from the index

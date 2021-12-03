@@ -78,8 +78,17 @@ SEXP GenericStore::get_metadata(uint64_t idx) const {
 
   const metadata_t& meta = it2->second;
 
+#ifndef NDEBUG
+  auto it_dbg = debug_counters.find(key);
+  assert(it_dbg != debug_counters.end());
+  const debug_counters_t& debug_cnts = it_dbg->second;
+#endif
+
 #ifdef SXPDB_TIMER_SER_HASH
-  const char*names[] = {"newly_seen", "size", "n", "type", "first_seen_dur", "next_seen_dur", "n_merges", ""};
+  const char*names[] = {"newly_seen", "size", "n", "type", "first_seen_dur",
+                        "next_seen_dur", "n_merges",""};
+#elif !defined(NDEBUG)
+  const char*names[] = {"newly_seen", "size", "n", "type", "n_merges", "maybe_shared", "sexp_adr_optim", ""};
 #else
   const char*names[] = {"newly_seen", "size", "n", "type",  "n_merges", ""};
 #endif
@@ -108,13 +117,20 @@ SEXP GenericStore::get_metadata(uint64_t idx) const {
   SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
   SET_VECTOR_ELT(res, 6, n_merges);
 #else
-
   SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
   SET_VECTOR_ELT(res, 4, n_merges);
 #endif
 
+#if !defined(NDEBUG) && !defined(SXPDB_TIMER_SER_HASH)
+  SEXP n_maybe_shared = PROTECT(Rf_ScalarInteger(debug_cnts.n_maybe_shared));
+  SET_VECTOR_ELT(res, 5, n_maybe_shared);
 
-#ifdef SXPDB_TIMER_SER_HASH
+  SEXP n_sexp_adr_optim = PROTECT(Rf_ScalarInteger(debug_cnts.n_sexp_address_opt));
+  SET_VECTOR_ELT(res, 6, n_sexp_adr_optim);
+#endif
+
+
+#if defined(SXPDB_TIMER_SER_HASH) || !defined(NDEBUG)
   UNPROTECT(8);
 #else
   UNPROTECT(6);
@@ -147,8 +163,17 @@ SEXP GenericStore::get_metadata(SEXP val) const {
 
   const metadata_t& meta = it2->second;
 
+#ifndef NDEBUG
+  auto it_dbg = debug_counters.find(key);
+  assert(it_dbg != debug_counters.end());
+  const debug_counters_t& debug_cnts = it_dbg->second;
+#endif
+
 #ifdef SXPDB_TIMER_SER_HASH
-  const char*names[] = {"newly_seen", "size", "n", "type", "first_seen_dur", "next_seen_dur", "n_merges", ""};
+  const char*names[] = {"newly_seen", "size", "n", "type", "first_seen_dur",
+                        "next_seen_dur", "n_merges",""};
+#elif !defined(NDEBUG)
+  const char*names[] = {"newly_seen", "size", "n", "type", "n_merges", "maybe_shared", "sexp_adr_optim", ""};
 #else
   const char*names[] = {"newly_seen", "size", "n", "type",  "n_merges", ""};
 #endif
@@ -177,13 +202,20 @@ SEXP GenericStore::get_metadata(SEXP val) const {
   SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
   SET_VECTOR_ELT(res, 6, n_merges);
 #else
-
   SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
   SET_VECTOR_ELT(res, 4, n_merges);
 #endif
 
+#if !defined(NDEBUG) && !defined(SXPDB_TIMER_SER_HASH)
+  SEXP n_maybe_shared = PROTECT(Rf_ScalarInteger(debug_cnts.n_maybe_shared));
+  SET_VECTOR_ELT(res, 5, n_maybe_shared);
 
-#ifdef SXPDB_TIMER_SER_HASH
+  SEXP n_sexp_adr_optim = PROTECT(Rf_ScalarInteger(debug_cnts.n_sexp_address_opt));
+  SET_VECTOR_ELT(res, 6, n_sexp_adr_optim);
+#endif
+
+
+#if defined(SXPDB_TIMER_SER_HASH) || !defined(NDEBUG)
   UNPROTECT(8);
 #else
   UNPROTECT(6);
@@ -213,11 +245,15 @@ void GenericStore::write_metadata() {
     meta_file.write(reinterpret_cast<char*>(&it.second.n_calls), sizeof(it.second.n_calls));
     meta_file.write(reinterpret_cast<char*>(&it.second.size), sizeof(it.second.size));
     meta_file.write(reinterpret_cast<char*>(&it.second.sexptype), sizeof(it.second.sexptype));
+    meta_file.write(reinterpret_cast<char*>(&it.second.n_merges), sizeof(it.second.n_merges));
 #ifdef SXPDB_TIMER_SER_HASH
     meta_file.write(reinterpret_cast<char*>(&it.second.first_seen_dur), sizeof(it.second.first_seen_dur));
     meta_file.write(reinterpret_cast<char*>(&it.second.next_seen_dur), sizeof(it.second.next_seen_dur));
+#elif !defined(NDEBUG)
+    auto debug_cnts = debug_counters[it.first];
+    meta_file.write(reinterpret_cast<char*>(&debug_cnts.n_maybe_shared), sizeof(debug_cnts.n_maybe_shared));
+    meta_file.write(reinterpret_cast<char*>(&debug_cnts.n_sexp_address_opt), sizeof(debug_cnts.n_sexp_address_opt));
 #endif
-    meta_file.write(reinterpret_cast<char*>(&it.second.n_merges), sizeof(it.second.n_merges));
   }
 }
 
@@ -233,6 +269,10 @@ void GenericStore::load_metadata() {
 
   metadata_t meta;
 
+#ifndef NDEBUG
+  debug_counters_t debug_cnts;
+#endif
+
   for(uint64_t i = 0; i < n_values ; i++) {
     auto pos = meta_file.tellg();
 
@@ -242,16 +282,20 @@ void GenericStore::load_metadata() {
     meta_file.read(reinterpret_cast<char*>(&meta.n_calls), sizeof(meta.n_calls));
     meta_file.read(reinterpret_cast<char*>(&meta.size), sizeof(meta.size));
     meta_file.read(reinterpret_cast<char*>(&meta.sexptype), sizeof(meta.sexptype));
+    meta_file.read(reinterpret_cast<char*>(&meta.n_merges), sizeof(meta.n_merges));
 #ifdef SXPDB_TIMER_SER_HASH
     meta_file.read(reinterpret_cast<char*>(&meta.first_seen_dur), sizeof(meta.first_seen_dur));
     meta_file.read(reinterpret_cast<char*>(&meta.next_seen_dur), sizeof(meta.next_seen_dur));
+#elif !defined(NDEBUG)
+    meta_file.read(reinterpret_cast<char*>(&debug_cnts.n_maybe_shared), sizeof(debug_cnts.n_maybe_shared));
+    meta_file.read(reinterpret_cast<char*>(&debug_cnts.n_sexp_address_opt), sizeof(debug_cnts.n_sexp_address_opt));
+    debug_counters[hash] = debug_cnts;
 #endif
-    meta_file.read(reinterpret_cast<char*>(&meta.n_merges), sizeof(meta.n_merges));
 
     metadata[hash] = meta;
 
     bytes_read += meta_file.tellg() - pos;
-    assert(meta_file.tellg() - pos == sizeof(hash) + sizeof(meta.n_calls) + sizeof(meta.size) + sizeof(meta.sexptype));
+    //assert(meta_file.tellg() - pos == sizeof(hash) + sizeof(meta.n_calls) + sizeof(meta.size) + sizeof(meta.sexptype));
   }
 }
 

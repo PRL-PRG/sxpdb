@@ -15,6 +15,8 @@ private:
     uint64_t n_calls;
     SEXPTYPE sexptype;
     uint64_t size;
+    uint64_t length;
+    uint64_t n_attributes;
     uint32_t n_merges;
 #ifdef SXPDB_TIMER_SER_HASH
     std::chrono::nanoseconds first_seen_dur;
