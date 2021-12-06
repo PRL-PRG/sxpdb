@@ -5,8 +5,14 @@
 #include <memory>
 #include "store.h"
 
+
 // from boost::hash_combine
-void hash_combine(std::size_t& seed, std::size_t value);
+inline void hash_combine(std::size_t& seed, std::size_t value) {
+  seed ^= value + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
+
+
 
 
 // TODO: make it work for more complex values (when elem is a pair for instance)
@@ -31,7 +37,10 @@ struct xxh128_hasher {
   }
 };
 
-bool operator==(const sexp_hash& h1, const sexp_hash& h2);
+inline bool operator==(const sexp_hash& h1, const sexp_hash& h2)
+{
+  return XXH128_isEqual(h1, h2);
+}
 
 
 struct unique_string_hasher {

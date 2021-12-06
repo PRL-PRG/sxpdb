@@ -60,7 +60,7 @@ GlobalStore::GlobalStore(const std::string& filename) :
     }
   }
   else {
-    Rf_warning("Configuration file does not exist. Creating new database %s\n", filename.c_str());
+    Rprintf("Configuration file does not exist. Creating new database %s\n", filename.c_str());
 
     create();
   }
