@@ -72,9 +72,11 @@ SEXP Serializer::unserialize(std::vector<std::byte>& buffer) {
                   get_byte, get_buf,
                   NULL, R_NilValue);
 
+  SEXP res = R_Unserialize(&in);
+
   assert(read_buffer.read_index == buffer.size());
 
   bytes_unserialized += buffer.size();
 
-  return R_Unserialize(&in);
+  return res;
 }
