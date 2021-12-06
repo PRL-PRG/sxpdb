@@ -50,6 +50,8 @@ std::pair<const sexp_hash*, bool> GenericStore::add_value(SEXP val) {
     meta.n_calls = 1;
     meta.size = ser.current_buf_size();
     meta.sexptype = TYPEOF(val);
+    meta.length = Rf_length(val);
+    meta.n_attributes = Rf_length(ATTRIB(val));
 #ifdef SXPDB_TIMER_SER_HASH
     meta.first_seen_dur = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
     meta.next_seen_dur =  std::chrono::nanoseconds::zero();
