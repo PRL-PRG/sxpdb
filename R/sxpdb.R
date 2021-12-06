@@ -101,14 +101,14 @@ view_db <- function(db) {
 	if(size_db(db) == 0) {
 		viewer <- list()
 	} else {
-		viewer <- lapply(seq.lent(size_db(db)) - 1, function(i) .Call(SXPDB_get_val, db, i))
+		viewer <- lapply(seq.len(size_db(db)) - 1, function(i) .Call(SXPDB_get_val, db, i))
 	}
 	viewer
 }
 
 #' @export
 view_meta_db <- function(db) {
-  do.call(rbind.data.frame, lapply(seq.lent(size_db(db)) - 1, function(i) as.data.frame(.Call(SXPDB_get_meta_idx, db, i))))
+  do.call(rbind.data.frame, lapply(seq.len(size_db(db)) - 1, function(i) as.data.frame(.Call(SXPDB_get_meta_idx, db, i))))
 }
 
 
