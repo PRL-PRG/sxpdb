@@ -43,16 +43,39 @@ void Serializer::get_buf(R_inpstream_t stream, void *buffer, int length) {
   rbf->read_index += length;
 }
 
+SEXP Serializer::refhook_write(SEXP val, SEXP data) {
+  if(TYPEOF(val) != ENVSXP) {
+    return R_NilValue;//it means that R will serialize the value as usual
+  }
+
+  // We just do not serialize the environment and return a blank string
+  return R_BlankScalarString;
+}
+
+SEXP Serializer::refhook_read(SEXP val, SEXP data) {
+  if(CHAR(STRING_ELT(val, 0))[0] != '\0') {
+    Rf_error("Uncorrect serialization of environment. Should have been erased, got %s\n", CHAR(STRING_ELT(val, 0)));
+  }
+
+  return R_EmptyEnv;// Or put a marker?
+}
+
 
 const std::vector<std::byte>& Serializer::serialize(SEXP val) {
   buf.clear();//hopefully, it keeps the capacity as it was
   R_outpstream_st out;
 
-
+#ifndef KEEP_ENVIRONMENTS
+  R_InitOutPStream(&out, reinterpret_cast<R_pstream_data_t>(&buf),
+                   R_pstream_binary_format, 3,
+                   append_byte, append_buf,
+                   refhook_write, R_NilValue);
+#else
   R_InitOutPStream(&out, reinterpret_cast<R_pstream_data_t>(&buf),
                    R_pstream_binary_format, 3,
                    append_byte, append_buf,
                    NULL, R_NilValue);
+#endif
 
   R_Serialize(val, &out);
   bytes_serialized += buf.size();
@@ -70,7 +93,7 @@ SEXP Serializer::unserialize(std::vector<std::byte>& buffer) {
   R_InitInPStream(&in, reinterpret_cast<R_pstream_data_t>(&read_buffer),
                   R_pstream_binary_format,
                   get_byte, get_buf,
-                  NULL, R_NilValue);
+                  refhook_read, R_NilValue);
 
   SEXP res = R_Unserialize(&in);
 

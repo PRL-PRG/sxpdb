@@ -28,6 +28,13 @@ private:
   static int get_byte(R_inpstream_t stream);
   static void get_buf(R_inpstream_t stream, void *buf, int length);
 
+  //SEXP is a pointer to SEXPREC
+  // We do not want here to build an external pointer so we will abuse it
+  // and cast a good pointer to what we need
+  // The R code from serialize.c does not access any field of it anyway
+  static SEXP refhook_write(SEXP val, SEXP data);
+  static SEXP refhook_read(SEXP val, SEXP data);
+
 public:
   Serializer(size_t size);
 
