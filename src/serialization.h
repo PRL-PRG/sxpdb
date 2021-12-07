@@ -32,6 +32,11 @@ private:
   // We do not want here to build an external pointer so we will abuse it
   // and cast a good pointer to what we need
   // The R code from serialize.c does not access any field of it anyway
+  // Several strategies:
+  // - just serialize them out and return the empty environment when unserializing
+  // - keep only one environment per value (the first one in the recursive traversal)
+  // - keep only the small environments (in number of elements)
+  // - record all environments but implement sharing of the environments
   static SEXP refhook_write(SEXP val, SEXP data);
   static SEXP refhook_read(SEXP val, SEXP data);
 

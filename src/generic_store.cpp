@@ -80,6 +80,7 @@ SEXP GenericStore::get_metadata(uint64_t idx) const {
 
   const metadata_t& meta = it2->second;
 
+
 #ifndef NDEBUG
   auto it_dbg = debug_counters.find(key);
   assert(it_dbg != debug_counters.end());
@@ -87,12 +88,12 @@ SEXP GenericStore::get_metadata(uint64_t idx) const {
 #endif
 
 #ifdef SXPDB_TIMER_SER_HASH
-  const char*names[] = {"newly_seen", "size", "n", "type", "first_seen_dur",
+  const char*names[] = {"newly_seen", "size", "n", "type", "length", "n_attributes", "first_seen_dur",
                         "next_seen_dur", "n_merges",""};
 #elif !defined(NDEBUG)
-  const char*names[] = {"newly_seen", "size", "n", "type", "n_merges", "maybe_shared", "sexp_adr_optim", ""};
+  const char*names[] = {"newly_seen", "size", "n", "type", "length", "n_attributes", "n_merges", "maybe_shared", "sexp_adr_optim", ""};
 #else
-  const char*names[] = {"newly_seen", "size", "n", "type",  "n_merges", ""};
+  const char*names[] = {"newly_seen", "size", "n", "type",  "length", "n_attributes", "n_merges", ""};
 #endif
 
   SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
@@ -109,33 +110,39 @@ SEXP GenericStore::get_metadata(uint64_t idx) const {
   SEXP s_type = PROTECT(Rf_ScalarInteger(meta.sexptype));
   SET_VECTOR_ELT(res, 3, s_type);
 
+  SEXP s_length = PROTECT(Rf_ScalarInteger(meta.length));
+  SET_VECTOR_ELT(res, 4, s_length);
+
+  SEXP s_n_attrs = PROTECT(Rf_ScalarInteger(meta.n_attributes));
+  SET_VECTOR_ELT(res, 5, s_n_attrs);
+
 #ifdef SXPDB_TIMER_SER_HASH
   SEXP first_seen_dur = PROTECT(Rf_ScalarInteger(meta.first_seen_dur.count()));
-  SET_VECTOR_ELT(res, 4, first_seen_dur);
+  SET_VECTOR_ELT(res, 6, first_seen_dur);
 
   SEXP next_seen_dur = PROTECT(Rf_ScalarInteger(meta.next_seen_dur.count()));
-  SET_VECTOR_ELT(res, 5, next_seen_dur);
+  SET_VECTOR_ELT(res, 7, next_seen_dur);
 
   SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
-  SET_VECTOR_ELT(res, 6, n_merges);
+  SET_VECTOR_ELT(res, 8, n_merges);
 #else
   SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
-  SET_VECTOR_ELT(res, 4, n_merges);
+  SET_VECTOR_ELT(res, 6, n_merges);
 #endif
 
 #if !defined(NDEBUG) && !defined(SXPDB_TIMER_SER_HASH)
   SEXP n_maybe_shared = PROTECT(Rf_ScalarInteger(debug_cnts.n_maybe_shared));
-  SET_VECTOR_ELT(res, 5, n_maybe_shared);
+  SET_VECTOR_ELT(res, 7, n_maybe_shared);
 
   SEXP n_sexp_adr_optim = PROTECT(Rf_ScalarInteger(debug_cnts.n_sexp_address_opt));
-  SET_VECTOR_ELT(res, 6, n_sexp_adr_optim);
+  SET_VECTOR_ELT(res, 8, n_sexp_adr_optim);
 #endif
 
 
 #if defined(SXPDB_TIMER_SER_HASH) || !defined(NDEBUG)
-  UNPROTECT(8);
+  UNPROTECT(10);
 #else
-  UNPROTECT(6);
+  UNPROTECT(8);
 #endif
 
   return res;
@@ -172,12 +179,12 @@ SEXP GenericStore::get_metadata(SEXP val) const {
 #endif
 
 #ifdef SXPDB_TIMER_SER_HASH
-  const char*names[] = {"newly_seen", "size", "n", "type", "first_seen_dur",
+  const char*names[] = {"newly_seen", "size", "n", "type", "length", "n_attributes", "first_seen_dur",
                         "next_seen_dur", "n_merges",""};
 #elif !defined(NDEBUG)
-  const char*names[] = {"newly_seen", "size", "n", "type", "n_merges", "maybe_shared", "sexp_adr_optim", ""};
+  const char*names[] = {"newly_seen", "size", "n", "type", "length", "n_attributes", "n_merges", "maybe_shared", "sexp_adr_optim", ""};
 #else
-  const char*names[] = {"newly_seen", "size", "n", "type",  "n_merges", ""};
+  const char*names[] = {"newly_seen", "size", "n", "type",  "length", "n_attributes", "n_merges", ""};
 #endif
 
   SEXP res = PROTECT(Rf_mkNamed(VECSXP, names));
@@ -194,33 +201,39 @@ SEXP GenericStore::get_metadata(SEXP val) const {
   SEXP s_type = PROTECT(Rf_ScalarInteger(meta.sexptype));
   SET_VECTOR_ELT(res, 3, s_type);
 
+  SEXP s_length = PROTECT(Rf_ScalarInteger(meta.length));
+  SET_VECTOR_ELT(res, 4, s_length);
+
+  SEXP s_n_attrs = PROTECT(Rf_ScalarInteger(meta.n_attributes));
+  SET_VECTOR_ELT(res, 5, s_n_attrs);
+
 #ifdef SXPDB_TIMER_SER_HASH
   SEXP first_seen_dur = PROTECT(Rf_ScalarInteger(meta.first_seen_dur.count()));
-  SET_VECTOR_ELT(res, 4, first_seen_dur);
+  SET_VECTOR_ELT(res, 6, first_seen_dur);
 
   SEXP next_seen_dur = PROTECT(Rf_ScalarInteger(meta.next_seen_dur.count()));
-  SET_VECTOR_ELT(res, 5, next_seen_dur);
+  SET_VECTOR_ELT(res, 7, next_seen_dur);
 
   SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
-  SET_VECTOR_ELT(res, 6, n_merges);
+  SET_VECTOR_ELT(res, 8, n_merges);
 #else
   SEXP n_merges = PROTECT(Rf_ScalarInteger(meta.n_merges));
-  SET_VECTOR_ELT(res, 4, n_merges);
+  SET_VECTOR_ELT(res, 6, n_merges);
 #endif
 
 #if !defined(NDEBUG) && !defined(SXPDB_TIMER_SER_HASH)
   SEXP n_maybe_shared = PROTECT(Rf_ScalarInteger(debug_cnts.n_maybe_shared));
-  SET_VECTOR_ELT(res, 5, n_maybe_shared);
+  SET_VECTOR_ELT(res, 7, n_maybe_shared);
 
   SEXP n_sexp_adr_optim = PROTECT(Rf_ScalarInteger(debug_cnts.n_sexp_address_opt));
-  SET_VECTOR_ELT(res, 6, n_sexp_adr_optim);
+  SET_VECTOR_ELT(res, 8, n_sexp_adr_optim);
 #endif
 
 
 #if defined(SXPDB_TIMER_SER_HASH) || !defined(NDEBUG)
-  UNPROTECT(8);
+  UNPROTECT(10);
 #else
-  UNPROTECT(6);
+  UNPROTECT(8);
 #endif
 
   return res;
@@ -247,6 +260,8 @@ void GenericStore::write_metadata() {
     meta_file.write(reinterpret_cast<char*>(&it.second.n_calls), sizeof(it.second.n_calls));
     meta_file.write(reinterpret_cast<char*>(&it.second.size), sizeof(it.second.size));
     meta_file.write(reinterpret_cast<char*>(&it.second.sexptype), sizeof(it.second.sexptype));
+    meta_file.write(reinterpret_cast<char*>(&it.second.length), sizeof(it.second.length));
+    meta_file.write(reinterpret_cast<char*>(&it.second.n_attributes), sizeof(it.second.n_attributes));
     meta_file.write(reinterpret_cast<char*>(&it.second.n_merges), sizeof(it.second.n_merges));
 #ifdef SXPDB_TIMER_SER_HASH
     meta_file.write(reinterpret_cast<char*>(&it.second.first_seen_dur), sizeof(it.second.first_seen_dur));
@@ -284,6 +299,8 @@ void GenericStore::load_metadata() {
     meta_file.read(reinterpret_cast<char*>(&meta.n_calls), sizeof(meta.n_calls));
     meta_file.read(reinterpret_cast<char*>(&meta.size), sizeof(meta.size));
     meta_file.read(reinterpret_cast<char*>(&meta.sexptype), sizeof(meta.sexptype));
+    meta_file.read(reinterpret_cast<char*>(&meta.length), sizeof(meta.length));
+    meta_file.read(reinterpret_cast<char*>(&meta.n_attributes), sizeof(meta.n_attributes));
     meta_file.read(reinterpret_cast<char*>(&meta.n_merges), sizeof(meta.n_merges));
 #ifdef SXPDB_TIMER_SER_HASH
     meta_file.read(reinterpret_cast<char*>(&meta.first_seen_dur), sizeof(meta.first_seen_dur));
@@ -319,9 +336,19 @@ bool GenericStore::merge_in(GenericStore& other) {
                    Rf_type2char(val.second.sexptype));
         }
         if(it->second.size != val.second.size) {
-          Rf_error("Two values with same hash with different sizes %s and %s\n",
+          Rf_error("Two values with same hash with different sizes %ld and %ld\n",
                    it->second.size,
                    val.second.size);
+        }
+        if(it->second.length != val.second.length) {
+          Rf_error("Two values with same hash with different lengths %ld and %ld\n",
+                   it->second.length,
+                   val.second.length);
+        }
+        if(it->second.n_attributes != val.second.n_attributes) {
+          Rf_error("Two values with same hash with different number of attributes %ld and %ld\n",
+                   it->second.n_attributes,
+                   val.second.n_attributes);
         }
 
         // update the number of calls
@@ -382,6 +409,18 @@ const std::vector<size_t> GenericStore::check() {
         if(buf.size() != meta.size) {
           Rf_warning("Sizes do not match for value with hash low: %ld, high: %ld: %ld versus %ld\n",
                      it.first.low64, it.first.high64, buf.size(), meta.size);
+          error= true;
+        }
+
+        if(Rf_length(val) != meta.length) {
+          Rf_warning("Lengths do not match for value with hash low: %ld, high: %ld: %ld versus %ld\n",
+                     it.first.low64, it.first.high64, Rf_length(val), meta.length);
+          error= true;
+        }
+
+        if(Rf_length(ATTRIB(val)) != meta.length) {
+          Rf_warning("Number of attributes do not match for value with hash low: %ld, high: %ld: %ld versus %ld\n",
+                     it.first.low64, it.first.high64, Rf_length(ATTRIB(val)), meta.n_attributes);
           error= true;
         }
 
