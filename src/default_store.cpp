@@ -332,6 +332,29 @@ SEXP DefaultStore::get_value(uint64_t idx) {
   return ser.unserialize(buf);
 }
 
+const std::vector<size_t> DefaultStore::check() {
+  std::vector<std::byte> buf;
+  buf.reserve(128); // the minimum serialized size is about 35 bytes.
+  for(auto it : index) {
+    uint64_t offset = it.second;
+
+    store_file.seekg(offset);
+    uint64_t size = 0;
+    store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+    assert(size> 0);
+
+    buf.resize(size);
+    store_file.read(reinterpret_cast<char*>(buf.data()), size);
+
+    // Try to unserialize
+    // TODO: wrap it in a tryCatch...
+    SEXP val = ser.unserialize(buf);
+
+  }
+
+  return std::vector<size_t>();
+}
+
 const sexp_hash& DefaultStore::get_hash(uint64_t idx) const {
   auto it = index.begin();
   std::advance(it, idx);

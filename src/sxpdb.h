@@ -158,6 +158,14 @@ SEXP add_origin(SEXP sxpdb, SEXP hash, SEXP package, SEXP function, SEXP argumen
  */
 SEXP path_db(SEXP sxpdb);
 
+/**
+ * Check the database
+ * @method path_db
+ * @param sxpdb external pointer to the target database
+ * @return integer vector of indices to values with problems
+ */
+SEXP check_db(SEXP sxpdb);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

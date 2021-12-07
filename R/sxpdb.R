@@ -134,6 +134,12 @@ path_db <- function(db) {
   .Call(SXPDB_path_db, db)
 }
 
+#' @export
+check_db <- function(db) {
+  .Call(SXPDB_check_db, db)
+}
+
+
 ## Utilities
 
 types_map <- c("NULL", "symbol", "pairlist", "closure", "environment", "promise",

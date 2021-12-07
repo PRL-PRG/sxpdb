@@ -41,6 +41,7 @@ public:
   virtual SEXP get_metadata(SEXP val) const;
   virtual SEXP get_metadata(uint64_t idx) const;
 
+  virtual const std::vector<size_t> check();
 
   virtual ~GenericStore();
 };

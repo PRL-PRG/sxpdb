@@ -97,6 +97,8 @@ public:
   virtual SEXP get_metadata(SEXP val) const;
   virtual SEXP get_metadata(uint64_t index) const;
 
+  virtual const std::vector<size_t> check();
+
   // Pass it a Description and a Distribution that precises what kind of values
   // we want
   virtual SEXP sample_value(); // attach metadata to an attribute?

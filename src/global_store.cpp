@@ -256,6 +256,25 @@ const sexp_hash& GlobalStore::get_hash(uint64_t index) const {
   return stores[store_index]->get_hash(index_in_store);
 }
 
+const std::vector<size_t> GlobalStore::check() {
+  uint64_t values = 0;
+
+  std::vector<size_t> errors;
+
+  for(size_t store_index = 0; store_index < stores.size(); store_index++) {
+    std::vector<size_t> store_errors = stores[store_index]->check();
+
+    errors.reserve(errors.size() + store_errors.size());
+    for(size_t idx : store_errors) {
+        errors.push_back(values + idx);
+    }
+
+    values += stores[store_index]->nb_values();
+  }
+
+  return errors;
+}
+
 const std::vector<std::tuple<const std::string, const std::string, const std::string>> GlobalStore::source_locations(uint64_t index) const {
   return source_locations(get_hash(index));
 }
@@ -289,6 +308,8 @@ void GlobalStore::write_configuration() {
 
   file.write(configuration_path);
 }
+
+
 
 GlobalStore::~GlobalStore() {
   if(new_elements || total_values == 0) {

@@ -9,6 +9,8 @@
 #include <string>
 #include <chrono>
 #include <optional>
+#include <vector>
+
 #include "xxhash.h"
 
 namespace fs = std::filesystem;
@@ -49,6 +51,9 @@ public:
     virtual const fs::path& description_path() const = 0;
 
     virtual bool merge_in(Store& store) = 0;
+
+    // Check the database and return the indices of the values with problems
+    virtual const std::vector<size_t> check() = 0;
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want

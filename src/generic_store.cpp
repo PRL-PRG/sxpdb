@@ -345,6 +345,62 @@ bool GenericStore::merge_in(GenericStore& other) {
   return res;
 }
 
+const std::vector<size_t> GenericStore::check() {
+  std::vector<size_t> errors;
+  std::vector<std::byte> buf;
+  buf.reserve(128); // the minimum serialized size is about 35 bytes.
+  size_t idx = 0;
+  for(auto it : index) {
+    uint64_t offset = it.second;
+
+    store_file.seekg(offset);
+    uint64_t size = 0;
+    store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+    assert(size> 0);
+
+    buf.resize(size);
+    store_file.read(reinterpret_cast<char*>(buf.data()), size);
+
+    // Try to unserialize
+    // TODO: wrap it in a tryCatch...
+    SEXP val = ser.unserialize(buf);
+
+    // Compare with the metadata
+
+    auto meta_it = metadata.find(it.first);
+
+    if(meta_it != metadata.end()) {
+        auto meta = meta_it->second;
+        bool error = false;
+
+        if(TYPEOF(val) != meta.sexptype) {
+          Rf_warning("Types do not match for value with hash low: %ld, high: %ld: %s versus %s\n",
+                     it.first.low64, it.first.high64, Rf_type2char(TYPEOF(val)), Rf_type2char(meta.sexptype));
+          error= true;
+        }
+
+        if(buf.size() != meta.size) {
+          Rf_warning("Sizes do not match for value with hash low: %ld, high: %ld: %ld versus %ld\n",
+                     it.first.low64, it.first.high64, buf.size(), meta.size);
+          error= true;
+        }
+
+        // TODO: check length and number of attributes
+
+        if(error) {
+          errors.push_back(idx);
+        }
+    } else {
+      Rf_warning("Missing metadata for value with hash low: %ld, high: %ld\n", it.first.low64, it.first.high64);
+      errors.push_back(idx);
+    }
+
+    idx++;
+  }
+
+  return errors;
+}
+
 bool GenericStore::merge_in(Store& store) {
   GenericStore* st = dynamic_cast<GenericStore*>(&store);
   if(st == nullptr) {

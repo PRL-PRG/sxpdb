@@ -2,6 +2,7 @@
 
 export(add_val)
 export(add_val_origin)
+export(check_db)
 export(close_db)
 export(get_meta)
 export(get_meta_idx)

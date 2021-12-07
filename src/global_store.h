@@ -75,6 +75,8 @@ class GlobalStore : Store {
 
     const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(size_t index) const;
 
+    virtual const std::vector<size_t> check();
+
     virtual ~GlobalStore();
 };
 

@@ -410,3 +410,21 @@ SEXP path_db(SEXP sxpdb) {
   return res;
 }
 
+SEXP check_db(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  std::vector<size_t> errors = db->check();
+
+  SEXP res = PROTECT(Rf_allocVector(INTSXP, errors.size()));
+
+  std::copy_n(errors.begin(), errors.size(), INTEGER(res));
+
+  UNPROTECT(1);
+
+  return res;
+}
+
