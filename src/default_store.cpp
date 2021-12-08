@@ -367,7 +367,7 @@ SEXP const DefaultStore::map(const SEXP function) {
 #if defined(R_VERSION) && R_VERSION >= R_Version(4, 1, 0)
   SEXP env = R_NewEnv(R_GetCurrentEnv(), TRUE, 1);
 #else
-  SEXP env = Rf_eval(Rf_lang1(Rf_install("new.env")));
+  SEXP env = Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv());
 #endif
 
   R_xlen_t i = 0;
