@@ -8,10 +8,10 @@
 
 #define EMPTY_ORIGIN_PART ""
 
-SEXP open_db(SEXP filename) {
+SEXP open_db(SEXP filename, SEXP quiet) {
   GlobalStore* db = nullptr;
   try{
-    db = new GlobalStore(CHAR(STRING_ELT(filename, 0)));
+    db = new GlobalStore(CHAR(STRING_ELT(filename, 0)), Rf_asLogical(quiet));
   }
   catch(std::exception e) {
     Rf_error("Error opening the database %s : %s\n", CHAR(STRING_ELT(filename, 0)), e.what());
@@ -426,5 +426,15 @@ SEXP check_db(SEXP sxpdb) {
   UNPROTECT(1);
 
   return res;
+}
+
+SEXP map_db(SEXP sxpdb, SEXP fun) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->map(fun);
 }
 

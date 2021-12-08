@@ -355,6 +355,48 @@ const std::vector<size_t> DefaultStore::check() {
   return std::vector<size_t>();
 }
 
+SEXP const DefaultStore::map(const SEXP function) {
+  std::vector<std::byte> buf;
+  buf.reserve(128);
+
+  // Build the call
+  SEXP call = PROTECT(Rf_lang2(function, Rf_install("unserialized_sxpdb_value")));
+  SEXP l = PROTECT(Rf_allocVector(VECSXP, nb_values()));
+
+  // Prepare un environment where we will put the unserialized value
+  SEXP env = R_NewEnv(R_GetCurrentEnv(), TRUE, 1);
+
+  R_xlen_t i = 0;
+  for(auto it : index) {
+    uint64_t offset = it.second;
+
+    store_file.seekg(offset);
+    uint64_t size = 0;
+    store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+    assert(size> 0);
+
+    buf.resize(size);
+    store_file.read(reinterpret_cast<char*>(buf.data()), size);
+
+    SEXP val = ser.unserialize(buf);// no need to protect as it is going to be bound just after
+
+    // Update the argument for the next call
+    Rf_defineVar(Rf_install("unserialized_sxpdb_value"), val, env);
+
+    // Perform the call
+    SEXP res = Rf_eval(call, env);
+
+
+    SET_VECTOR_ELT(l, i, res);
+
+    i++;
+  }
+
+  UNPROTECT(2);
+
+  return l;
+}
+
 const sexp_hash& DefaultStore::get_hash(uint64_t idx) const {
   auto it = index.begin();
   std::advance(it, idx);

@@ -15,9 +15,10 @@ extern "C" {
  * This function must be called first.
  * @method open_db
  * @param filename
+ * @param quiet print helpful messages or not
  * @return R_NilValue on error, a external pointer to the database on success
  */
-SEXP open_db(SEXP filename);
+SEXP open_db(SEXP filename, SEXP quiet);
 
 /**
  * This function closes the database, materializes totally on disk.
@@ -160,11 +161,20 @@ SEXP path_db(SEXP sxpdb);
 
 /**
  * Check the database
- * @method path_db
+ * @method check_db
  * @param sxpdb external pointer to the target database
  * @return integer vector of indices to values with problems
  */
 SEXP check_db(SEXP sxpdb);
+
+/**
+ * Map over the values of the database
+ * @method map_db
+ * @param sxpdb external pointer to the target database
+ * @param fun function to run on each value in the database
+ * @return list of results of applying fun to the values in the database
+ */
+SEXP map_db(SEXP sxpdb, SEXP fun);
 
 #ifdef __cplusplus
 } // extern "C"

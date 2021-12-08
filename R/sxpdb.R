@@ -8,14 +8,14 @@ VERSION = "0.5.0"
 #' @export
 # Open database specified by db
 # if the database does not exist, it will create
-open_db <- function(db = "db") {
+open_db <- function(db = "db", quiet = TRUE) {
 	if (!dir.exists(db)) {
     dir.create(db, recursive = TRUE)
 	}
 
   prefix <- file.path(db, "sxpdb.csv")
 
-  .Call(SXPDB_open_db, prefix)
+  .Call(SXPDB_open_db, prefix, quiet)
 }
 
 #' @export
@@ -137,6 +137,12 @@ path_db <- function(db) {
 #' @export
 check_db <- function(db) {
   .Call(SXPDB_check_db, db)
+}
+
+#' @export
+map_db <- function(db, fun) {
+  stopifnot(is.function(fun))
+  .Call(SXPDB_map_db, db, fun)
 }
 
 

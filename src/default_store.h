@@ -98,6 +98,7 @@ public:
   virtual SEXP get_metadata(uint64_t index) const;
 
   virtual const std::vector<size_t> check();
+  virtual const SEXP map(const SEXP function);
 
   // Pass it a Description and a Distribution that precises what kind of values
   // we want

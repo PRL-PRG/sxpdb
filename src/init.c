@@ -11,7 +11,7 @@
 static const R_CallMethodDef callMethods[] = {
 	/* name						casted ptr to function			# of args */
 	// Generic record related
-	{"open_db",					(DL_FUNC) &open_db,					1},
+	{"open_db",					(DL_FUNC) &open_db,					2},
 	{"close_db",				(DL_FUNC) &close_db,				1},
 	{"add_val",					(DL_FUNC) &add_val,					2},
 	{"add_val_origin",  (DL_FUNC) &add_val_origin,	5},
@@ -27,6 +27,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"get_origins_idx", (DL_FUNC) &get_origins_idx, 2},
 	{"path_db",         (DL_FUNC) &path_db,         1},
 	{"check_db",        (DL_FUNC) &check_db,        1},
+	{"map_db",          (DL_FUNC) &map_db,          2},
 
 	// Must have at the end
 	{NULL,						NULL,								0}

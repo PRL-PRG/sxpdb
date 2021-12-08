@@ -5,13 +5,12 @@
 #include <cassert>
 
 
-GlobalStore::GlobalStore(const std::string& filename) :
+GlobalStore::GlobalStore(const std::string& filename, bool _quiet = true) :
   Store("global"),
   configuration_path(fs::absolute(filename)), bytes_read(0), total_values(0),
-  rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
+  rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
+  quiet(_quiet)
 {
-
-
   if(std::filesystem::exists(configuration_path)) {
     // Load configuration files
     CSVFile config(configuration_path);
@@ -23,13 +22,12 @@ GlobalStore::GlobalStore(const std::string& filename) :
       fs::path config_path = configuration_path.parent_path().append(row.at(0));
 
       if(row.at(3) == "locations") {
-        Rprintf("Loading source locations at %s from %s packages\n", config_path.c_str(),  row.at(2).c_str());
         src_refs = std::make_unique<SourceRefs>(config_path);
+        if(!quiet) Rprintf("Loaded source locations at %s from %s packages\n", config_path.c_str(),  row.at(2).c_str());
         continue;
       }
 
-      std::cout << "Loading " << row.at(3) << " store at " << config_path << " with type " <<
-        row.at(1) << " with " << row.at(2) << " values." << std::endl;
+
 
       stores.push_back(std::make_unique<GenericStore>(config_path, src_refs));
 
@@ -56,11 +54,14 @@ GlobalStore::GlobalStore(const std::string& filename) :
           nb_values, stores.back()->nb_values());
       }
 
+      if(!quiet) Rprintf("Loaded %s store at %s with type %s with %ld values.\n",
+         row.at(3).c_str(), config_path.c_str(), row.at(1).c_str(), nb_values);
+
       total_values += nb_values;
     }
   }
   else {
-    Rprintf("Configuration file does not exist. Creating new database %s\n", filename.c_str());
+    if(!quiet) Rprintf("Creating new database %s\n", filename.c_str());
 
     create();
   }
@@ -273,6 +274,29 @@ const std::vector<size_t> GlobalStore::check() {
   }
 
   return errors;
+}
+
+const SEXP GlobalStore::map(const SEXP function) {
+
+  if(stores.size() == 1) {
+    return stores[0]->map(function);
+  }
+
+  // We will need to do some copying
+  SEXP res = PROTECT(Rf_allocList(nb_values()));
+
+  size_t start_i = 0;
+
+  for(size_t store_index = 0; store_index < stores.size(); store_index++) {
+    SEXP l = stores[store_index]->map(function);
+    for(R_xlen_t i = 0 ; i < Rf_xlength(l) ; i++) {
+      SET_VECTOR_ELT(res, start_i + i, VECTOR_ELT(l, i));
+    }
+    start_i += stores[store_index]->nb_values();
+  }
+
+  UNPROTECT(1);
+  return res;
 }
 
 const std::vector<std::tuple<const std::string, const std::string, const std::string>> GlobalStore::source_locations(uint64_t index) const {

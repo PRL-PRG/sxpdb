@@ -24,12 +24,11 @@ class GlobalStore : Store {
 
 
     size_t bytes_read;
-
     size_t total_values;
 
     std::default_random_engine rand_engine;
 
-
+    bool quiet;
 
   protected:
     virtual void write_configuration();
@@ -39,7 +38,7 @@ class GlobalStore : Store {
 
 
   public:
-    GlobalStore(const std::string& description_name);
+    GlobalStore(const std::string& description_name, bool _quiet);
 
     virtual bool merge_in(Store& store);
     virtual bool merge_in(GlobalStore& store);
@@ -76,6 +75,8 @@ class GlobalStore : Store {
     const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(size_t index) const;
 
     virtual const std::vector<size_t> check();
+
+    virtual const SEXP map(const SEXP function);
 
     virtual ~GlobalStore();
 };

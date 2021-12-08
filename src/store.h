@@ -52,6 +52,8 @@ public:
 
     virtual bool merge_in(Store& store) = 0;
 
+    virtual const SEXP map(const SEXP function) = 0;
+
     // Check the database and return the indices of the values with problems
     virtual const std::vector<size_t> check() = 0;
 
