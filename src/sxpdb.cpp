@@ -13,7 +13,7 @@ SEXP open_db(SEXP filename, SEXP quiet) {
   try{
     db = new GlobalStore(CHAR(STRING_ELT(filename, 0)), Rf_asLogical(quiet));
   }
-  catch(std::exception e) {
+  catch(std::exception& e) {
     Rf_error("Error opening the database %s : %s\n", CHAR(STRING_ELT(filename, 0)), e.what());
   }
   if(db == nullptr) {
@@ -106,7 +106,7 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
       return hash_s;
     }
   }
-  catch(std::exception e) {
+  catch(std::exception& e) {
     Rf_error("Error adding value from package %s, function %s and argument %s, into the database: %s\n",
              package_name, function_name, argument_name, e.what());
   }
@@ -135,7 +135,7 @@ SEXP add_origin_(SEXP sxpdb, const void* hash, const char* package_name, const c
   try {
     return Rf_ScalarLogical(db->add_origins(*static_cast<const sexp_hash*>(hash), package_name, function_name, argument_name));
   }
-  catch(std::exception e) {
+  catch(std::exception& e) {
     Rf_error("Error adding value from package %s, function %s and argument %s, into the database: %s\n",
              package_name, function_name, argument_name, e.what());
   }
@@ -359,7 +359,7 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
   try{
     db1->merge_in(*db2);
   }
-  catch(std::exception e) {
+  catch(std::exception& e) {
     Rf_error("Error merging database %s into %s: %s\n", db2->description_path().c_str(), db1->description_path().c_str(), e.what());
   }
 
