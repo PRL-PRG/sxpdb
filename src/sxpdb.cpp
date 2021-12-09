@@ -356,7 +356,12 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
   }
   GlobalStore* db2 = static_cast<GlobalStore*>(ptr2);
 
-  db1->merge_in(*db2);
+  try{
+    db1->merge_in(*db2);
+  }
+  catch(std::exception e) {
+    Rf_error("Error merging database %s into %s: %s\n", db2->description_path().c_str(), db1->description_path().c_str(), e.what());
+  }
 
   return Rf_ScalarInteger(db1->nb_values());
 }
