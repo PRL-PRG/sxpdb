@@ -405,13 +405,13 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
     store_file.read(reinterpret_cast<char*>(buf.data()), size);
 
     // Try to unserialize
-    SEXP val = ser.unserialize(buf);
+    SEXP val = PROTECT(ser.unserialize(buf));// protect in case...
 
     // Compare with the metadata
 
     auto meta_it = metadata.find(it.first);
 
-    error= false;
+    error = false;
 
     if(meta_it != metadata.end()) {
         auto meta = meta_it->second;
@@ -458,6 +458,8 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
           error = true;
       }
     }
+
+    UNPROTECT(1);
 
 
     if(error) {
