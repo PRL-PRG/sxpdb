@@ -372,7 +372,7 @@ bool GenericStore::merge_in(GenericStore& other) {
   return res;
 }
 
-const std::vector<size_t> GenericStore::check() {
+const std::vector<size_t> GenericStore::check(bool slow_check) {
   std::vector<size_t> errors;
   std::vector<std::byte> buf;
   buf.reserve(128); // the minimum serialized size is about 35 bytes.
@@ -396,41 +396,56 @@ const std::vector<size_t> GenericStore::check() {
 
     auto meta_it = metadata.find(it.first);
 
+    bool error = false;
+
     if(meta_it != metadata.end()) {
         auto meta = meta_it->second;
-        bool error = false;
+
 
         if(TYPEOF(val) != meta.sexptype) {
-          Rf_warning("Types do not match for value with hash low: %ld, high: %ld: %s versus %s\n",
+          Rf_warning("Types do not match for value %ld with hash low: %ld, high: %ld: %s versus %s\n", idx,
                      it.first.low64, it.first.high64, Rf_type2char(TYPEOF(val)), Rf_type2char(meta.sexptype));
           error= true;
         }
 
         if(buf.size() != meta.size) {
-          Rf_warning("Sizes do not match for value with hash low: %ld, high: %ld: %ld versus %ld\n",
+          Rf_warning("Sizes do not match for value %d with hash low: %ld, high: %ld: %ld versus %ld\n", idx,
                      it.first.low64, it.first.high64, buf.size(), meta.size);
           error= true;
         }
 
         if(Rf_length(val) != meta.length) {
-          Rf_warning("Lengths do not match for value with hash low: %ld, high: %ld: %ld versus %ld\n",
+          Rf_warning("Lengths do not match for value %d with hash low: %ld, high: %ld: %ld versus %ld\n", idx,
                      it.first.low64, it.first.high64, Rf_length(val), meta.length);
           error= true;
         }
 
-        if(Rf_length(ATTRIB(val)) != meta.length) {
-          Rf_warning("Number of attributes do not match for value with hash low: %ld, high: %ld: %ld versus %ld\n",
+        if(Rf_length(ATTRIB(val)) != meta.n_attributes) {
+          Rf_warning("Number of attributes do not match for value %d with hash low: %ld, high: %ld: %ld versus %ld\n", idx,
                      it.first.low64, it.first.high64, Rf_length(ATTRIB(val)), meta.n_attributes);
           error= true;
         }
 
-        // TODO: check length and number of attributes
 
-        if(error) {
-          errors.push_back(idx);
-        }
     } else {
-      Rf_warning("Missing metadata for value with hash low: %ld, high: %ld\n", it.first.low64, it.first.high64);
+      Rf_warning("Missing metadata for value %d with hash low: %ld, high: %ld\n", idx, it.first.low64, it.first.high64);
+      error = true;
+    }
+
+    if(slow_check) {
+      // try to serialize the data back and check whether the hashes are equal or not
+
+      auto ser_buf = ser.serialize(val);
+      sexp_hash ser_hash  = XXH3_128bits(ser_buf.data(), ser_buf.size());
+
+      if(!(ser_hash == it.first)) {
+          Rf_warning("Serialized and deserialized values do not match for value %ld with hash low: %ld, high: %ld", idx,  it.first.low64, it.first.high64);
+          error = true;
+      }
+    }
+
+
+    if(error) {
       errors.push_back(idx);
     }
 

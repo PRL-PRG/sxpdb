@@ -135,8 +135,9 @@ path_db <- function(db) {
 }
 
 #' @export
-check_db <- function(db) {
-  .Call(SXPDB_check_db, db)
+check_db <- function(db, slow = FALSE) {
+  stopifnot(is.logical(slow))
+  .Call(SXPDB_check_db, db, slow)
 }
 
 #' @export

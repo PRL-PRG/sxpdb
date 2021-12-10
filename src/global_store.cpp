@@ -257,13 +257,13 @@ const sexp_hash& GlobalStore::get_hash(uint64_t index) const {
   return stores[store_index]->get_hash(index_in_store);
 }
 
-const std::vector<size_t> GlobalStore::check() {
+const std::vector<size_t> GlobalStore::check(bool slow_check) {
   uint64_t values = 0;
 
   std::vector<size_t> errors;
 
   for(size_t store_index = 0; store_index < stores.size(); store_index++) {
-    std::vector<size_t> store_errors = stores[store_index]->check();
+    std::vector<size_t> store_errors = stores[store_index]->check(slow_check);
 
     errors.reserve(errors.size() + store_errors.size());
     for(size_t idx : store_errors) {

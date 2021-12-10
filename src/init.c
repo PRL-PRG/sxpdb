@@ -26,7 +26,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"get_origins",    (DL_FUNC) &get_origins,      2},
 	{"get_origins_idx", (DL_FUNC) &get_origins_idx, 2},
 	{"path_db",         (DL_FUNC) &path_db,         1},
-	{"check_db",        (DL_FUNC) &check_db,        1},
+	{"check_db",        (DL_FUNC) &check_db,        2},
 	{"map_db",          (DL_FUNC) &map_db,          2},
 
 	// Must have at the end

@@ -332,7 +332,7 @@ SEXP DefaultStore::get_value(uint64_t idx) {
   return ser.unserialize(buf);
 }
 
-const std::vector<size_t> DefaultStore::check() {
+const std::vector<size_t> DefaultStore::check(bool slow_check) {
   std::vector<std::byte> buf;
   buf.reserve(128); // the minimum serialized size is about 35 bytes.
   for(auto it : index) {
@@ -388,8 +388,13 @@ SEXP const DefaultStore::map(const SEXP function) {
     Rf_defineVar(Rf_install("unserialized_sxpdb_value"), val, env);
 
     // Perform the call
-    SEXP res = Rf_eval(call, env);
+    // It is less performant than Rf_eval?
+    int pOutError = 0;
+    SEXP res = R_tryEvalSilent(call, env, &pOutError);
 
+    if(pOutError) {
+      Rf_error("Error on element %d: %s\n", R_curErrorBuf());
+    }
 
     SET_VECTOR_ELT(l, i, res);
 

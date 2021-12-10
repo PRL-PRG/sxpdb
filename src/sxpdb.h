@@ -163,9 +163,10 @@ SEXP path_db(SEXP sxpdb);
  * Check the database
  * @method check_db
  * @param sxpdb external pointer to the target database
+ * @param slow boolean enables slow checks
  * @return integer vector of indices to values with problems
  */
-SEXP check_db(SEXP sxpdb);
+SEXP check_db(SEXP sxpdb, SEXP slow);
 
 /**
  * Map over the values of the database
