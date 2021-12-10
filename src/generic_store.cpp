@@ -336,17 +336,17 @@ bool GenericStore::merge_in(GenericStore& other) {
                    Rf_type2char(val.second.sexptype));
         }
         if(it->second.size != val.second.size) {
-          Rf_error("Two values with same hash with different sizes %ld and %ld\n",
+          Rf_error("Two values with same hash with different sizes %lu and %lu\n",
                    it->second.size,
                    val.second.size);
         }
         if(it->second.length != val.second.length) {
-          Rf_error("Two values with same hash with different lengths %ld and %ld\n",
+          Rf_error("Two values with same hash with different lengths %lu and %lu\n",
                    it->second.length,
                    val.second.length);
         }
         if(it->second.n_attributes != val.second.n_attributes) {
-          Rf_error("Two values with same hash with different number of attributes %ld and %ld\n",
+          Rf_error("Two values with same hash with different number of attributes %lu and %lu\n",
                    it->second.n_attributes,
                    val.second.n_attributes);
         }
@@ -377,58 +377,73 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
   std::vector<std::byte> buf;
   buf.reserve(128); // the minimum serialized size is about 35 bytes.
   size_t idx = 0;
+
+  bool error = false;
+
+
   for(auto it : index) {
     uint64_t offset = it.second;
 
     store_file.seekg(offset);
     uint64_t size = 0;
     store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
-    assert(size> 0);
 
-    buf.resize(size);
+    try {
+      buf.resize(size);
+    }
+    catch(std::bad_alloc& e) {
+      Rf_warning("Tried to allocate %lu and failed for value %lu with hash low: %lu, high: %lu",
+                 size, idx, it.first.low64, it.first.high64);
+      errors.push_back(idx);
+      error = true;
+
+      // we won't be able to read the value
+      // and next values are probably garbage though...
+      idx++;
+      continue;
+    }
     store_file.read(reinterpret_cast<char*>(buf.data()), size);
 
     // Try to unserialize
-    // TODO: wrap it in a tryCatch...
     SEXP val = ser.unserialize(buf);
 
     // Compare with the metadata
 
     auto meta_it = metadata.find(it.first);
 
-    bool error = false;
+    error= false;
 
     if(meta_it != metadata.end()) {
         auto meta = meta_it->second;
 
 
         if(TYPEOF(val) != meta.sexptype) {
-          Rf_warning("Types do not match for value %ld with hash low: %ld, high: %ld: %s versus %s\n", idx,
+          Rf_warning("Types do not match for value %lu with hash low: %lu, high: %lu: %s versus %s\n", idx,
                      it.first.low64, it.first.high64, Rf_type2char(TYPEOF(val)), Rf_type2char(meta.sexptype));
           error= true;
         }
 
         if(buf.size() != meta.size) {
-          Rf_warning("Sizes do not match for value %d with hash low: %ld, high: %ld: %ld versus %ld\n", idx,
+          Rf_warning("Sizes do not match for value %d with hash low: %lu, high: %lu: %lu versus %lu\n", idx,
                      it.first.low64, it.first.high64, buf.size(), meta.size);
           error= true;
         }
 
         if(Rf_length(val) != meta.length) {
-          Rf_warning("Lengths do not match for value %d with hash low: %ld, high: %ld: %ld versus %ld\n", idx,
+          Rf_warning("Lengths do not match for value %d with hash low: %lu, high: %lu: %lu versus %lu\n", idx,
                      it.first.low64, it.first.high64, Rf_length(val), meta.length);
           error= true;
         }
 
         if(Rf_length(ATTRIB(val)) != meta.n_attributes) {
-          Rf_warning("Number of attributes do not match for value %d with hash low: %ld, high: %ld: %ld versus %ld\n", idx,
+          Rf_warning("Number of attributes do not match for value %d with hash low: %lu, high: %lu: %lu versus %lu\n", idx,
                      it.first.low64, it.first.high64, Rf_length(ATTRIB(val)), meta.n_attributes);
           error= true;
         }
 
 
     } else {
-      Rf_warning("Missing metadata for value %d with hash low: %ld, high: %ld\n", idx, it.first.low64, it.first.high64);
+      Rf_warning("Missing metadata for value %d with hash low: %lu, high: %lu\n", idx, it.first.low64, it.first.high64);
       error = true;
     }
 
@@ -439,7 +454,7 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
       sexp_hash ser_hash  = XXH3_128bits(ser_buf.data(), ser_buf.size());
 
       if(!(ser_hash == it.first)) {
-          Rf_warning("Serialized and deserialized values do not match for value %ld with hash low: %ld, high: %ld", idx,  it.first.low64, it.first.high64);
+          Rf_warning("Serialized and deserialized values do not match for value %lu with hash low: %lu, high: %lu", idx,  it.first.low64, it.first.high64);
           error = true;
       }
     }
@@ -452,7 +467,85 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
     idx++;
   }
 
-  return errors;
+  bool error_in_indexes = errors.size() > 0;
+
+  // Checks if we have the same number of elements in the index and in the store
+  // If the db was not closed or crashed, the index won't have been written
+  // so there will be more elements in the store than in the index
+  if(slow_check) {
+    R_ShowMessage("Checking the store and if it corresponds to the index.\n");
+    bool error_in_store = false;
+    size_t nb_in_store = 0;
+    uint64_t offset = 0;
+
+    auto exception_mask = store_file.exceptions();
+    store_file.exceptions(std::ifstream::goodbit);
+
+    while(1) {
+      store_file.seekg(offset);
+      uint64_t size = 0;
+      store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+
+      if(store_file.eof()) {
+        break;
+      }
+
+      if(size == 0 ) {
+        Rf_warning("Size of 0 for the next element %lu is impossible. Stopping.\n", nb_in_store);
+        errors.push_back(nb_in_store);
+        error_in_store = true;
+        break;
+      }
+      else {
+        try {
+          buf.resize(size);
+        }
+        catch(std::bad_alloc& e) {
+          Rf_warning("Recorded size %lu for value %lu in the store is not plausible. Allocating failed.\n", size, nb_in_store);
+          errors.push_back(nb_in_store);
+          error_in_store = true;
+          break;// we cannot continue because we cannot jump to the next size;
+        }
+
+        store_file.read(reinterpret_cast<char*>(buf.data()), size);
+
+        if(store_file.eof()) {
+          Rf_warning("Tried to read past the end of the store. Intended size: %lu. Value: %lu\n", size, nb_in_store);
+          errors.push_back(nb_in_store);
+          error_in_store = true;
+          break;
+        }
+
+        SEXP val = ser.unserialize(buf);
+      }
+
+      // jump to the next offset
+      offset += sizeof(uint64_t) + size;
+      nb_in_store++;
+    }
+
+    //Back to a normal state
+    store_file.clear();
+    store_file.exceptions(exception_mask);
+
+    //TODO: also check if the last offset in the index and the last offset in the store match?
+
+    if(nb_in_store != index.size()) {
+      Rf_warning("The index has size %lu and the store contains %lu elements.\n", index.size(), nb_in_store);
+      errors.push_back(index.size() + 1);
+      error_in_store = true;
+    }
+
+    if(!error_in_store) {
+      R_ShowMessage("The store seems to be in a good state. Consider repairing the database from the store.\n");
+    }
+  }
+
+  if(!error_in_indexes) {
+    R_ShowMessage("The index and metadata seem to be in a good state. Consider repairing the database by purging the store.\n");
+  }
+
+  return errors;//might do std::unique(std::sort)) but who really cares, especially if we need to wait for a long time on a huge database?
 }
 
 bool GenericStore::merge_in(Store& store) {

@@ -12,6 +12,18 @@ GlobalStore::GlobalStore(const std::string& filename, bool _quiet = true) :
   quiet(_quiet)
 {
   if(std::filesystem::exists(configuration_path)) {
+    // Check the lock file
+    bool to_check = false;
+    fs::path lock_path = configuration_path.parent_path().append(".LOCK");
+    if(std::filesystem::exists(lock_path)) {
+      Rprintf("Database did not exit properly. Will perform check_db in slow mode.\n");
+      to_check = true;
+    }
+    else {
+      std::ofstream lock_file(lock_path);
+      lock_file << std::chrono::system_clock::now().time_since_epoch().count() << std::endl;
+    }
+
     // Load configuration files
     CSVFile config(configuration_path);
     //Layout:
@@ -58,6 +70,17 @@ GlobalStore::GlobalStore(const std::string& filename, bool _quiet = true) :
          row.at(3).c_str(), config_path.c_str(), row.at(1).c_str(), nb_values);
 
       total_values += nb_values;
+    }
+
+    if(to_check) {
+      Rprintf("Checking the database in slow mode.\n");
+      auto errors = check(true);
+      if(errors.size() > 0 ) {
+        Rf_error("The database is corrupted: %ld errors. Open it again with autorepair to try repairing it.\n", errors.size());
+      }
+      else {
+        Rprintf("No errors found.\n");
+      }
     }
   }
   else {
@@ -339,5 +362,8 @@ GlobalStore::~GlobalStore() {
   if(new_elements || total_values == 0) {
     write_configuration();
   }
+
+  fs::path lock_path = configuration_path.parent_path().append(".LOCK");
+  fs::remove(lock_path);
 }
 
