@@ -41,6 +41,7 @@ public:
     virtual const std::string& store_kind() const { return store_k;};// typed, generic, specialized...
 
     virtual SEXP get_value(uint64_t index) = 0;
+    virtual const SEXP view_values() = 0;
 
     virtual const sexp_hash& get_hash(uint64_t index) const = 0;
 
@@ -48,6 +49,7 @@ public:
 
     virtual SEXP get_metadata(SEXP val) const = 0;
     virtual SEXP get_metadata(uint64_t index) const = 0;
+    virtual const SEXP view_metadata() const = 0;
 
     virtual const fs::path& description_path() const = 0;
 

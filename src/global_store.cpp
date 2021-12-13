@@ -1,6 +1,7 @@
 #include "global_store.h"
 
 #include "csv_file.h"
+#include "utils.h"
 #include <chrono>
 #include <cassert>
 
@@ -307,6 +308,7 @@ const SEXP GlobalStore::map(const SEXP function) {
 
   // We will need to do some copying
   SEXP res = PROTECT(Rf_allocList(nb_values()));
+  // Or rather reuse the largest store and extends its size? to do less copying?
 
   size_t start_i = 0;
 
@@ -320,6 +322,46 @@ const SEXP GlobalStore::map(const SEXP function) {
 
   UNPROTECT(1);
   return res;
+}
+
+const SEXP GlobalStore::view_values()  {
+  if(stores.size() == 1) {
+    return stores[0]->view_values();
+  }
+
+  SEXP res = PROTECT(Rf_allocList(nb_values()));
+
+  size_t start_i = 0;
+
+  for(size_t store_index = 0; store_index < stores.size(); store_index++) {
+    SEXP l = stores[store_index]->view_values();
+    for(R_xlen_t i = 0 ; i < Rf_xlength(l) ; i++) {
+      SET_VECTOR_ELT(res, start_i + i, VECTOR_ELT(l, i));
+    }
+    start_i += stores[store_index]->nb_values();
+  }
+
+  UNPROTECT(1);
+  return res;
+}
+
+const SEXP GlobalStore::view_metadata() const {
+  if(stores.size() == 1) {
+    return stores[0]->view_metadata();
+  }
+
+  SEXP l = PROTECT(Rf_allocVector(VECSXP, stores.size()));
+
+
+  for(size_t store_index = 0; store_index < stores.size(); store_index++) {
+    SEXP res = stores[store_index]->view_metadata();
+    SET_VECTOR_ELT(l, store_index, res);
+  }
+
+  SEXP df = PROTECT(bind_rows(l));
+
+  UNPROTECT(2);
+  return df;
 }
 
 const std::vector<std::tuple<const std::string, const std::string, const std::string>> GlobalStore::source_locations(uint64_t index) const {

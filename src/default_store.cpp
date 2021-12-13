@@ -8,11 +8,12 @@
 
 #include <chrono>
 
-
+#include <limits>
 #include <cassert>
 
 #include "sha1.h"
 #include "xxhash.h"
+#include "utils.h"
 
 
 DefaultStore::DefaultStore(const fs::path& config_path) :
@@ -172,13 +173,17 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
   if(it == index.end()) { // the value is not in the database
     assert(buf != nullptr); // If the value was deemed as "cached", it means that it should be in the database already
 
-    // add it to the index
-    auto res = index.insert(std::make_pair(*key, store_file.tellp()));
+    // Save current write position
+    auto write_pos = store_file.tellp();
 
     //write the value
     uint64_t size = buf->size();
     store_file.write(reinterpret_cast<char*>(&size), sizeof(uint64_t));
     store_file.write(reinterpret_cast<const char*>(buf->data()), buf->size());
+
+    // add it to the index (only if writing the value did not fail)
+    auto res = index.insert(std::make_pair(*key, write_pos));
+    assert(res.second); //insertion should have take place
 
     // new value in that session
     newly_seen[*key] = true;
@@ -315,6 +320,44 @@ SEXP DefaultStore::get_metadata(uint64_t idx) const {
   return res;
 }
 
+const SEXP DefaultStore::view_metadata() const {
+  SEXP n_seen = PROTECT(Rf_allocVector(LGLSXP, index.size()));
+  SEXP s_size = PROTECT(Rf_allocVector(INTSXP, index.size()));
+
+  uint64_t i = 0;
+  int* n_seen_it = LOGICAL(n_seen);
+  int* s_size_it = INTEGER(s_size);
+  for(auto it : index) {
+    auto it2 = newly_seen.find(it.first);
+    if(it2 == newly_seen.end()) {
+      Rf_error("Value %lu not in the new_seen table!\n", i);
+    }
+    uint64_t offset = it.second;
+    store_file.seekg(offset);
+    uint64_t size = 0;
+    store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+    assert(size> 0);
+
+    *n_seen_it = it2->second;
+
+    assert(size < std::numeric_limits<int>::max() / 2);// R integers are on 31 bits
+    *s_size_it = size;// potential overflow here...
+
+
+    i++;
+    n_seen_it++;
+    s_size_it++;
+  }
+
+  SEXP df = PROTECT(create_data_frame(
+    {{"n_seen", n_seen},
+    {"size", s_size}}));
+
+  UNPROTECT(3);
+
+  return df;
+}
+
 
 SEXP DefaultStore::get_value(uint64_t idx) {
   auto it = index.begin();
@@ -388,13 +431,8 @@ SEXP const DefaultStore::map(const SEXP function) {
     Rf_defineVar(Rf_install("unserialized_sxpdb_value"), val, env);
 
     // Perform the call
-    // It is less performant than Rf_eval?
-    int pOutError = 0;
-    SEXP res = R_tryEvalSilent(call, env, &pOutError);
+    SEXP res = Rf_eval(call, env);
 
-    if(pOutError) {
-      Rf_error("Error on element %d: %s\n", R_curErrorBuf());
-    }
 
     SET_VECTOR_ELT(l, i, res);
 
@@ -402,6 +440,36 @@ SEXP const DefaultStore::map(const SEXP function) {
   }
 
   UNPROTECT(2);
+
+  return l;
+}
+
+const SEXP DefaultStore::view_values() {
+  std::vector<std::byte> buf;
+  buf.reserve(128);
+
+  SEXP l = PROTECT(Rf_allocVector(VECSXP, nb_values()));
+
+  R_xlen_t i = 0;
+  for(auto it : index) {
+    uint64_t offset = it.second;
+
+    store_file.seekg(offset);
+    uint64_t size = 0;
+    store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+    assert(size > 0);
+
+    buf.resize(size);
+    store_file.read(reinterpret_cast<char*>(buf.data()), size);
+
+    SEXP val = ser.unserialize(buf);
+
+    SET_VECTOR_ELT(l, i, val);
+
+    i++;
+  }
+
+  UNPROTECT(1);
 
   return l;
 }

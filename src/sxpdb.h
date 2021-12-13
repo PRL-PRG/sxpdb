@@ -177,6 +177,20 @@ SEXP check_db(SEXP sxpdb, SEXP slow);
  */
 SEXP map_db(SEXP sxpdb, SEXP fun);
 
+/**
+ * @method view_db
+ * @param sxpdb external pointer to the target database
+ * @return a list of all the values in the database
+ */
+SEXP view_db(SEXP sxpdb);
+
+/**
+ * @method view_metadata
+ * @param sxpdb external pointer to the target database
+ * @return a data frame of the metadata for all the values, in the same order as view_db or map_db
+ */
+SEXP view_metadata(SEXP sxpdb);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

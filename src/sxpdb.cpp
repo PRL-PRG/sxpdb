@@ -443,3 +443,23 @@ SEXP map_db(SEXP sxpdb, SEXP fun) {
   return db->map(fun);
 }
 
+
+SEXP view_db(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->view_values();
+}
+
+SEXP view_metadata(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->view_metadata();
+}

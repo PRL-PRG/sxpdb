@@ -57,12 +57,14 @@ class GlobalStore : Store {
     virtual size_t nb_values() const {return total_values; }
 
     virtual SEXP get_value(uint64_t index);
+    virtual const SEXP view_values();
 
     virtual const sexp_hash& get_hash(uint64_t index) const;
 
 
     virtual SEXP get_metadata(SEXP val) const;
     virtual SEXP get_metadata(uint64_t index) const;
+    virtual const SEXP view_metadata() const;
 
     virtual SEXP sample_value();
 
@@ -73,6 +75,7 @@ class GlobalStore : Store {
     }
 
     const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(size_t index) const;
+    const SEXP view_origins() const;
 
     virtual const std::vector<size_t> check(bool slow_check);
 

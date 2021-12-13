@@ -88,6 +88,7 @@ public:
   virtual const std::string& sexp_type() const { return type; };
 
   virtual SEXP get_value(uint64_t index);
+  virtual const SEXP view_values();
 
   virtual const sexp_hash& get_hash(uint64_t index) const;
 
@@ -96,6 +97,7 @@ public:
 
   virtual SEXP get_metadata(SEXP val) const;
   virtual SEXP get_metadata(uint64_t index) const;
+  virtual const SEXP view_metadata() const;
 
   virtual const std::vector<size_t> check(bool slow_check);
   virtual const SEXP map(const SEXP function);

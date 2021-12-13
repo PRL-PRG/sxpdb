@@ -98,17 +98,12 @@ print_vals <- function (db) {
 
 #' @export
 view_db <- function(db) {
-	if(size_db(db) == 0) {
-		viewer <- list()
-	} else {
-		viewer <- lapply(seq_len(size_db(db)) - 1, function(i) .Call(SXPDB_get_val, db, i))
-	}
-	viewer
+  .Call(SXPDB_view_db, db)
 }
 
 #' @export
 view_meta_db <- function(db) {
-  do.call(rbind.data.frame, lapply(seq_len(size_db(db)) - 1, function(i) as.data.frame(.Call(SXPDB_get_meta_idx, db, i))))
+  .Call(SXPDB_view_metadata, db)
 }
 
 

@@ -1,6 +1,7 @@
 #include "generic_store.h"
 #include "sha1.h"
 #include "xxhash.h"
+#include "utils.h"
 
 #include <cassert>
 
@@ -237,6 +238,94 @@ SEXP GenericStore::get_metadata(SEXP val) const {
 #endif
 
   return res;
+}
+
+
+const SEXP GenericStore::view_metadata() const {
+  //  "size", "n", "type",  "length", "n_attributes", "n_merges"
+  SEXP s_size = PROTECT(Rf_allocVector(INTSXP, index.size()));
+  SEXP n_calls = PROTECT(Rf_allocVector(INTSXP, index.size()));
+  SEXP s_type = PROTECT(Rf_allocVector(INTSXP, index.size()));
+  SEXP s_length = PROTECT(Rf_allocVector(INTSXP, index.size()));
+  SEXP n_attributes = PROTECT(Rf_allocVector(INTSXP, index.size()));
+  SEXP n_merges = PROTECT(Rf_allocVector(INTSXP, index.size()));
+
+  uint64_t i = 0;
+  int* s_size_it = INTEGER(s_size);
+  int* n_calls_it = INTEGER(n_calls);
+  int* s_type_it = INTEGER(s_type);
+  int* s_length_it = INTEGER(s_length);
+  int* n_attr_it = INTEGER(n_attributes);
+  int* n_merges_it = INTEGER(n_merges);
+
+#ifndef NDEBUG
+  SEXP n_maybe_shared = PROTECT(Rf_allocVector(INTSXP, index.size()));
+  SEXP n_sexp_addr_optim = PROTECT(Rf_allocVector(INTSXP, index.size()));
+
+  int* n_may_shared_it = INTEGER(n_maybe_shared);
+  int* n_sexp_addr_opt_it = INTEGER(n_sexp_addr_optim);
+#endif
+
+  for(auto it : index) { // we iterate on the index to get the same order
+    auto meta_it = metadata.find(it.first);
+    if(meta_it == metadata.end()) {
+      Rf_error("Value %lu not in the metadata table!\n", i);
+    }
+
+#ifndef NDEBUG
+    auto it_dbg = debug_counters.find(it.first);
+    assert(it_dbg != debug_counters.end());
+    const debug_counters_t& debug_cnts = it_dbg->second;
+#endif
+
+    uint64_t offset = it.second;
+    store_file.seekg(offset);
+    uint64_t size = 0;
+    store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+    assert(size> 0);
+
+    assert(size < std::numeric_limits<int>::max() / 2);// R integers are on 31 bits
+    s_size_it[i] = size;// potential overflow here...
+
+    const metadata_t& meta = meta_it->second;
+
+    n_calls_it[i] = meta.n_calls;
+    s_type_it[i] = meta.sexptype;
+    s_length_it[i] = meta.length;
+    n_attr_it[i] = meta.n_attributes;
+    n_merges_it[i] = meta.n_merges;
+
+#ifndef NDEBUG
+  n_may_shared_it[i] = debug_cnts.n_maybe_shared;
+  n_sexp_addr_opt_it[i] = debug_cnts.n_sexp_address_opt;
+#endif
+
+    i++;
+  }
+
+  std::vector<std::pair<std::string, SEXP>> columns = {
+    {"size", s_size},
+    {"n", n_calls},
+    {"type", s_type},
+    {"length", s_length},
+    {"n_attributes", n_attributes},
+    {"n_merges", n_merges}
+#ifndef NDEBUG
+    ,
+    {"n_maybe_shared", n_maybe_shared},
+    {"n_sexp_addr_opt", n_sexp_addr_optim}
+#endif
+    };
+
+  SEXP df = PROTECT(create_data_frame(columns));
+
+#ifndef NDEBUG
+  UNPROTECT(9);
+#else
+  UNPROTECT(7);
+#endif
+
+  return df;
 }
 
 
