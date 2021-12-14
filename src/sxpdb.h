@@ -191,6 +191,13 @@ SEXP view_db(SEXP sxpdb);
  */
 SEXP view_metadata(SEXP sxpdb);
 
+/**
+ * @method view_origins
+ * @param sxpdb external pointer to the target database
+ * @return a data frame of the origins for all the values, in the same order as view_db or map_db. A column id indicates the index of the value
+ */
+SEXP view_origins(SEXP sxpdb);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

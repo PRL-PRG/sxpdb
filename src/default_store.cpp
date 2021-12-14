@@ -358,6 +358,50 @@ const SEXP DefaultStore::view_metadata() const {
   return df;
 }
 
+const SEXP DefaultStore::view_origins(std::shared_ptr<SourceRefs> src_refs) const {
+  SEXP cache = PROTECT(src_refs->locations_sexp_cache());
+  SEXP pkg_cache = VECTOR_ELT(cache, 0);
+  SEXP fun_cache = VECTOR_ELT(cache, 1);
+  SEXP arg_cache = VECTOR_ELT(cache, 2);
+
+  SEXP dfs = PROTECT(Rf_allocVector(VECSXP, index.size()));
+
+
+  uint64_t i = 0;
+  for(auto it : index) {
+    auto locs = src_refs->get_locs(it.first);
+
+    SEXP value_idx = PROTECT(Rf_allocVector(INTSXP, locs.size()));
+    int* val_idx = INTEGER(value_idx);
+    SEXP packages = PROTECT(Rf_allocVector(STRSXP, locs.size()));
+    SEXP functions = PROTECT(Rf_allocVector(STRSXP, locs.size()));
+    SEXP arguments = PROTECT(Rf_allocVector(STRSXP, locs.size()));
+
+    R_xlen_t j = 0;
+    for(auto& loc : locs) {
+      val_idx[j] = i;
+      SET_STRING_ELT(packages, j, STRING_ELT(pkg_cache, loc.package));
+      SET_STRING_ELT(functions, j, STRING_ELT(fun_cache, loc.function));
+      SET_STRING_ELT(arguments, j, STRING_ELT(arg_cache, loc.argument));
+      j++;
+    }
+    SEXP df = PROTECT(create_data_frame({
+      {"id", value_idx},
+      {"pkg", packages},
+      {"fun", functions},
+      {"param", arguments}
+    }));
+    SET_VECTOR_ELT(dfs, i, df);
+    UNPROTECT(5);
+    i++;
+  }
+
+  SEXP origins = PROTECT(bind_rows(dfs));
+
+  UNPROTECT(3);
+  return origins;
+}
+
 
 SEXP DefaultStore::get_value(uint64_t idx) {
   auto it = index.begin();
@@ -508,12 +552,14 @@ bool DefaultStore::merge_in(DefaultStore& other) {
       buf.resize(size);
       other.store_file.read(reinterpret_cast<char*>(buf.data()), size);
 
-      // add it to the index
-      index[it.first] = store_file.tellp();
+      auto write_pos = store_file.tellp();
 
       //write the value
       store_file.write(reinterpret_cast<char*>(&size), sizeof(uint64_t));
       store_file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
+
+      // add it to the index
+      index[it.first] = write_pos;
 
       n_values++;
       new_elements = true;

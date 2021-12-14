@@ -121,7 +121,7 @@ get_origins_idx <- function(db, i) {
 
 #' @export
 view_origins_db <- function(db) {
-  lapply(seq_len(size_db(db)) - 1, function(i) as.data.frame(.Call(SXPDB_get_origins_idx, db, i)))
+  .Call(SXPDB_view_origins, db)
 }
 
 #' @export

@@ -463,3 +463,14 @@ SEXP view_metadata(SEXP sxpdb) {
 
   return db->view_metadata();
 }
+
+
+SEXP view_origins(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->view_origins();
+}

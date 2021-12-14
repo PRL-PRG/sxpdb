@@ -287,6 +287,39 @@ const std::vector<std::tuple<const std::string, const std::string, const std::st
   return res;
 }
 
+const SEXP SourceRefs::locations_sexp_cache() const {
+  // Mirror the std::string to CHARSXP
+  SEXP char_cache = PROTECT(Rf_allocVector(VECSXP, 3));
+
+  R_xlen_t i = 0;
+  SEXP package_cache = Rf_allocVector(STRSXP, nb_packages());
+  SET_VECTOR_ELT(char_cache, 0, package_cache);
+  for(auto& pkg_name : package_names) {
+    SET_STRING_ELT(package_cache, i, Rf_mkChar(pkg_name->c_str()));
+    i++;
+  }
+
+  i = 0;
+  SEXP function_cache = Rf_allocVector(STRSXP, nb_functions());
+  SET_VECTOR_ELT(char_cache, 1, function_cache);
+  for(auto& fun_name : function_names) {
+    SET_STRING_ELT(function_cache, i, Rf_mkChar(fun_name->c_str()));
+    i++;
+  }
+
+  i= 0 ;
+  SEXP argument_cache = Rf_allocVector(STRSXP, nb_arguments());
+  SET_VECTOR_ELT(char_cache, 2, argument_cache);
+  for(auto& arg_name : argument_names) {
+    SET_STRING_ELT(argument_cache, i, Rf_mkChar(arg_name->c_str()));
+    i++;
+  }
+
+  UNPROTECT(1);
+
+  return char_cache;
+}
+
 
 SourceRefs::~SourceRefs() {
   if(new_elements || n_values == 0) {

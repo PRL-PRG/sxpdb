@@ -75,7 +75,9 @@ class GlobalStore : Store {
     }
 
     const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(size_t index) const;
-    const SEXP view_origins() const;
+    virtual const SEXP view_origins() const;
+
+    virtual const SEXP view_origins(std::shared_ptr<SourceRefs>) const {return view_origins();}
 
     virtual const std::vector<size_t> check(bool slow_check);
 

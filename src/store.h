@@ -20,6 +20,8 @@ namespace fs = std::filesystem;
 //typedef std::array<char, 20> sexp_hash;
 typedef XXH128_hash_t sexp_hash;
 
+class SourceRefs;
+
 class Store {
 private:
     std::string store_k;
@@ -56,6 +58,8 @@ public:
     virtual bool merge_in(Store& store) = 0;
 
     virtual const SEXP map(const SEXP function) = 0;
+
+    virtual const SEXP view_origins(std::shared_ptr<SourceRefs>) const = 0;
 
     // Check the database and return the indices of the values with problems
     virtual const std::vector<size_t> check(bool slow_check) = 0;

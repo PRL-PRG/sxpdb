@@ -89,6 +89,7 @@ private:
 
 
 
+
   std::unordered_map<sexp_hash, std::unordered_set<location_t>, xxh128_hasher> index;
   std::unordered_map<sexp_hash, uint64_t,xxh128_hasher> offsets;
 
@@ -107,11 +108,17 @@ public:
 
   const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(const sexp_hash& key) const;
 
+  const SEXP locations_sexp_cache() const;
+
   uint64_t get_offset(const sexp_hash& key) const;
 
   const fs::path& description_path() const { return config_path;}
 
   size_t nb_packages() const { return package_names.size(); }
+
+  size_t nb_functions() const {return function_names.size();}
+
+  size_t nb_arguments() const {return argument_names.size(); }
 
   virtual ~SourceRefs();
 };

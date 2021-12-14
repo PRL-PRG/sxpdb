@@ -6,6 +6,7 @@
 #include <Rinternals.h>
 
 #include <vector>
+#include <algorithm>
 #include <cassert>
 
 inline const SEXP create_data_frame(
@@ -40,6 +41,24 @@ inline const SEXP create_data_frame(
   return r_data_frame;
 }
 
+// because Rf_getAttrib is naughty and 
+//tries to play smart when there is the special row names and returns an empty INTSXP...
+inline SEXP get_attrib(SEXP vec, SEXP name) {
+  for (SEXP s = ATTRIB(vec); s != R_NilValue; s = CDR(s))
+    if (TAG(s) == name) {
+      if (name == R_DimNamesSymbol && TYPEOF(CAR(s)) == LISTSXP)
+        Rf_error("old list is no longer allowed for dimnames attribute");
+      MARK_NOT_MUTABLE(CAR(s));
+      return CAR(s);
+    }  
+  return R_NilValue;
+}
+
+// For a dataframe without row names
+inline R_xlen_t get_nb_rows(SEXP df) {
+  return -INTEGER(get_attrib(df, R_RowNamesSymbol))[1];
+}
+
 // Bind the rows of a list of data frames, which we assume to be compatible 
 // We assume they do not have "real" row names
 inline const SEXP bind_rows(const SEXP df_list) {
@@ -48,8 +67,8 @@ inline const SEXP bind_rows(const SEXP df_list) {
   // Find out what is the dataframe with the largest number of rows
   for(R_xlen_t i =0; i < Rf_xlength(df_list); i++ ) {
     SEXP df = VECTOR_ELT(df_list, i);
-    int nb_rows = -INTEGER(Rf_getAttrib(df, R_RowNamesSymbol))[1];
-    assert(nb_rows > 0);
+    int nb_rows = get_nb_rows(df); 
+    assert(nb_rows >= 0);
     total_rows += nb_rows;
   }
   
@@ -62,17 +81,27 @@ inline const SEXP bind_rows(const SEXP df_list) {
   // Allocate space for each column and put the name
   R_xlen_t i = 0;
   for(auto& column : columns) {
-    column.first = CHAR(VECTOR_ELT(r_names, i));
+    column.first = CHAR(STRING_ELT(r_names, i));
     SEXPTYPE stype = TYPEOF(VECTOR_ELT(df1, i));
     column.second = PROTECT(Rf_allocVector(stype, total_rows));
-    // Copy everything
+    // Copy everything, data frame per data frame
     R_xlen_t nb_rows=0;
-    for(R_xlen_t j; j < Rf_xlength(df_list) ; j++) {
+    for(R_xlen_t j = 0; j < Rf_xlength(df_list) ; j++) {
+      // current data frame
       SEXP df = VECTOR_ELT(df_list, j);
-      for(R_xlen_t k; k < Rf_xlength(df); k++) {
-        SET_VECTOR_ELT(column.second, nb_rows + k, VECTOR_ELT(df, k));
+      
+      SEXP cur_column = VECTOR_ELT(df, i);
+      assert(TYPEOF(cur_column) == stype);
+      if(stype == INTSXP) {
+        std::copy_n(INTEGER(cur_column), Rf_xlength(cur_column), INTEGER(column.second) + nb_rows);
       }
-      nb_rows += Rf_xlength(df);
+      else { //TODO: handle other types than STR
+        for(R_xlen_t k = 0; k < Rf_xlength(cur_column); k++) {
+          SET_STRING_ELT(column.second, nb_rows + k, STRING_ELT(cur_column, k));
+        }
+      }
+      
+      nb_rows += Rf_xlength(cur_column);
     }
     
     i++;

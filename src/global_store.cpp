@@ -364,6 +364,28 @@ const SEXP GlobalStore::view_metadata() const {
   return df;
 }
 
+const SEXP GlobalStore::view_origins() const {
+
+
+  if(stores.size() == 1) {
+    return stores[0]->view_origins(src_refs);
+  }
+
+  SEXP l = PROTECT(Rf_allocVector(VECSXP, stores.size()));
+
+
+  for(size_t store_index = 0; store_index < stores.size(); store_index++) {
+    SEXP res = stores[store_index]->view_origins(src_refs);
+    SET_VECTOR_ELT(l, store_index, res);
+  }
+
+  SEXP df = PROTECT(bind_rows(l));
+
+  UNPROTECT(2);
+  return df;
+
+}
+
 const std::vector<std::tuple<const std::string, const std::string, const std::string>> GlobalStore::source_locations(uint64_t index) const {
   return source_locations(get_hash(index));
 }

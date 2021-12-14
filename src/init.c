@@ -30,6 +30,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"map_db",          (DL_FUNC) &map_db,          2},
 	{"view_db",         (DL_FUNC) &view_db,         1},
 	{"view_metadata",   (DL_FUNC) &view_metadata,   1},
+	{"view_origins",    (DL_FUNC) &view_origins,    1},
 
 	// Must have at the end
 	{NULL,						NULL,								0}
