@@ -117,6 +117,9 @@ void DefaultStore::load_index() {
   sexp_hash hash;
   uint64_t offset = 0;
 
+  // Make sure the read position is at the beginning
+  index_file.seekg(0);
+
   for(uint64_t i = 0; i < n_values ; i++) {
     index_file.read(reinterpret_cast<char*>(&hash.low64), sizeof(hash.low64));
     index_file.read(reinterpret_cast<char*>(&hash.high64), sizeof(hash.high64));

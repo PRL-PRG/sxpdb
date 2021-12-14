@@ -628,13 +628,20 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
     }
 
     if(!error_in_store) {
-      R_ShowMessage("The store seems to be in a good state. Consider repairing the database from the store.\n");
+      R_ShowMessage("The store seems to be in a good state. \n");
+      if(errors.size() > 0) {
+        R_ShowMessage("Consider repairing the database from the store.\n");
+      }
     }
   }
 
   if(!error_in_indexes) {
-    R_ShowMessage("The index and metadata seem to be in a good state. Consider repairing the database by purging the store.\n");
+    R_ShowMessage("The index and metadata seem to be in a good state.\n");
+    if(errors.size() > 0) {
+      R_ShowMessage("Consider repairing the database by purging the store.\n");
+    }
   }
+
 
   return errors;//might do std::unique(std::sort)) but who really cares, especially if we need to wait for a long time on a huge database?
 }
