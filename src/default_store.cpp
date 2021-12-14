@@ -78,8 +78,9 @@ bool DefaultStore::load() {
   fs::path index_path = fs::absolute(configuration_path).parent_path().append(index_name);
   fs::path store_path = fs::absolute(configuration_path).parent_path().append(store_name);
 
-  index_file.open(index_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);//because we just add the new values
-  store_file.open(store_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::app);
+  index_file.open(index_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate | std::fstream::app);//because we just add the new values
+  store_file.open(store_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate | std::fstream::app);// app would not move the write pointer at the end when opening
+
 
   std::ostringstream out;
   if(!index_file) {
@@ -92,16 +93,19 @@ bool DefaultStore::load() {
     Rf_error(out.str().c_str());
   }
 
+  assert(fs::file_size(store_path) == store_file.tellp());// would fail with std::fstream::app
+
   index_file.exceptions(std::fstream::failbit);
   store_file.exceptions(std::fstream::failbit);
 
-  newly_seen.reserve(n_values);
 
+
+  load_index();
+
+  newly_seen.reserve(n_values);
   for(auto& it : index) {
     newly_seen[it.first] = false;
   }
-
-  load_index();
 
 
   return true;
@@ -121,7 +125,7 @@ void DefaultStore::load_index() {
 
     index[hash] = offset;
 
-    bytes_read += 20 + sizeof(uint64_t);
+    bytes_read += sizeof(hash.low64) + sizeof(hash.high64) + sizeof(uint64_t);
   }
 }
 
@@ -382,7 +386,7 @@ const SEXP DefaultStore::view_origins(std::shared_ptr<SourceRefs> src_refs) cons
       val_idx[j] = i;
       SET_STRING_ELT(packages, j, STRING_ELT(pkg_cache, loc.package));
       SET_STRING_ELT(functions, j, STRING_ELT(fun_cache, loc.function));
-      SET_STRING_ELT(arguments, j, STRING_ELT(arg_cache, loc.argument));
+      SET_STRING_ELT(arguments, j, loc.argument == return_value ? NA_STRING : STRING_ELT(arg_cache, loc.argument));
       j++;
     }
     SEXP df = PROTECT(create_data_frame({
@@ -455,6 +459,7 @@ SEXP const DefaultStore::map(const SEXP function) {
   SEXP env = R_NewEnv(R_GetCurrentEnv(), TRUE, 1);
 #else
   SEXP env = Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv());
+  assert(TYPEOF(env) == ENVSXP);
 #endif
 
   R_xlen_t i = 0;
