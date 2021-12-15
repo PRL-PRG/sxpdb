@@ -490,7 +490,22 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
       idx++;
       continue;
     }
-    store_file.read(reinterpret_cast<char*>(buf.data()), size);
+
+    try {
+      store_file.read(reinterpret_cast<char*>(buf.data()), size);
+    }
+    catch(std::exception& e) {
+      Rf_warning("Tried to read %lu from the store file and failed for value %lu with hash low: %lu, high: %lu",
+                 size, idx, it.first.low64, it.first.high64);
+      errors.push_back(idx);
+      error = true;
+
+      // we won't be able to read the value
+      // and next values are probably garbage though...
+      idx++;
+      continue;
+    }
+
 
     // Try to unserialize
     SEXP val = PROTECT(ser.unserialize(buf));// protect in case...
