@@ -1,5 +1,4 @@
 #include "generic_store.h"
-#include "sha1.h"
 #include "xxhash.h"
 #include "utils.h"
 

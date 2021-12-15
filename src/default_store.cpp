@@ -11,7 +11,6 @@
 #include <limits>
 #include <cassert>
 
-#include "sha1.h"
 #include "xxhash.h"
 #include "utils.h"
 
@@ -465,6 +464,8 @@ SEXP const DefaultStore::map(const SEXP function) {
   assert(TYPEOF(env) == ENVSXP);
 #endif
 
+  SEXP unserialized_sxpdb_value = Rf_install("unserialized_sxpdb_value");
+
   R_xlen_t i = 0;
   for(auto it : index) {
     uint64_t offset = it.second;
@@ -478,9 +479,10 @@ SEXP const DefaultStore::map(const SEXP function) {
     store_file.read(reinterpret_cast<char*>(buf.data()), size);
 
     SEXP val = ser.unserialize(buf);// no need to protect as it is going to be bound just after
+    // or not?
 
     // Update the argument for the next call
-    Rf_defineVar(Rf_install("unserialized_sxpdb_value"), val, env);
+    Rf_defineVar(unserialized_sxpdb_value, val, env);
 
     // Perform the call
     SEXP res = Rf_eval(call, env);
