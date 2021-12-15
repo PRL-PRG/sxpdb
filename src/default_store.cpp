@@ -28,6 +28,7 @@ DefaultStore::DefaultStore(const fs::path& config_path) :
     store_name = config["store"];
     metadata_name = config["metadata"];
     n_values = std::stoul(config["nb_values"]);
+
     set_kind(config["kind"]);
     load();
   }
@@ -67,6 +68,11 @@ void DefaultStore::write_configuration() {
   conf["nb_values"] = std::to_string(n_values);
   conf["kind"] = store_kind();
   conf["compilation_time"] = std::string(__DATE__) + ":" + __TIME__;
+#ifndef NDEBUG
+  conf["debug_counters"] = "T";
+#else
+  conf["debug_counters"] = "F";
+#endif
 
   Config config(std::move(conf));
   config.write(configuration_path);

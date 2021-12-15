@@ -334,6 +334,8 @@ void GenericStore::write_metadata() {
 
   meta_file.exceptions(std::fstream::failbit);
 
+  assert(n_values == metadata.size());
+
   XXH128_canonical_t hash_buf;
 
   // we cannot just append the new ones, because n_calls might have changed
@@ -472,7 +474,21 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
   for(auto it : index) {
     uint64_t offset = it.second;
 
-    store_file.seekg(offset);
+    try {
+      store_file.seekg(offset);
+    }
+    catch(std::exception& e) {
+      Rf_warning("Tried to seek to offset %lu and failed for value %lu with hash low: %lu, high: %lu",
+                 offset, idx, it.first.low64, it.first.high64);
+      errors.push_back(idx);
+      error = true;
+
+      // we won't be able to read the value
+      // and next values are probably garbage though...
+      idx++;
+      continue;
+    }
+
     uint64_t size = 0;
     store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
 
@@ -503,7 +519,7 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
       // we won't be able to read the value
       // and next values are probably garbage though...
       idx++;
-      continue;
+      break;
     }
 
 
