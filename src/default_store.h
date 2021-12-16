@@ -11,8 +11,7 @@
 #include <unordered_map>
 #include <array>
 #include <random>
-
-
+#include <unistd.h>
 
 
 
@@ -44,7 +43,7 @@ protected:
   // also involves setting the tracing bit
   mutable std::unordered_map<SEXP, sexp_hash> sexp_adresses;
 
-
+  pid_t pid;
 
 protected:
   virtual void load_index();
@@ -58,7 +57,7 @@ protected:
 
   sexp_hash* const compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const;
 
-  // if we see a value, it means it was passed as an argumen of a function call
+  // if we see a value, it means it was passed as an argument of a function call
   // to its refcount has been incremented anyway.
   static inline const bool maybe_shared(SEXP val) { return REFCNT(val) - 1 > 1; }
 

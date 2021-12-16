@@ -10,7 +10,7 @@ GlobalStore::GlobalStore(const std::string& filename, bool _quiet = true) :
   Store("global"),
   configuration_path(fs::absolute(filename)), bytes_read(0), total_values(0),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
-  quiet(_quiet)
+  quiet(_quiet), pid(getpid())
 {
   if(std::filesystem::exists(configuration_path)) {
     // Check the lock file
@@ -156,6 +156,11 @@ std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val) {
     return std::make_pair(nullptr, false);
   }
 
+  // Check if the instrumented program has not evily forked itself
+  if(pid != getpid()) {
+    return std::make_pair(nullptr, false);
+  }
+
   // we assume there is at least a "any" store
   auto it = types.find(Rf_type2char(TYPEOF(val)));
   size_t store_index= 0;
@@ -181,6 +186,10 @@ std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val) {
 std::pair<const sexp_hash*, bool> GlobalStore::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name) {
   // Ignore environments
   if(TYPEOF(val) == ENVSXP || TYPEOF(val) == CLOSXP) {
+    return std::make_pair(nullptr, false);
+  }
+  // Check if the instrumented program has not evily forked itself
+  if(pid != getpid()) {
     return std::make_pair(nullptr, false);
   }
 
@@ -423,11 +432,13 @@ void GlobalStore::write_configuration() {
 
 
 GlobalStore::~GlobalStore() {
-  if(new_elements || total_values == 0) {
-    write_configuration();
-  }
+  if(pid == getpid()) {
+    if(new_elements || total_values == 0) {
+      write_configuration();
+    }
 
-  fs::path lock_path = configuration_path.parent_path().append(".LOCK");
-  fs::remove(lock_path);
+    fs::path lock_path = configuration_path.parent_path().append(".LOCK");
+    fs::remove(lock_path);
+  }
 }
 

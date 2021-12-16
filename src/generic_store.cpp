@@ -526,6 +526,8 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
     // Try to unserialize
     SEXP val = PROTECT(ser.unserialize(buf));// protect in case...
 
+    assert(buf.size() == size);
+
     // Compare with the metadata
 
     auto meta_it = metadata.find(it.first);
@@ -542,9 +544,9 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
           error= true;
         }
 
-        if(buf.size() != meta.size) {
+        if(size != meta.size) {
           Rf_warning("Sizes do not match for value %d with hash low: %lu, high: %lu: %lu versus %lu\n", idx,
-                     it.first.low64, it.first.high64, buf.size(), meta.size);
+                     it.first.low64, it.first.high64, size, meta.size);
           error= true;
         }
 
@@ -687,9 +689,8 @@ bool GenericStore::merge_in(Store& store) {
 }
 
 GenericStore::~GenericStore() {
-  if(new_elements || n_values == 0) {
+  if((new_elements || n_values == 0) && pid == getpid()) {
     write_metadata();
-    write_index();
     write_configuration();
   }
 }

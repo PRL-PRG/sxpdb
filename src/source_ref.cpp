@@ -6,7 +6,7 @@
 #include <cassert>
 
 
-SourceRefs::SourceRefs(fs::path config_path) : config_path(config_path){
+SourceRefs::SourceRefs(fs::path config_path) : config_path(config_path), pid(getpid()){
   // load the configuration and srcrefs if they exist
   if(std::filesystem::exists(config_path)) {
     load_configuration();

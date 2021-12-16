@@ -18,7 +18,8 @@
 DefaultStore::DefaultStore(const fs::path& config_path) :
   Store(""),
   configuration_path(config_path), bytes_read(0), ser(32768),
-  rand_engine(std::chrono::system_clock::now().time_since_epoch().count())
+  rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
+  pid(getpid())
 {
 
   if(std::filesystem::exists(config_path)) {
@@ -39,7 +40,8 @@ DefaultStore::DefaultStore(const fs::path& config_path, const std::string& type_
   configuration_path(config_path.parent_path().append(config_path.filename().string() + ".conf")), bytes_read(0), ser(256), type(type_),
   index_name(config_path.filename().string() + "_index.bin"), store_name(config_path.filename().string() + "_store.bin"),
   metadata_name(config_path.filename().string() + "_meta.bin"), n_values(0),
-  rand_engine(std::chrono::system_clock::now().time_since_epoch().count()) {
+  rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
+  pid(getpid()){
 
   // it means we want to create the database!
 
@@ -52,7 +54,7 @@ void DefaultStore::create() {
 }
 
 DefaultStore::~DefaultStore() {
-  if(new_elements || n_values == 0) {
+  if((new_elements || n_values == 0) && pid == getpid()) {
     write_index();
     write_configuration();
   }
@@ -186,7 +188,7 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
     assert(buf != nullptr); // If the value was deemed as "cached", it means that it should be in the database already
 
     // Save current write position
-    auto write_pos = store_file.tellp();
+    uint64_t write_pos = store_file.tellp();
 
     //write the value
     uint64_t size = buf->size();
@@ -195,7 +197,7 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
 
     // add it to the index (only if writing the value did not fail)
     auto res = index.insert(std::make_pair(*key, write_pos));
-    assert(res.second); //insertion should have take place
+    assert(res.second); //insertion should have take place; otherwise, it means there is a collision with XXH128
 
     // new value in that session
     newly_seen[*key] = true;

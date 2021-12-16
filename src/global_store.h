@@ -9,7 +9,7 @@
 #include <vector>
 #include <memory>
 #include <random>
-
+#include <unistd.h>
 
 
 class GlobalStore : Store {
@@ -29,6 +29,8 @@ class GlobalStore : Store {
     std::default_random_engine rand_engine;
 
     bool quiet;
+
+    pid_t pid;
 
   protected:
     virtual void write_configuration();

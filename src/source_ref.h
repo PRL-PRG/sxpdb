@@ -16,6 +16,7 @@
 #include <fstream>
 #include <tuple>
 #include <optional>
+#include <unistd.h>
 
 #include "hasher.h"
 
@@ -87,13 +88,12 @@ private:
   unique_names_t function_names_u;
   unique_names_t arg_names_u;
 
-
-
-
   std::unordered_map<sexp_hash, std::unordered_set<location_t>, xxh128_hasher> index;
   std::unordered_map<sexp_hash, uint64_t,xxh128_hasher> offsets;
 
   static uint64_t inline add_name(const std::string& name, unique_names_t& unique_names, ordered_names_t& ordering);
+
+  pid_t pid;
 
 public:
   SourceRefs(fs::path config_path);
