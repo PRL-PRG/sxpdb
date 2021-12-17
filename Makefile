@@ -1,15 +1,18 @@
-R=R
-Rscript=Rscript
+BEAR := $(shell command -v bear 2> /dev/null)
 
-.PHONY: all build check document test write trace
+ifdef BEAR
+	BEAR := $(BEAR) --
+endif
+
+.PHONY: all build check document test install
 
 all: document build check
 
 build: document
-	$R CMD build .
+	R CMD build .
 
 check: build
-	$R CMD check record*tar.gz
+	R CMD check record*tar.gz
 
 clean:
 	-rm -f sxpdb*tar.gz
@@ -19,19 +22,23 @@ clean:
 	-rm -f trace
 
 document:
-	$Rscript -e 'devtools::document()'
+	R -e 'devtools::document()'
 
 test:
-	$Rscript -e 'devtools::test()'
+	R -e 'devtools::test()'
+
+clean_test:
+	-rm -rf tests/testthat/test_db*
+	-rm -rf tests/testthat/_snaps
 
 trace:
 	strace Rscript -e 'devtools::test()' 2> trace
 
 lintr:
-	$R --slave -e "lintr::lint_package()"
+	R --slave -e "lintr::lint_package()"
 
 install: clean
-	$R CMD INSTALL .
+	$(BEAR) R CMD INSTALL .
 
 write:
 	cat trace | grep -w "write"

@@ -1,35 +1,72 @@
 #ifndef RCRD_STORE_H
 #define RCRD_STORE_H
 
-#include <fstream>
-#include <unordered_map>
+#include <iostream>
+#define R_NO_REMAP
+#include <R.h>
 #include <Rinternals.h>
+#include "Rversion.h"
+#include <filesystem>
+#include <string>
+#include <chrono>
+#include <optional>
+#include <vector>
+
+#include "xxhash.h"
+
+namespace fs = std::filesystem;
+
+
+//typedef std::array<char, 20> sexp_hash;
+typedef XXH128_hash_t sexp_hash;
+
+class SourceRefs;
 
 class Store {
 private:
-  std::fstream description_file;//description of the file (types stored, sizes and names of the 3 other files, number of values)
-  std::fstream index_file;//hash of value, offset to value in the store, offset to metadata
-  std::fstream store_file;//values
-  std::fstream metadata_file;//function, package, srcref, number of times seen, offset to the value
-
-  //TODO: write a proper hash class that can automatically give its hash
-  // instead of wasting memory
-  // Or use std::map?
-  std::unordered_map<std::string, size_t> index;
-
+    std::string store_k;
+protected:
+    virtual void create() = 0;
+    bool new_elements = false;
+    void set_kind(const std::string& kind) {store_k = kind;}
 public:
-    Store(std::string description_name);
+    // virtual bool merge_in(const std::string& filename) = 0;
+    Store(const std::string& kind) : store_k(kind) {}
 
-    virtual bool merge_in(std::string filename) = 0;
-
-    virtual bool add_value(SEXP val) = 0 ;
+    //returns the hash of the value, and true if is newly inserted, false if it was already there
+    // hash will be nullptr if we don't want to compute it at all
+    virtual std::pair<const sexp_hash*, bool> add_value(SEXP val) = 0 ;
     virtual bool have_seen(SEXP val) const = 0;
+    //virtual const sexp_hash& get_sexp_hash(SEXP val) = 0;
 
-    virtual SEXP get_value(size_t index) const = 0;
+    virtual const std::string& sexp_type() const = 0;// the return type will be more complex when we deal with richer queries
+    virtual const std::string& store_kind() const { return store_k;};// typed, generic, specialized...
+
+    virtual SEXP get_value(uint64_t index) = 0;
+    virtual const SEXP view_values() = 0;
+
+    virtual const sexp_hash& get_hash(uint64_t index) const = 0;
+
+    virtual size_t nb_values() const = 0;
+
+    virtual SEXP get_metadata(SEXP val) const = 0;
+    virtual SEXP get_metadata(uint64_t index) const = 0;
+    virtual const SEXP view_metadata() const = 0;
+
+    virtual const fs::path& description_path() const = 0;
+
+    virtual bool merge_in(Store& store) = 0;
+
+    virtual const SEXP map(const SEXP function) = 0;
+
+    virtual const SEXP view_origins(std::shared_ptr<SourceRefs>) const = 0;
+
+    // Check the database and return the indices of the values with problems
+    virtual const std::vector<size_t> check(bool slow_check) = 0;
 
     // Pass it a Description and a Distribution that precises what kind of values
     // we want
-    virtual SEXP sample_value() const = 0;
+    virtual SEXP sample_value() = 0;
 
     virtual ~Store() {};
 };

@@ -1,320 +1,476 @@
 #include "sxpdb.h"
 
-#include "byte_vector.h"
-#include "helper.h" // rans_d_size_t
+#include "global_store.h"
 
-// Include all stores
-#include "stats_store.h"
-#include "generic_store.h"
+#include <algorithm>
+#include <filesystem>
+#include <cassert>
 
-#include "int_store.h"
-#include "simple_int_store.h"
+#define EMPTY_ORIGIN_PART ""
 
-#include "dbl_store.h"
-#include "simple_dbl_store.h"
+SEXP open_db(SEXP filename, SEXP quiet) {
+  GlobalStore* db = nullptr;
+  try{
+    db = new GlobalStore(CHAR(STRING_ELT(filename, 0)), Rf_asLogical(quiet));
+  }
+  catch(std::exception& e) {
+    Rf_error("Error opening the database %s : %s\n", CHAR(STRING_ELT(filename, 0)), e.what());
+  }
+  if(db == nullptr) {
+    Rf_error("Could not allocate memory for database %s", CHAR(STRING_ELT(filename, 0)));
+  }
+  SEXP db_ptr = PROTECT(R_MakeExternalPtr(db, Rf_install("sxpdb"), R_NilValue));
 
-#include "raw_store.h"
-#include "simple_raw_store.h"
+  // ASk to close the database when R session is closed.
+  R_RegisterCFinalizerEx(db_ptr, (R_CFinalizer_t) close_db, TRUE);
 
-#include "str_store.h"
-#include "simple_str_store.h"
+  UNPROTECT(1);
 
-#include "log_store.h"
-
-#include "cmp_store.h"
-
-#include "lst_store.h"
-
-#include "env_store.h"
-
-#include "fun_store.h"
-
-// Reusable buffer for everything
-byte_vector_t vector = NULL;
-
-// Pulled in from stats_store.cpp
-extern size_t count;
-extern size_t size;
-
-extern size_t i_size;
-extern size_t s_i_size;
-
-extern size_t d_size;
-extern size_t s_d_size;
-
-extern size_t r_size;
-extern size_t s_r_size;
-
-extern size_t s_size;
-extern size_t s_s_size;
-
-extern size_t o_size;
-
-extern size_t c_size;
-
-extern size_t l_size;
-
-extern size_t e_size;
-
-extern size_t u_size;
-
-extern size_t n_size;
-extern size_t n_count;
-
-extern size_t g_size;
-
-/**
- * This function sets up the initial state of the database.
- * This function must be called first.
- * @method setup
- * @export
- * @return R_NilValue on success
- */
-SEXP setup() {
-	vector = make_vector(1 << 30);
-
-	return R_NilValue;
+  return db_ptr;
 }
 
-/**
- * This function tears down all traces of the database after running.
- * This function must be called last.
- * @method setup
- * @return R_NilValue on success
- */
-SEXP teardown() {
-	if (vector) {
-		free_vector(vector);
-		vector = NULL;
-	}
 
-	return R_NilValue;
+SEXP close_db(SEXP sxpdb) {
+
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  delete db;
+
+
+  R_ClearExternalPtr(sxpdb);
+
+  return R_NilValue;
 }
 
-/**
- * This functions adds an R value to the database.
- * @method add_val
- * @param  val      R value in form of SEXP
- * @return          val if val hasn't been added to database before,
- *                  else R_NilValue
- */
-SEXP add_val(SEXP val) {
-	count += 1;
 
-	if (TYPEOF(val) == FREESXP) { // This should never happen
-		return R_NilValue;
-	} else if (TYPEOF(val) == NILSXP) {
-		if (n_count == 0) {
-			size++;
-			n_size++;
-		}
-		n_count++;
-		return R_NilValue;
-	} else if (is_int(val)) {
-		return add_int(val);
-	} else if (is_dbl(val)) {
-		return add_dbl(val);
-	} else if (is_raw(val)) {
-		return add_raw(val);
-	} else if (is_str(val)) {
-		return add_str(val);
-	} else if (is_log(val)) {
-		return add_log(val);
-	} else if (is_cmp(val)) {
-		return add_cmp(val);
-	} else if (is_lst(val)) {
-		return add_lst(val);
-	} else if (is_env(val)) {
-		return add_env(val);
-	} else if (is_fun(val)) {
-		return add_fun(val);
-	} else {
-		return add_generic(val);
-	}
+
+SEXP add_val(SEXP sxpdb, SEXP val) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  auto hash = db->add_value(val);
+
+  if(hash.first != nullptr) {
+    SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
+    Rbyte* bytes= RAW(hash_s);
+
+    XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *hash.first);
+
+    UNPROTECT(1);
+
+    return hash_s;
+  }
+
+  return R_NilValue;
 }
 
-/**
- * This function asks if the C layer has seen a R value.
- * This function is mainly used for testing.
- * @method have_seen
- * @param  val       R value in form of SEXP
- * @return           R value of True or False as a SEXP
- */
-SEXP have_seen(SEXP val) {
-	SEXP res = PROTECT(allocVector(LGLSXP, 1));
-	int *res_ptr = LOGICAL(res);
+SEXP add_val_origin_(SEXP sxpdb, SEXP val,
+                     const char* package_name, const char* function_name, const char* argument_name) {
 
-	// TODO: Add have_seen interface for the various databases
-	if (TYPEOF(val) == NILSXP) {
-		res_ptr[0] = n_size;
-	} else if (is_int(val)) {
-		res_ptr[0] = have_seen_int(val);
-	} else if (is_dbl(val)) {
-		res_ptr[0] = have_seen_dbl(val);
-	} else if (is_raw(val)) {
-		res_ptr[0] = have_seen_raw(val);
-	} else if (is_str(val)) {
-		res_ptr[0] = have_seen_str(val);
-	} else if (is_log(val)) {
-		res_ptr[0] = have_seen_log(val);
-	} else if (is_cmp(val)) {
-		res_ptr[0] = have_seen_cmp(val);
-	} else if (is_lst(val)) {
-		res_ptr[0] = have_seen_lst(val);
-	} else if (is_env(val)) {
-		res_ptr[0] = have_seen_env(val);
-	} else if (is_fun(val)) {
-		res_ptr[0] = have_seen_fun(val);
-	} else {
-		res_ptr[0] = have_seen_generic(val);
-	}
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
 
-	UNPROTECT(1);
-	return res;
+  if (package_name == nullptr) {
+    package_name = EMPTY_ORIGIN_PART;
+  }
+  if (function_name == nullptr) {
+    function_name = EMPTY_ORIGIN_PART;
+  }
+  if (argument_name == nullptr) {
+    argument_name = EMPTY_ORIGIN_PART;
+  }
+
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  try {
+
+    auto hash = db->add_value(val, package_name, function_name, argument_name);
+
+    if(hash.first != nullptr) {
+      SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
+      Rbyte* bytes= RAW(hash_s);
+
+      XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *hash.first);
+
+      UNPROTECT(1);
+
+      return hash_s;
+    }
+  }
+  catch(std::exception& e) {
+    Rf_error("Error adding value from package %s, function %s and argument %s, into the database: %s\n",
+             package_name, function_name, argument_name, e.what());
+  }
+
+  return R_NilValue;
 }
 
-/**
- * This function returns a random value from the database
- * @method sample_val
- * @return R value in form of SEXP from the database
- */
-SEXP sample_val() {
-	// TODO: Add error checking (e.g. size == 0)
-	size_t random_index = rand_size_t() % size;
+SEXP add_origin_(SEXP sxpdb, const void* hash, const char* package_name, const char* function_name, const char* argument_name) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
 
-	if (random_index < n_size) {
-		return R_NilValue;
-	} else {
-		random_index -= n_size;
-	}
+  if (package_name == nullptr) {
+    package_name = EMPTY_ORIGIN_PART;
+  }
+  if (function_name == nullptr) {
+    function_name = EMPTY_ORIGIN_PART;
+  }
+  if (argument_name == nullptr) {
+    argument_name = EMPTY_ORIGIN_PART;
+  }
 
-	if (random_index < i_size) {
-		return get_int(random_index);
-	} else {
-		random_index -= i_size;
-	}
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
-	if (random_index < d_size) {
-		return get_dbl(random_index);
-	} else {
-		random_index -= d_size;
-	}
+  try {
+    return Rf_ScalarLogical(db->add_origins(*static_cast<const sexp_hash*>(hash), package_name, function_name, argument_name));
+  }
+  catch(std::exception& e) {
+    Rf_error("Error adding value from package %s, function %s and argument %s, into the database: %s\n",
+             package_name, function_name, argument_name, e.what());
+  }
 
-	if (random_index < r_size) {
-		return get_raw(random_index);
-	} else {
-		random_index -= r_size;
-	}
-
-	if (random_index < s_size) {
-		return get_str(random_index);
-	} else {
-		random_index -= s_size;
-	}
-
-	if (random_index < o_size) {
-		return get_log(random_index);
-	} else {
-		random_index -= o_size;
-	}
-
-	if (random_index < c_size) {
-		return get_cmp(random_index);
-	} else {
-		random_index -= c_size;
-	}
-
-	if (random_index < l_size) {
-		return get_lst(random_index);
-	} else {
-		random_index -= l_size;
-	}
-
-	if (random_index < e_size) {
-		return get_env(random_index);
-	} else {
-		random_index -= e_size;
-	}
-
-	if (random_index < u_size) {
-		return get_env(random_index);
-	} else {
-		random_index -= u_size;
-	}
-
-	return get_generic(random_index);
+  return Rf_ScalarLogical(FALSE);
 }
 
-/**
- * This function returns a value from the database specified by an order
- * @method get_val
- * @param  i       R value in form of SEXP that is an index,
- *                 it must be non-negative
- * @return R value in form of SEXP from the database at ith position
- */
-SEXP get_val(SEXP i) {
-	// TODO: Add error checking (e.g. size == 0)
-	int index = asInteger(i);
+SEXP add_origin(SEXP sxpdb, SEXP hash, SEXP package, SEXP function, SEXP argument) {
+  const char *package_name = EMPTY_ORIGIN_PART;
+  const char *function_name = EMPTY_ORIGIN_PART;
+  const char *argument_name = EMPTY_ORIGIN_PART;
 
-	if (index < n_size) {
-		return R_NilValue;
-	} else {
-		index -= n_size;
-	}
+  if(TYPEOF(package) == STRSXP) {
+    package_name = CHAR(STRING_ELT(package, 0));
+  }
+  else if (TYPEOF(package) == SYMSXP) {
+    package_name = CHAR(PRINTNAME(package));
+  }
 
-	if (index < i_size) {
-		return get_int(index);
-	} else {
-		index -= i_size;
-	}
+  if(TYPEOF(function) == STRSXP) {
+    function_name = CHAR(STRING_ELT(function, 0));
+  }
+  else if (TYPEOF(function) == SYMSXP) {
+    function_name = CHAR(PRINTNAME(function));
+  }
 
-	if (index < d_size) {
-		return get_dbl(index);
-	} else {
-		index -= d_size;
-	}
+  if(TYPEOF(argument) == STRSXP) {
+    // if empty string or NA, treat it as a return value
+    SEXP arg_sexp = STRING_ELT(argument, 0);
+    argument_name = (arg_sexp == NA_STRING) ? EMPTY_ORIGIN_PART : CHAR(arg_sexp);
+  }
+  else if (TYPEOF(argument) == SYMSXP) {
+    argument_name = CHAR(PRINTNAME(argument));// a symbol cannot be NA
+  }
 
-	if (index < r_size) {
-		return get_raw(index);
-	} else {
-		index -= r_size;
-	}
 
-	if (index < s_size) {
-		return get_str(index);
-	} else {
-		index -= s_size;
-	}
+  sexp_hash h = XXH128_hashFromCanonical(reinterpret_cast<XXH128_canonical_t*>(RAW(hash)));
 
-	if (index < o_size) {
-		return get_log(index);
-	} else {
-		index -= o_size;
-	}
+  return add_origin_(sxpdb, &h, package_name, function_name, argument_name);
+}
 
-	if (index < c_size) {
-		return get_cmp(index);
-	} else {
-		index -= c_size;
-	}
+SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument) {
+  const char *package_name = EMPTY_ORIGIN_PART;
+  const char *function_name = EMPTY_ORIGIN_PART;
+  const char *argument_name = EMPTY_ORIGIN_PART;
 
-	if (index < l_size) {
-		return get_lst(index);
-	} else {
-		index -= l_size;
-	}
+  if(TYPEOF(package) == STRSXP) {
+    package_name = CHAR(STRING_ELT(package, 0));
+  }
+  else if (TYPEOF(package) == SYMSXP) {
+    package_name = CHAR(PRINTNAME(package));
+  }
 
-	if (index < e_size) {
-		return get_env(index);
-	} else {
-		index -= e_size;
-	}
+  if(TYPEOF(function) == STRSXP) {
+    function_name = CHAR(STRING_ELT(function, 0));
+  }
+  else if (TYPEOF(function) == SYMSXP) {
+    function_name = CHAR(PRINTNAME(function));
+  }
 
-	if (index < u_size) {
-		return get_env(index);
-	} else {
-		index -= u_size;
-	}
+  if(TYPEOF(argument) == STRSXP) {
+    // if empty string or NA, treat it as a return value
+    SEXP arg_sexp = STRING_ELT(argument, 0);
+    argument_name = (arg_sexp == NA_STRING) ? EMPTY_ORIGIN_PART : CHAR(arg_sexp);
+  }
+  else if (TYPEOF(argument) == SYMSXP) {
+    argument_name = CHAR(PRINTNAME(argument));// a symbol cannot be NA
+  }
 
-	return get_generic(index);
+  return add_val_origin_(sxpdb, val, package_name, function_name, argument_name);
+}
+
+SEXP get_origins(SEXP sxpdb, SEXP hash_s) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  sexp_hash hash;
+  assert(Rf_length(hash_s) == sizeof(sexp_hash));
+  hash = XXH128_hashFromCanonical(reinterpret_cast<XXH128_canonical_t*>(RAW(hash_s)));
+
+  auto src_locs = db->source_locations(hash);
+
+  const char*names[] = {"pkg", "fun", "param", ""};
+  SEXP origs = PROTECT(Rf_mkNamed(VECSXP, names));
+
+  SEXP packages = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+  SEXP functions = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+  SEXP arguments = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+
+
+  int i = 0;
+  for(auto& loc : src_locs) {
+    SET_STRING_ELT(packages, i, std::get<0>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<0>(loc).c_str()));
+    SET_STRING_ELT(functions, i, std::get<1>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<1>(loc).c_str()));
+    SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).c_str()));
+    i++;
+  }
+
+  SET_VECTOR_ELT(origs, 0, packages);
+  SET_VECTOR_ELT(origs, 1, functions);
+  SET_VECTOR_ELT(origs, 2, arguments);
+
+  // make it a dataframe
+  Rf_classgets(origs, Rf_mkString("data.frame"));// no need to protect because it is directly inserted
+
+  // the data frame needs to have row names but we can put a special value for this attribute
+  // see .set_row_names
+  SEXP row_names = PROTECT(Rf_allocVector(INTSXP, 2));
+  INTEGER(row_names)[0] = NA_INTEGER;
+  INTEGER(row_names)[1] = -src_locs.size();
+
+  Rf_setAttrib(origs, R_RowNamesSymbol, row_names);
+
+  UNPROTECT(5);
+
+  return origs;
+}
+
+SEXP get_origins_idx(SEXP sxpdb, SEXP idx) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+
+  auto src_locs = db->source_locations(Rf_asInteger(idx));
+
+  const char*names[] = {"pkg", "fun", "param", ""};
+  SEXP origs = PROTECT(Rf_mkNamed(VECSXP, names));
+
+  SEXP packages = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+  SEXP functions = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+  SEXP arguments = PROTECT(Rf_allocVector(STRSXP, src_locs.size()));
+
+
+  int i = 0;
+  for(auto& loc : src_locs) {
+    SET_STRING_ELT(packages, i, std::get<0>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<0>(loc).c_str()));
+    SET_STRING_ELT(functions, i, std::get<1>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<1>(loc).c_str()));
+    SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).c_str()));
+    i++;
+  }
+
+  SET_VECTOR_ELT(origs, 0, packages);
+  SET_VECTOR_ELT(origs, 1, functions);
+  SET_VECTOR_ELT(origs, 2, arguments);
+
+  // make it a dataframe
+  Rf_classgets(origs, Rf_mkString("data.frame"));// no need to protect because it is directly inserted
+
+  // the data frame needs to have row names but we can put a special value for this attribute
+  // see .set_row_names
+  SEXP row_names = PROTECT(Rf_allocVector(INTSXP, 2));
+  INTEGER(row_names)[0] = NA_INTEGER;
+  INTEGER(row_names)[1] = -src_locs.size();
+
+  Rf_setAttrib(origs, R_RowNamesSymbol, row_names);
+
+  UNPROTECT(5);
+
+  return origs;
+}
+
+
+SEXP have_seen(SEXP sxpdb, SEXP val) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  SEXP res = PROTECT(Rf_ScalarLogical(db->have_seen(val)));
+
+  UNPROTECT(1);
+  return res;
+}
+
+
+SEXP sample_val(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+
+  return db->sample_value();
+}
+
+
+SEXP get_val(SEXP sxpdb, SEXP i) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  int index = Rf_asInteger(i);
+  return db->get_value(index);
+}
+
+SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
+  void* ptr1 = R_ExternalPtrAddr(sxpdb1);
+  if(ptr1== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db1 = static_cast<GlobalStore*>(ptr1);
+
+  void* ptr2 = R_ExternalPtrAddr(sxpdb2);
+  if(ptr2== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db2 = static_cast<GlobalStore*>(ptr2);
+
+  try{
+    db1->merge_in(*db2);
+  }
+  catch(std::exception& e) {
+    Rf_error("Error merging database %s into %s: %s\n", db2->description_path().c_str(), db1->description_path().c_str(), e.what());
+  }
+
+  return Rf_ScalarInteger(db1->nb_values());
+}
+
+SEXP size_db(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return Rf_ScalarInteger(db->nb_values());
+}
+
+SEXP get_meta(SEXP sxpdb, SEXP val) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->get_metadata(val);
+}
+
+SEXP get_meta_idx(SEXP sxpdb, SEXP idx) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->get_metadata(Rf_asInteger(idx));
+}
+
+
+SEXP path_db(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  // This returns the path of the description file
+  // so we just need to get the dirname
+  auto path = std::filesystem::absolute(db->description_path().parent_path());
+
+  SEXP res = PROTECT(Rf_mkString(path.c_str()));
+
+  UNPROTECT(1);
+
+  return res;
+}
+
+SEXP check_db(SEXP sxpdb, SEXP slow) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  std::vector<size_t> errors = db->check(Rf_asLogical(slow));
+
+  SEXP res = PROTECT(Rf_allocVector(INTSXP, errors.size()));
+
+  std::copy_n(errors.begin(), errors.size(), INTEGER(res));
+
+  UNPROTECT(1);
+
+  return res;
+}
+
+SEXP map_db(SEXP sxpdb, SEXP fun) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->map(fun);
+}
+
+
+SEXP view_db(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->view_values();
+}
+
+SEXP view_metadata(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->view_metadata();
+}
+
+
+SEXP view_origins(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->view_origins();
 }

@@ -1,106 +1,50 @@
-#include <R.h>
-#include <Rinternals.h>
+#ifndef SXPDB_GENERIC_STORE_H
+#define SXPDB_GENERIC_STORE_H
 
-#ifndef RCRD_GENERIC_STORE_H
-#define RCRD_GENERIC_STORE_H
+#include "default_store.h"
+#include "source_ref.h"
+#include "hasher.h"
 
-#ifdef __cplusplus
-extern "C" {
+#include <memory>
+
+
+// A generic store that stores more metadata that the default store
+class GenericStore : public DefaultStore {
+private:
+  struct metadata_t {
+    uint64_t n_calls;
+    SEXPTYPE sexptype;
+    uint64_t size;
+    uint64_t length;
+    uint64_t n_attributes;
+    uint32_t n_merges;
+#ifdef SXPDB_TIMER_SER_HASH
+    std::chrono::nanoseconds first_seen_dur;
+    std::chrono::nanoseconds next_seen_dur;
 #endif
+  };
+  std::unordered_map<sexp_hash, metadata_t, xxh128_hasher> metadata;
+  std::shared_ptr<SourceRefs> src_locs;
 
-/**
- * Load/create a brand new generic store.
- * @method create_generic_store
- * @return R_NilValue on success, throw and error otherwise
- */
-SEXP init_generic_store(SEXP generics);
+protected:
+  virtual void load_metadata();
+  virtual void write_metadata();
 
-/**
- * Load an existing generic store.
- * @method load_generic_store
- * @return R_NilValue on success, throw and error otherwise
- */
-SEXP load_generic_store(SEXP generics);
+public:
+  GenericStore(const fs::path& config_path, std::shared_ptr<SourceRefs> source_locations);
 
-/**
- * This functions writes generic R val store to file and closes the file.
- * @method close_generic_store
- * @return R_NilValue on success
- */
-SEXP close_generic_store();
+  virtual std::pair<const sexp_hash*, bool> add_value(SEXP val);
 
-/**
- * Load/create a brand new index associated with the generics store.
- * @method create_generic_index
- * @return R_NilValue on success, throw and error otherwise
- */
-SEXP init_generic_index(SEXP index);
+  virtual bool merge_in(Store& other);
+  virtual bool merge_in(GenericStore& other);
 
-/**
- * Load an existing index associated with the generics store.
- * @method load_generic_index
- * @return R_NilValue on success, throw and error otherwise
- */
-SEXP load_generic_index(SEXP index);
+  virtual SEXP get_metadata(SEXP val) const;
+  virtual SEXP get_metadata(uint64_t idx) const;
+  virtual const SEXP view_metadata() const;
 
-/**
- * This function writes the index associated with the generics store to file
- * and closes the file.
- * @method close_generic_index
- * @return R_NilValue
- */
-SEXP close_generic_index();
+  virtual const std::vector<size_t> check(bool slow_check);
 
-/**
- * This functions merges another str store into the current str store.
- * @param  other_generics is the path to the generics store of a different db.
- * @param  other_index is the path to the index of other_generics on disk.
- * @method merge_generic_store
- * @return R_NilValue on success
- */
-SEXP merge_generic_store(SEXP other_generics, SEXP other_index);
+  virtual ~GenericStore();
+};
 
-/**
- * This function assesses if the input is a generic.
- * This function would always return true, therefore no need to implement it.
- * @method is_generic
- * @param  SEXP          Any R value
- * @return               1
- */
-// int is_generic(SEXP value);
-
-/**
- * Adds an generic R value to the generics store.
- * @method add_generic
- * @param  val is a generic R value
- * @return val if val hasn't been added to store before, else R_NilValue
- */
-SEXP add_generic(SEXP val);
-
-/**
- * This function asks if the C layer has seen an given generic value
- * @method have_seen_generic
- * @param  val       R value in form of SEXP
- * @return           1 if the value has been encountered before, else 0
- */
-int have_seen_generic(SEXP val);
-
-/**
- * This function gets the generic value at the index'th place in the database.
- * @method get_generic
- * @return R value
- */
-SEXP get_generic(int index);
-
-/**
- * This function samples from the generic stores in the database
- * @method sample_str
- * @return R value in form of SEXP or throws an error if no generic in database
- */
-SEXP sample_generic();
-
-#ifdef __cplusplus
-} // extern "C"
 #endif
-
-#endif // RCRD_GENERIC_STORE_H

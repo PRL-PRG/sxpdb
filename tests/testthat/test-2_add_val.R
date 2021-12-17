@@ -1,54 +1,58 @@
 if (T) {
 
-## Integer Section
+    ## Simple cases
 
-test_that("add simple int", {
-	open_db("test_db/2_add_val/simple_int_1", create = T)
-	expect_equal(add_val(1L), 1L)
-	close_db()
-})
+    test_that("add simple int", {
+        db = open_db("test_db/2_add_val/simple_int")
+        expect_silent(add_val(db, 1L))
+        expect_equal(sample_val(db), 1L)
+        close_db(db)
+    })
 
-test_that("add scalar int", {
-	open_db("test_db/2_add_val/int_1", create = T)
-	expect_equal(add_val(10000L), 10000L)
-	close_db()
-})
+    test_that("add vector int", {
+        db = open_db("test_db/2_add_val/vector_int_1")
+        expect_silent(add_val(db, c(1L, 2L, 3L)))
+        expect_equal(sample_val(db), c(1L, 2L, 3L))
+        close_db(db)
+    })
 
-test_that("add vector int", {
-	open_db("test_db/2_add_val/int_1")
-	expect_equal(add_val(c(1L, 2L, 3L)), c(1L, 2L, 3L))
-	close_db()
-})
+    test_that("add first", {
+        db = open_db("test_db/2_add_val/add-again")
+        expect_silent(add_val(db, 5000L))
+        expect_equal(sample_val(db), 5000L)
+        close_db(db)
+    })
 
-test_that("add -5000L", {
-	open_db("test_db/2_add_val/add--5000L", create = TRUE)
-	expect_equal(add_val(-5000L), -5000L)
-	close_db()
-})
+    test_that("add again", {
+        db = open_db("test_db/2_add_val/add-again")
+        expect_silent(add_val(db, 5000L))
 
-test_that("add 5000L", {
-	open_db("test_db/2_add_val/add-5000L", create = TRUE)
-	expect_equal(add_val(5000L), 5000L)
-	close_db()
-})
+        for (i in 1:100)
+            expect_equal(sample_val(db), 5000L)
 
-test_that("add 5000L again", {
-	open_db("test_db/2_add_val/add-5000L", create = FALSE)
-	expect_equal(add_val(5000L), NULL)
-	close_db()
-})
+        close_db(db)
+    })
 
-test_that("add 5001L", {
-	open_db("test_db/2_add_val/add-5001L", create = TRUE)
-	expect_equal(add_val(5001L), 5001L)
-	close_db()
-})
+    test_that("add 10 vals", {
+        db = open_db("test_db/2_add_val/add-10-vals")
+        expect_silent(add_val(db, 1:10))
+        expect_equal(sample_val(db), 1:10)
+        close_db(db)
+    })
 
-test_that("add 10 vals", {
-	open_db("test_db/2_add_val/add-10-vals", create = T)
-	expect_equal(add_val(1:10), 1:10)
-	close_db()
-})
+    ##  Environments
+
+    test_that("add environments", {
+        db = open_db("test_db/2_add_val/environment")
+        add_val(db, as.environment(1))
+        expect_error(sample_db(db))
+        close_db(db)
+    })
+
+
+}
+
+if (F) {
 
 test_that("add 100 vals", {
 	open_db("test_db/2_add_val/add-100-vals", create = T)

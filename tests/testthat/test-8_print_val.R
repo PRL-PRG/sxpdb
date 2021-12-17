@@ -1,4 +1,4 @@
-if (T) {
+if (F) {
 
 test_that("print no value", {
 	open_db("test_db/8_print_vals/print_vals_none", create = TRUE)

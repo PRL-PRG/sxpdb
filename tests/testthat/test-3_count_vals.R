@@ -1,4 +1,4 @@
-if (T) {
+if (F) {
 
 test_that("count one val", {
 	open_db("test_db/3_count_val/count-one", create = T)

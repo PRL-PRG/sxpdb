@@ -1,4 +1,4 @@
-if (T) {
+if (F) {
 
 test_that("get random val hello after adding hello", {
 	open_db("test_db/6_sample_val/get_random_1", create = TRUE)
