@@ -178,7 +178,7 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
     debug_counters_t d_counters;
     d_counters.n_maybe_shared = maybe_shared(val);
     d_counters.n_sexp_address_opt = sexp_address_optim;
-    debug_counters.insert(std::make_pair(*key, d_counters));
+    debug_counters.insert({*key, d_counters});
   }
 #endif
 
@@ -196,7 +196,7 @@ std::pair<const sexp_hash*, bool> DefaultStore::add_value(SEXP val) {
     store_file.write(reinterpret_cast<const char*>(buf->data()), buf->size());
 
     // add it to the index (only if writing the value did not fail)
-    auto res = index.insert(std::make_pair(*key, write_pos));
+    auto res = index.insert({*key, write_pos});
     assert(res.second); //insertion should have take place; otherwise, it means there is a collision with XXH128
 
     // new value in that session

@@ -5,6 +5,7 @@
 #include "default_store.h"
 #include "generic_store.h"
 #include "source_ref.h"
+#include "robin_hood.h"
 
 #include <vector>
 #include <memory>
@@ -20,7 +21,7 @@ class GlobalStore : Store {
 
     // to preserve the order
     std::vector<std::unique_ptr<GenericStore>> stores;
-    std::unordered_map<std::string, uint64_t> types;
+    robin_hood::unordered_map<std::string, uint64_t> types;
 
 
     size_t bytes_read;
