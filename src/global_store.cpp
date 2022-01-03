@@ -408,6 +408,14 @@ SEXP GlobalStore::sample_value() {
 }
 
 SEXP GlobalStore::sample_value(const Description& d) {
+  if(!index_generated) {
+    Rf_error("You first need to generate the search indexes.\n");
+  }
+
+  if(new_elements) {
+    Rf_warning("It is likely the search indexes are not up-to-date. Consider rebuilding the indexes.\n");
+  }
+
   roaring::Roaring64Map index;
   if(d.type != UNIONTYPE) {
     index |= types_index[d.type];
@@ -424,7 +432,8 @@ SEXP GlobalStore::sample_value(const Description& d) {
   }
   else if(d.has_class && !d.has_class.value()) {
     roaring::Roaring64Map nonclass = class_index;
-    nonclass.flip(std::max(index.minimum(), nonclass.minimum()), std::min(nonclass.maximum(), index.maximum()));
+    // ranged end included or excluded?
+    nonclass.flip(std::max(index.minimum(), nonclass.minimum()), std::min(nonclass.maximum(), index.maximum()) + 1);
 
     index &= nonclass;
   }
@@ -434,7 +443,7 @@ SEXP GlobalStore::sample_value(const Description& d) {
   }
   else if(d.has_attributes && !d.has_attributes.value()) {
     roaring::Roaring64Map nonattributes = attributes_index;
-    nonattributes.flip(std::max(index.minimum(), nonattributes.minimum()), std::min(nonattributes.maximum(), index.maximum()));
+    nonattributes.flip(std::max(index.minimum(), nonattributes.minimum()), std::min(nonattributes.maximum(), index.maximum()) + 1);
     index &= nonattributes;
   }
 
@@ -443,7 +452,7 @@ SEXP GlobalStore::sample_value(const Description& d) {
   }
   else if(d.is_vector && !d.is_vector.value()) {
     roaring::Roaring64Map nonvector = vector_index;
-    nonvector.flip(std::max(index.minimum(), nonvector.minimum()), std::min(nonvector.maximum(), index.maximum()));
+    nonvector.flip(std::max(index.minimum(), nonvector.minimum()), std::min(nonvector.maximum(), index.maximum()) + 1);
     index &= nonvector;
   }
 
@@ -452,7 +461,7 @@ SEXP GlobalStore::sample_value(const Description& d) {
   }
   else if(d.has_na && !d.has_na.value()) {
     roaring::Roaring64Map nonna = na_index;
-    nonna.flip(std::max(index.minimum(), nonna.minimum()), std::min(nonna.maximum(), index.maximum()));
+    nonna.flip(std::max(index.minimum(), nonna.minimum()), std::min(nonna.maximum(), index.maximum()) + 1);
     index &= nonna;
   }
 
@@ -478,7 +487,12 @@ void GlobalStore::build_indexes() {
 
   //TODO: use a build index function from the generic store...
 
+  assert(stores.size() == 1);
+  stores[0]->build_indexes(types_index, na_index, class_index, vector_index, attributes_index);
+
   // we should have ANYSXP which should be an index of all the database
+
+  // build also the NA index?
 
   index_generated = true;
 }

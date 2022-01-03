@@ -142,6 +142,10 @@ map_db <- function(db, fun) {
   .Call(SXPDB_map_db, db, fun)
 }
 
+#' @export
+build_indexes <- function(db) {
+  .Call(SXPDB_build_indexes, db)
+}
 
 ## Utilities
 

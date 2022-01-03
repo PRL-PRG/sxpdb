@@ -42,6 +42,13 @@ public:
   virtual SEXP get_metadata(uint64_t idx) const;
   virtual const SEXP view_metadata() const;
 
+
+  virtual void build_indexes(std::vector<roaring::Roaring64Map>& type_indexes,
+                             roaring::Roaring64Map& na_index,
+                             roaring::Roaring64Map& class_index,
+                             roaring::Roaring64Map& vector_index,
+                             roaring::Roaring64Map attributes_index);
+
   virtual const std::vector<size_t> check(bool slow_check);
 
   virtual ~GenericStore();

@@ -444,6 +444,8 @@ SEXP map_db(SEXP sxpdb, SEXP fun) {
 }
 
 
+
+
 SEXP view_db(SEXP sxpdb) {
   void* ptr = R_ExternalPtrAddr(sxpdb);
   if(ptr== nullptr) {
@@ -473,4 +475,15 @@ SEXP view_origins(SEXP sxpdb) {
   GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
   return db->view_origins();
+}
+
+SEXP build_indexes(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  db->build_indexes();
+
+  return R_NilValue;
 }

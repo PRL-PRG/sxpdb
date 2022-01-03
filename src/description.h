@@ -31,6 +31,34 @@ bool na_in(SEXP value, T check_na) {
   return false;
 }
 
+inline bool find_na(SEXP val) {
+  switch(TYPEOF(val)) {
+  case STRSXP:
+    return na_in(val, [](SEXP vector, int index) -> bool {
+      return STRING_ELT(vector, index) == NA_STRING;
+    });
+  case CPLXSXP:
+    return na_in(val, [](SEXP vector, int index) -> bool {
+      Rcomplex v = COMPLEX_ELT(vector, index);
+      return (ISNAN(v.r) || ISNAN(v.i));
+    });
+  case REALSXP:
+    return na_in(val, [](SEXP vector, int index) -> bool {
+      return ISNAN(REAL_ELT(vector, index));
+    });
+  case LGLSXP:
+    return  na_in(val, [](SEXP vector, int index) -> bool {
+      return LOGICAL_ELT(vector, index) == NA_LOGICAL;
+    });
+  case INTSXP:
+    return na_in(val, [](SEXP vector, int index) -> bool {
+      return INTEGER_ELT(vector, index) == NA_INTEGER;
+    });
+  }
+
+  return false;
+}
+
 class Description {
 public:
   SEXPTYPE type = ANYSXP;
@@ -78,36 +106,7 @@ public:
     d.ndims = Rf_length(dim);
 
     //NA
-    switch(d.type) {
-    case STRSXP:
-      d.has_na = na_in(val, [](SEXP vector, int index) -> bool {
-        return STRING_ELT(vector, index) == NA_STRING;
-      });
-      break;
-    case CPLXSXP:
-      d.has_na = na_in(val, [](SEXP vector, int index) -> bool {
-        Rcomplex v = COMPLEX_ELT(vector, index);
-        return (ISNAN(v.r) || ISNAN(v.i));
-      });
-      break;
-    case REALSXP:
-      d.has_na = na_in(val, [](SEXP vector, int index) -> bool {
-        return ISNAN(REAL_ELT(vector, index));
-      });
-      break;
-    case LGLSXP:
-      d.has_na = na_in(val, [](SEXP vector, int index) -> bool {
-        return LOGICAL_ELT(vector, index) == NA_LOGICAL;
-      });
-      break;
-    case INTSXP:
-      d.has_na = na_in(val, [](SEXP vector, int index) -> bool {
-        return INTEGER_ELT(vector, index) == NA_INTEGER;
-      });
-      break;
-    default:
-      d.has_na = false;
-    }
+    d.has_na = find_na(val);
 
     if(d.type == VECSXP) {
       for(int index = 0; index < d.length ; index++) {

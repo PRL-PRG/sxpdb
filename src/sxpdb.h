@@ -198,6 +198,14 @@ SEXP view_metadata(SEXP sxpdb);
  */
 SEXP view_origins(SEXP sxpdb);
 
+/**
+ * @method build_indexes
+ * @param sxpdb external pointer to the target database
+ * @return R_NilValue
+ */
+
+SEXP build_indexes(SEXP sxpdb);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

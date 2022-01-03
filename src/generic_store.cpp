@@ -1,6 +1,7 @@
 #include "generic_store.h"
 #include "xxhash.h"
 #include "utils.h"
+#include "description.h"
 
 #include <cassert>
 
@@ -677,6 +678,61 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
 
   return errors;//might do std::unique(std::sort)) but who really cares, especially if we need to wait for a long time on a huge database?
 }
+
+void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexes,
+                           roaring::Roaring64Map& na_index,
+                           roaring::Roaring64Map& class_index,
+                           roaring::Roaring64Map& vector_index,
+                           roaring::Roaring64Map attributes_index) {
+
+    type_indexes.resize(26); // SEXPTYPE is up to 25
+
+    uint64_t i = 0;
+    for(auto it : index) { // we iterate on the index to get the same order
+      auto meta_it = metadata.find(it.first);
+      if(meta_it == metadata.end()) {
+        Rf_error("Value %lu not in the metadata table!\n", i);
+      }
+
+      metadata_t meta = meta_it->second;
+
+      type_indexes[meta.sexptype].add(i);
+      if(meta.n_attributes > 0 ) {
+        attributes_index.add(i);
+      }
+      if(meta.length > 0) {
+        vector_index.add(i);
+      }
+
+      uint64_t offset = it.second;
+
+      store_file.seekg(offset);
+      uint64_t size = 0;
+      store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+      assert(size> 0);
+
+      std::vector<std::byte> buf(size);
+      store_file.read(reinterpret_cast<char*>(buf.data()), size);
+
+      SEXP val = PROTECT(ser.unserialize(buf));
+
+      if(find_na(val)) {
+        na_index.add(i);
+      }
+
+      SEXP klass = Rf_getAttrib(val, R_ClassSymbol);
+      if(klass != R_NilValue) {
+        class_index.add(i);
+      }
+
+      UNPROTECT(1);
+      i++;
+    }
+
+    //type_indexes[ANYSXP].addRange(0, n_values - 1);//addRange does not exist for RoaringBitmap64!!
+    // But we can use flip?
+    type_indexes[ANYSXP].flip(0, n_values); // [a, b[
+  }
 
 bool GenericStore::merge_in(Store& store) {
   GenericStore* st = dynamic_cast<GenericStore*>(&store);

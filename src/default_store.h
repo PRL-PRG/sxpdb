@@ -7,13 +7,13 @@
 #include "hasher.h"
 #include "source_ref.h"
 #include "robin_hood.h"
+#include "roaring.hh"
 
 #include <fstream>
 #include <unordered_map>
 #include <array>
 #include <random>
 #include <unistd.h>
-
 
 
 class DefaultStore : public Store {
@@ -105,9 +105,13 @@ public:
   virtual const std::vector<size_t> check(bool slow_check);
   virtual const SEXP map(const SEXP function);
 
-  // Pass it a Description and a Distribution that precises what kind of values
-  // we want
-  virtual SEXP sample_value(); // attach metadata to an attribute?
+  virtual SEXP sample_value();
+
+  virtual void build_indexes(std::vector<roaring::Roaring64Map>& type_indexes,
+                             roaring::Roaring64Map& na_index,
+                             roaring::Roaring64Map& class_index,
+                             roaring::Roaring64Map& vector_index,
+                             roaring::Roaring64Map attributes_index) = 0;
 
   virtual ~DefaultStore();
 };
