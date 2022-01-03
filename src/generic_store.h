@@ -23,7 +23,7 @@ private:
     std::chrono::nanoseconds next_seen_dur;
 #endif
   };
-  std::unordered_map<sexp_hash, metadata_t, xxh128_hasher> metadata;
+  robin_hood::unordered_map<sexp_hash, metadata_t, xxh128_hasher> metadata;
   std::shared_ptr<SourceRefs> src_locs;
 
 protected:

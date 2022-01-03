@@ -61,6 +61,7 @@ have_seen <- function(db, val) {
 
 #' @export
 get_value_idx <- function(db, idx) {
+  stopifnote(is.numeric(idx), i >= 0, i < size_db(db))
   .Call(SXPDB_get_val, db, idx)
 }
 
@@ -71,7 +72,7 @@ get_meta <- function(db, val) {
 
 #' @export
 get_meta_idx <- function(db, idx) {
-  stopifnot(is.numeric(idx))
+  stopifnot(is.numeric(idx), i >= 0, i < size_db(db))
   .Call(SXPDB_get_meta_idx, db, idx)
 }
 
@@ -115,7 +116,7 @@ get_origins <- function(db, hash) {
 
 #' @export
 get_origins_idx <- function(db, i) {
-  stopifnot(is.numeric(i))
+  stopifnot(is.numeric(i), i >= 0, i < size_db(db))
   .Call(SXPDB_get_origins_idx, db, i)
 }
 

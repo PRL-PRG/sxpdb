@@ -6,6 +6,7 @@
 #include "serialization.h"
 #include "hasher.h"
 #include "source_ref.h"
+#include "robin_hood.h"
 
 #include <fstream>
 #include <unordered_map>
@@ -28,9 +29,9 @@ protected:
 
   // it means that the order in the hash map won't necessary be the order of offsets
   // it that bad because of data locality?
-  std::unordered_map<sexp_hash, uint64_t, xxh128_hasher> index;
+  robin_hood::unordered_map<sexp_hash, uint64_t, xxh128_hasher> index;
   // new during that session or not
-  std::unordered_map<sexp_hash, bool, xxh128_hasher> newly_seen;
+  robin_hood::unordered_map<sexp_hash, bool, xxh128_hasher> newly_seen;
 
   size_t bytes_read;
 
@@ -41,7 +42,7 @@ protected:
   // Optimization
   // we store the hash of the addresses of the sexp during a session
   // also involves setting the tracing bit
-  mutable std::unordered_map<SEXP, sexp_hash> sexp_adresses;
+  mutable robin_hood::unordered_map<SEXP, sexp_hash> sexp_adresses;
 
   pid_t pid;
 
@@ -67,7 +68,7 @@ protected:
     uint64_t n_maybe_shared = 0;// how many times MAYBE_SHARED(val) has been true on a SEXP that was being added
     uint64_t n_sexp_address_opt = 0;// how many times we have been able to use the SEXP address optimization
   };
-  std::unordered_map<sexp_hash, debug_counters_t, xxh128_hasher> debug_counters;
+  robin_hood::unordered_map<sexp_hash, debug_counters_t, xxh128_hasher> debug_counters;
 #endif
 
 public:

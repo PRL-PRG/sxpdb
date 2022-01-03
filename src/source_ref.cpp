@@ -83,7 +83,7 @@ bool SourceRefs::add_value(const sexp_hash& key, const std::string& package_name
     }
   }
   else {
-    index.emplace(std::make_pair(key, std::unordered_set<location_t>({loc})));
+    index.emplace(key, robin_hood::unordered_set<location_t>({loc}));
     n_values++;
     new_elements = true;
   }
@@ -211,7 +211,7 @@ void SourceRefs::load_index() {
     file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
     assert(size > 0);
 
-    std::unordered_set<location_t> locations;
+    robin_hood::unordered_set<location_t> locations;
 
     for(uint64_t i = 0; i < size; i++) {
       location_t loc;
@@ -240,14 +240,14 @@ void SourceRefs::load_configuration() {
   n_args = std::stoul(conf["nb_arguments"]);
 }
 
-const std::unordered_set<location_t> SourceRefs::get_locs(const sexp_hash& key) const {
+const robin_hood::unordered_set<location_t> SourceRefs::get_locs(const sexp_hash& key) const {
   auto it = index.find(key);
 
   if(it != index.end()) {
     return it->second;
   }
   else {
-    return std::unordered_set<location_t>();
+    return robin_hood::unordered_set<location_t>();
   }
 }
 

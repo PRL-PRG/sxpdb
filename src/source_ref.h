@@ -6,6 +6,7 @@
 #include <Rinternals.h>
 #include "hasher.h"
 #include "store.h"
+#include "robin_hood.h"
 
 #include <filesystem>
 #include <string>
@@ -77,7 +78,7 @@ private:
   void write_configuration();
 
   // the custom hasher and comparison directly work on the value pointed to, not on the pointer
-  typedef std::unordered_map<std::shared_ptr<const std::string>, uint64_t, unique_string_hasher, unique_string_equal> unique_names_t;
+  typedef robin_hood::unordered_map<std::shared_ptr<const std::string>, uint64_t, unique_string_hasher, unique_string_equal> unique_names_t;
   typedef std::vector<std::shared_ptr<const std::string>> ordered_names_t;
 
   // Set to get a stable order on it
@@ -88,8 +89,8 @@ private:
   unique_names_t function_names_u;
   unique_names_t arg_names_u;
 
-  std::unordered_map<sexp_hash, std::unordered_set<location_t>, xxh128_hasher> index;
-  std::unordered_map<sexp_hash, uint64_t,xxh128_hasher> offsets;
+  robin_hood::unordered_map<sexp_hash, robin_hood::unordered_set<location_t>, xxh128_hasher> index;
+  robin_hood::unordered_map<sexp_hash, uint64_t,xxh128_hasher> offsets;
 
   static uint64_t inline add_name(const std::string& name, unique_names_t& unique_names, ordered_names_t& ordering);
 
@@ -102,7 +103,7 @@ public:
 
   bool add_value(const sexp_hash& key, const std::string& package_name, const std::string& function_name, const std::string& argument_name);
 
-  const std::unordered_set<location_t> get_locs(const sexp_hash& key) const;
+  const robin_hood::unordered_set<location_t> get_locs(const sexp_hash& key) const;
 
   const ordered_names_t pkg_names(const sexp_hash& key) const;
 
