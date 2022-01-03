@@ -684,6 +684,12 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
                            roaring::Roaring64Map& class_index,
                            roaring::Roaring64Map& vector_index,
                            roaring::Roaring64Map attributes_index) {
+    // clear everything
+    type_indexes.clear();
+    na_index.clear();
+    class_index.clear();
+    vector_index.clear();
+    attributes_index.clear();
 
     type_indexes.resize(26); // SEXPTYPE is up to 25
 
@@ -700,7 +706,7 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
       if(meta.n_attributes > 0 ) {
         attributes_index.add(i);
       }
-      if(meta.length > 0) {
+      if(meta.length != 1) {
         vector_index.add(i);
       }
 

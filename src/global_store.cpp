@@ -432,8 +432,9 @@ SEXP GlobalStore::sample_value(const Description& d) {
   }
   else if(d.has_class && !d.has_class.value()) {
     roaring::Roaring64Map nonclass = class_index;
-    // ranged end included or excluded?
-    nonclass.flip(std::max(index.minimum(), nonclass.minimum()), std::min(nonclass.maximum(), index.maximum()) + 1);
+
+    // range end excluded
+    nonclass.flip(safe_minimum(index), index.maximum() + 1);
 
     index &= nonclass;
   }
@@ -443,7 +444,7 @@ SEXP GlobalStore::sample_value(const Description& d) {
   }
   else if(d.has_attributes && !d.has_attributes.value()) {
     roaring::Roaring64Map nonattributes = attributes_index;
-    nonattributes.flip(std::max(index.minimum(), nonattributes.minimum()), std::min(nonattributes.maximum(), index.maximum()) + 1);
+    nonattributes.flip(safe_minimum(index), index.maximum() + 1);
     index &= nonattributes;
   }
 
@@ -452,7 +453,7 @@ SEXP GlobalStore::sample_value(const Description& d) {
   }
   else if(d.is_vector && !d.is_vector.value()) {
     roaring::Roaring64Map nonvector = vector_index;
-    nonvector.flip(std::max(index.minimum(), nonvector.minimum()), std::min(nonvector.maximum(), index.maximum()) + 1);
+    nonvector.flip(safe_minimum(index), index.maximum() + 1);
     index &= nonvector;
   }
 
@@ -461,7 +462,7 @@ SEXP GlobalStore::sample_value(const Description& d) {
   }
   else if(d.has_na && !d.has_na.value()) {
     roaring::Roaring64Map nonna = na_index;
-    nonna.flip(std::max(index.minimum(), nonna.minimum()), std::min(nonna.maximum(), index.maximum()) + 1);
+    nonna.flip(safe_minimum(index), index.maximum() + 1);
     index &= nonna;
   }
 
@@ -471,14 +472,23 @@ SEXP GlobalStore::sample_value(const Description& d) {
   // each request
   // Then we can optimize and shrink to fit
 
+  if(index.cardinality() == 0 ) {
+    return R_NilValue;
+  }
+
   std::uniform_int_distribution<uint64_t> dist(0, index.cardinality() - 1);
 
   uint64_t element;
 
   bool res = index.select(dist(rand_engine), &element);
-  assert(res);
 
-  return get_value(element);
+  if(res) {
+    return get_value(element);
+  }
+  else {
+    return R_NilValue;
+  }
+
 }
 
 void GlobalStore::build_indexes() {

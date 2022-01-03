@@ -331,6 +331,18 @@ SEXP sample_val(SEXP sxpdb) {
   return db->sample_value();
 }
 
+SEXP sample_similar(SEXP sxpdb, SEXP val) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  Description d = Description::description_from_value(val);
+
+  return db->sample_value(d);
+}
+
 
 SEXP get_val(SEXP sxpdb, SEXP i) {
   void* ptr = R_ExternalPtrAddr(sxpdb);

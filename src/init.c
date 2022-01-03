@@ -18,6 +18,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"add_origin",      (DL_FUNC) &add_origin,      5},
 	{"have_seen",				(DL_FUNC) &have_seen,				2},
 	{"sample_val",				(DL_FUNC) &sample_val,		1},
+	{"sample_similar",   (DL_FUNC) &sample_similar, 2},
 	{"get_val",					(DL_FUNC) &get_val,					2},
 	{"merge_db",					(DL_FUNC) &merge_db,			2},
 	{"size_db",           (DL_FUNC) &size_db,			  1},

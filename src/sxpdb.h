@@ -58,6 +58,16 @@ SEXP have_seen(SEXP db, SEXP val);
 SEXP sample_val(SEXP db);
 
 /**
+ * This function returns a random value from the database,
+ * but similar to the provided value
+ * @method sample_val
+ * @param  db       external pointer to the database
+ * @param val  a SEXP
+ * @return R value in form of SEXP from the database, R_NilValue if no similar value was found
+ */
+SEXP sample_similar(SEXP db, SEXP val);
+
+/**
  * This function returns a value from the database specified by an order
  * @method get_val
  * @param  db       external pointer to the database
