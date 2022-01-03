@@ -64,8 +64,6 @@ public:
     // Check the database and return the indices of the values with problems
     virtual const std::vector<size_t> check(bool slow_check) = 0;
 
-    // Pass it a Description and a Distribution that precises what kind of values
-    // we want
     virtual SEXP sample_value() = 0;
 
     virtual ~Store() {};

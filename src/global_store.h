@@ -5,11 +5,14 @@
 #include "default_store.h"
 #include "generic_store.h"
 #include "source_ref.h"
+#include "roaring.hh"
+#include "description.h"
 
 #include <vector>
 #include <memory>
 #include <random>
 #include <unistd.h>
+
 
 
 class GlobalStore : Store {
@@ -37,6 +40,14 @@ class GlobalStore : Store {
     virtual void create();
 
     std::shared_ptr<SourceRefs> src_refs;
+
+    //Indexes
+    bool index_generated = false;
+    std::vector<roaring::Roaring64Map> types_index;//the index in the vector is the type (from TYPEOF())
+    roaring::Roaring64Map na_index;//has at least one NA In the vector
+    roaring::Roaring64Map class_index;//has a class a attribute
+    roaring::Roaring64Map vector_index;//vector (but not scalar)
+    roaring::Roaring64Map attributes_index;
 
 
   public:
@@ -69,6 +80,10 @@ class GlobalStore : Store {
     virtual const SEXP view_metadata() const;
 
     virtual SEXP sample_value();
+
+    virtual SEXP sample_value(const Description& description);
+
+    virtual void build_indexes();
 
     virtual bool add_origins(const sexp_hash& hash, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
 

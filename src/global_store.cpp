@@ -407,6 +407,82 @@ SEXP GlobalStore::sample_value() {
   return get_value(dist(rand_engine));
 }
 
+SEXP GlobalStore::sample_value(const Description& d) {
+  roaring::Roaring64Map index;
+  if(d.type != UNIONTYPE) {
+    index |= types_index[d.type];
+  }
+  else if(d.type == UNIONTYPE) {
+    for(auto& desc : d.descriptions) {
+      assert(desc.type != UNIONTYPE);
+      index |= types_index[desc.type];
+    }
+  }
+
+  if(d.has_class && d.has_class.value()) {
+    index &= class_index;
+  }
+  else if(d.has_class && !d.has_class.value()) {
+    roaring::Roaring64Map nonclass = class_index;
+    nonclass.flip(std::max(index.minimum(), nonclass.minimum()), std::min(nonclass.maximum(), index.maximum()));
+
+    index &= nonclass;
+  }
+
+  if(d.has_attributes && d.has_attributes.value()) {
+    index &= attributes_index;
+  }
+  else if(d.has_attributes && !d.has_attributes.value()) {
+    roaring::Roaring64Map nonattributes = attributes_index;
+    nonattributes.flip(std::max(index.minimum(), nonattributes.minimum()), std::min(nonattributes.maximum(), index.maximum()));
+    index &= nonattributes;
+  }
+
+  if(d.is_vector && d.is_vector.value()) {
+    index &= vector_index;
+  }
+  else if(d.is_vector && !d.is_vector.value()) {
+    roaring::Roaring64Map nonvector = vector_index;
+    nonvector.flip(std::max(index.minimum(), nonvector.minimum()), std::min(nonvector.maximum(), index.maximum()));
+    index &= nonvector;
+  }
+
+  if(d.has_na && d.has_na.value()) {
+    index &= na_index;
+  }
+  else if(d.has_na && !d.has_na.value()) {
+    roaring::Roaring64Map nonna = na_index;
+    nonna.flip(std::max(index.minimum(), nonna.minimum()), std::min(nonna.maximum(), index.maximum()));
+    index &= nonna;
+  }
+
+  //TODO: length, class names, n dimensions
+
+  //TODO: better API: rather generate a sampler, which will hold the unioned/intersected indexes already, so as not to renegenerate it after
+  // each request
+  // Then we can optimize and shrink to fit
+
+  std::uniform_int_distribution<uint64_t> dist(0, index.cardinality() - 1);
+
+  uint64_t element;
+
+  bool res = index.select(dist(rand_engine), &element);
+  assert(res);
+
+  return get_value(element);
+}
+
+void GlobalStore::build_indexes() {
+  // TODO: we should really break the current class hierarchy architecture...
+  // DefaultStore and GenericStore should simply be tables
+
+  //TODO: use a build index function from the generic store...
+
+  // we should have ANYSXP which should be an index of all the database
+
+  index_generated = true;
+}
+
 
 void GlobalStore::write_configuration() {
   CSVFile file;
