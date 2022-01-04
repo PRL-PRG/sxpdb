@@ -473,6 +473,10 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
 
 
   for(auto it : index) {
+    if(idx % 1000 == 0) {
+      R_CheckUserInterrupt();
+    }
+
     uint64_t offset = it.second;
 
     try {
@@ -606,6 +610,10 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
     store_file.exceptions(std::ifstream::goodbit);
 
     while(1) {
+      if(nb_in_store % 1000 == 0) {
+        R_CheckUserInterrupt();
+      }
+
       store_file.seekg(offset);
       uint64_t size = 0;
       store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
