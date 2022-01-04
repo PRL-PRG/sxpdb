@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <string>
 #include <algorithm>
-#include <execution>
+//#include <execution>
 
 inline const SEXPTYPE UNIONTYPE = 40;
 
@@ -45,24 +45,24 @@ inline bool find_na(SEXP val) {
   case CPLXSXP: {
       Rcomplex* v = COMPLEX(val);
       int length = Rf_length(val);
-      return std::find_if(std::execution::par_unseq, v, v + length, [](const Rcomplex& c) -> bool {return ISNAN(c.r) || ISNAN(c.i);}) != v + length;
+      return std::find_if(v, v + length, [](const Rcomplex& c) -> bool {return ISNAN(c.r) || ISNAN(c.i);}) != v + length;
     }
   case REALSXP: {
       double* v = REAL(val);
       int length = Rf_length(val);
-      return std::find_if(std::execution::par_unseq, v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
+      return std::find_if(v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
     }
   case LGLSXP:{
     int* v = LOGICAL(val);
     int length = Rf_length(val);
 
-    return std::find(std::execution::par_unseq, v, v + length, NA_LOGICAL) != v + length;
+    return std::find(v, v + length, NA_LOGICAL) != v + length;
   }
   case INTSXP: {
     int* v = INTEGER(val);
     int length = Rf_length(val);
 
-    return std::find(std::execution::par_unseq, v, v + length, NA_INTEGER) != v + length;
+    return std::find(v, v + length, NA_INTEGER) != v + length;
     }
   }
   return false;
