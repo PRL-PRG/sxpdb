@@ -93,7 +93,7 @@ public:
 
   // returns the closest description of the SEXP
   // We may relax it later on
-  inline static const Description description_from_value(SEXP val) {
+  inline static const Description from_value(SEXP val) {
     Description d(TYPEOF(val));
 
     d.length = Rf_length(val);
@@ -119,14 +119,14 @@ public:
 
     if(d.type == VECSXP) {
       for(int index = 0; index < d.length ; index++) {
-        d.descriptions.push_back(description_from_value(VECTOR_ELT(val, index)));
+        d.descriptions.push_back(from_value(VECTOR_ELT(val, index)));
       }
     }
 
     return d;
   }
 
-  inline static const Description union_description(const Description& d1, const Description& d2) {
+  inline static const Description unify(const Description& d1, const Description& d2) {
     Description d(UNIONTYPE);
 
     // unify if it is the same for both, otherwise, make non defined
@@ -150,7 +150,20 @@ public:
       d.ndims = d1.ndims;
     }
 
-    d.descriptions = {d1, d2}; // does it work even if d1 or d2 is already an union?
+    // We do not deduplicate descriptions here
+    if(d1.type == UNIONTYPE) {
+      d.descriptions.insert(d.descriptions.end(), d1.descriptions.begin(), d1.descriptions.end());
+    }
+    else {
+      d.descriptions.push_back(d1);
+    }
+    if(d2.type == UNIONTYPE) {
+      d.descriptions.insert(d.descriptions.end(), d2.descriptions.begin(), d2.descriptions.end());
+    }
+    else {
+      d.descriptions.push_back(d2);
+    }
+
 
     return d;
   }

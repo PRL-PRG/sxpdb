@@ -14,9 +14,12 @@
 #include <random>
 #include <unistd.h>
 
-
+class GenericStore;
 
 class GlobalStore : Store {
+  public:
+    inline static const int nb_intervals= 200;
+    inline static std::array<uint64_t, nb_intervals> length_intervals{0};
   private:
     // Stores the names of the various stores, their types, their number of values
     // it is redundant with the configuration files of the various stores, but it is ok
@@ -49,6 +52,7 @@ class GlobalStore : Store {
     roaring::Roaring64Map class_index;//has a class a attribute
     roaring::Roaring64Map vector_index;//vector (but not scalar)
     roaring::Roaring64Map attributes_index;
+    std::vector<roaring::Roaring64Map> lengths_index;
 
 
   public:

@@ -63,9 +63,11 @@ SEXP sample_val(SEXP db);
  * @method sample_val
  * @param  db       external pointer to the database
  * @param val  a SEXP
+ * @param multiple boolean, whether val is actual value or a list of values we will do the union of
  * @return R value in form of SEXP from the database, R_NilValue if no similar value was found
  */
-SEXP sample_similar(SEXP db, SEXP val);
+SEXP sample_similar(SEXP db, SEXP val, SEXP multiple);
+
 
 /**
  * This function returns a value from the database specified by an order

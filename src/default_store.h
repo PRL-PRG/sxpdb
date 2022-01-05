@@ -108,10 +108,13 @@ public:
   virtual SEXP sample_value();
 
   virtual void build_indexes(std::vector<roaring::Roaring64Map>& type_indexes,
+                             std::vector<roaring::Roaring64Map>& lengths_indexes,
                              roaring::Roaring64Map& na_index,
                              roaring::Roaring64Map& class_index,
                              roaring::Roaring64Map& vector_index,
                              roaring::Roaring64Map attributes_index) = 0;
+
+  virtual roaring::Roaring64Map search_length(roaring::Roaring64Map idx, uint64_t length) = 0;
 
   virtual ~DefaultStore();
 };

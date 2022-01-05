@@ -688,6 +688,7 @@ const std::vector<size_t> GenericStore::check(bool slow_check) {
 }
 
 void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexes,
+                                 std::vector<roaring::Roaring64Map>& lengths_indexes,
                            roaring::Roaring64Map& na_index,
                            roaring::Roaring64Map& class_index,
                            roaring::Roaring64Map& vector_index,
@@ -700,6 +701,21 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
     attributes_index.clear();
 
     type_indexes.resize(26); // SEXPTYPE is up to 25
+
+    lengths_indexes.resize(GlobalStore::nb_intervals);
+    // init intervals
+    for(int i = 0; i < 101; i++) {
+        GlobalStore::length_intervals[i] = i;
+    }
+    int base = 10;
+    int power = 10;
+    for(int i = 0; i < 10; i++) {
+      for(int j = 100 + 10 * i + 1; j < 100 + 10 * (i + 1); j++) {
+        GlobalStore::length_intervals[j] = GlobalStore::length_intervals[j - 1] + power;
+      }
+      power *= base;
+    }
+
 
     uint64_t i = 0;
     for(auto it : index) { // we iterate on the index to get the same order
@@ -717,6 +733,9 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
       if(meta.length != 1) {
         vector_index.add(i);
       }
+
+      int length_idx = std::lower_bound(GlobalStore::length_intervals.begin(), GlobalStore::length_intervals.end(), meta.length) - GlobalStore::length_intervals.begin();
+      lengths_indexes[length_idx].add(i);
 
       uint64_t offset = it.second;
 
@@ -746,7 +765,37 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
     //type_indexes[ANYSXP].addRange(0, n_values - 1);//addRange does not exist for RoaringBitmap64!!
     // But we can use flip?
     type_indexes[ANYSXP].flip(0, n_values); // [a, b[
+
+    for(auto& ind : type_indexes) {
+      ind.runOptimize();
+      ind.shrinkToFit();
+    }
+
+    na_index.runOptimize();
+    na_index.shrinkToFit();
+    class_index.runOptimize();
+    class_index.shrinkToFit();
+    vector_index.runOptimize();
+    vector_index.shrinkToFit();
+    attributes_index.runOptimize();
+    attributes_index.shrinkToFit();
   }
+
+roaring::Roaring64Map GenericStore::search_length(roaring::Roaring64Map idx, uint64_t length) {
+  roaring::Roaring64Map precise_index;
+
+  auto it = index.begin();
+  for(uint64_t i : idx) {
+    std::advance(it, i);
+    sexp_hash key = it->first;
+    auto it2 = metadata.find(key);
+    if(it2 != metadata.end() && it2->second.length == length) {
+      precise_index.add(i);
+    }
+  }
+
+  return precise_index;
+}
 
 bool GenericStore::merge_in(Store& store) {
   GenericStore* st = dynamic_cast<GenericStore*>(&store);
