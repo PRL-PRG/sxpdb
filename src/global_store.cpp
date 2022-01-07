@@ -485,6 +485,7 @@ SEXP GlobalStore::sample_value(const Description& d) {
     // Either it is the last slot or the length difference is > 1
     if( length_idx == nb_intervals - 1 || length_intervals.at(length_idx + 1) - length_intervals.at(length_idx) > 1) {
         // we manually build an index for the given length
+        // it will perform a linear search but there should not be more than 10^2 elements in those slots anyway
         roaring::Roaring64Map precise_length_index = stores[0]->search_length(lengths_index[length_idx], d.length.value());
         index &= precise_length_index;
     }

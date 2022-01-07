@@ -9,6 +9,8 @@
 #include "description.h"
 #include "robin_hood.h"
 
+#include "table.h"
+
 #include <vector>
 #include <memory>
 #include <random>
