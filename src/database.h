@@ -1,12 +1,26 @@
 #ifndef SXPDB_DATABASE_H
 #define SXPDB_DATABASE_H
 
+#if !defined(PKG_V_MAJOR) || !defined(PKG_V_MINOR) || !defined(PKG_V_PATCH)
+#error "The version major.minor.patch is not defined."
+#endif
+
+#ifndef PKG_V_DEVEL
+#define PKG_V_DEVEL "0"
+#endif
+
 #include <unistd.h>
 #include <optional>
+#include <random>
 
 #include "table.h"
+#include "query.h"
+#include "search_index.h"
+#include "utils.h"
+
 #include "robin_hood.h"
 #include "xxhash.h"
+#include "roaring.hh"
 
 typedef XXH128_hash_t sexp_hash;
 
@@ -29,30 +43,40 @@ struct debug_counters_t {
 };
 
 class Database {
+public:
+  static const int version_major = stoi(PKG_V_MAJOR);
+  static const int version_minor = stoi(PKG_V_MINOR);
+  static const int version_patch = stoi(PKG_V_PATCH);
+  static const int version_development = stoi(PKG_V_DEVEL);
 private:
+  uint64_t nb_total_values = 0;
+  bool new_elements = false;
+  bool write_mode;
   bool quiet;
   pid_t pid;
+  std::default_random_engine rand_engine;
 
 
+  //TODO: Try to share the sexp_hash from the table in the hash table
+  // Create a new Table derivative for that?
   FSizeTable<sexp_hash> hashes;
   robin_hood::unordered_map<sexp_hash, uint64_t> unique_sexps;
 
   VSizeTable<std::vector<std::byte>> sexp_table;
   FSizeTable<runtime_meta_t> runtime_meta;//Data that changes at runtime
   FSizeTable<static_meta_t> static_meta;//Data that will never change after being written once
-#ifndef NDEBUG
-  FSizeTable<debug_counters_t> debug_counters;
-#endif
 
-  //TODO: a data structure that stores all the Roaring Bitmap indexes
+  FSizeTable<debug_counters_t> debug_counters;// will be loaded into in debug mode
 
-  //TODO: add the SourceRefs store
+  SearchIndex search_index;
+
+  //TODO: add the SourceRefs store (but modify it first so that it uses the new Table<T> derivatives)
 
   fs::path config_path;
 public:
   // write_mode entails loading more data structures in memory
   // So choosing to read only should be much quicker
-  Database(fs::path config_, bool write_mode = false, bool quiet_ = true);
+  Database(const fs::path& config_, bool write_mode = false, bool quiet_ = true);
 
   // Merge two databases
   void merge_in(Database& db);
@@ -69,7 +93,6 @@ public:
   const SEXP get_value(uint64_t index) const;
   const SEXP get_metadata(uint64_t index) const;
   const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(size_t index) const;
-
 
   //Accessors for sampling
   const SEXP sample_value();

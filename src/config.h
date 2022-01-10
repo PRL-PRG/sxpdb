@@ -26,6 +26,8 @@ public:
 
   void write(const fs::path& filename);
 
+  bool has_key(const std::string& key) const { return config.count(key) > 0; }
+
   const std::string& operator[](const std::string& key) const { return config.at(key);}
 
 };

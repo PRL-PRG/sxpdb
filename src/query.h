@@ -1,5 +1,5 @@
-#ifndef SXPDB_DESCRIPTION_H
-#define SXPDB_DESCRIPTION_H
+#ifndef SXPDB_QUERY_H
+#define SXPDB_QUERY_H
 
 
 #define R_NO_REMAP
@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <string>
 #include <algorithm>
-//#include <execution>
+#include <execution>
 
 inline const SEXPTYPE UNIONTYPE = 40;
 
@@ -45,30 +45,30 @@ inline bool find_na(SEXP val) {
   case CPLXSXP: {
       Rcomplex* v = COMPLEX(val);
       int length = Rf_length(val);
-      return std::find_if(v, v + length, [](const Rcomplex& c) -> bool {return ISNAN(c.r) || ISNAN(c.i);}) != v + length;
+      return std::find_if(std::execution::par_unseq, v, v + length, [](const Rcomplex& c) -> bool {return ISNAN(c.r) || ISNAN(c.i);}) != v + length;
     }
   case REALSXP: {
       double* v = REAL(val);
       int length = Rf_length(val);
-      return std::find_if(v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
+      return std::find_if(std::execution::par_unseq, v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
     }
   case LGLSXP:{
     int* v = LOGICAL(val);
     int length = Rf_length(val);
 
-    return std::find(v, v + length, NA_LOGICAL) != v + length;
+    return std::find(std::execution::par_unseq, v, v + length, NA_LOGICAL) != v + length;
   }
   case INTSXP: {
     int* v = INTEGER(val);
     int length = Rf_length(val);
 
-    return std::find(v, v + length, NA_INTEGER) != v + length;
+    return std::find(std::execution::par_unseq, v, v + length, NA_INTEGER) != v + length;
     }
   }
   return false;
 }
 
-class Description {
+class Query {
 public:
   SEXPTYPE type = ANYSXP;
   std::optional<bool> is_vector;
@@ -78,10 +78,10 @@ public:
   std::optional<uint64_t> length;
   std::optional<int> ndims; // 2 = matrix, otherwise = array
   std::vector<std::string> class_names;
-  std::vector<Description> descriptions;// For union types, lists...
+  std::vector<Query> queries;// For union types, lists...
 public:
-  Description() {}
-  Description(SEXPTYPE type_) : type(type_) {}
+  Query() {}
+  Query(SEXPTYPE type_) : type(type_) {}
 
   void relax_na() {has_na.reset();}
   void relax_vector() {is_vector.reset();}
@@ -93,8 +93,8 @@ public:
 
   // returns the closest description of the SEXP
   // We may relax it later on
-  inline static const Description from_value(SEXP val) {
-    Description d(TYPEOF(val));
+  inline static const Query from_value(SEXP val) {
+    Query d(TYPEOF(val));
 
     d.length = Rf_length(val);
 
@@ -119,15 +119,15 @@ public:
 
     if(d.type == VECSXP) {
       for(int index = 0; index < d.length ; index++) {
-        d.descriptions.push_back(from_value(VECTOR_ELT(val, index)));
+        d.queries.push_back(from_value(VECTOR_ELT(val, index)));
       }
     }
 
     return d;
   }
 
-  inline static const Description unify(const Description& d1, const Description& d2) {
-    Description d(UNIONTYPE);
+  inline static const Query unify(const Query& d1, const Query& d2) {
+    Query d(UNIONTYPE);
 
     // unify if it is the same for both, otherwise, make non defined
     if(d1.is_vector && d2.is_vector && *d1.is_vector == *d2.is_vector) {
@@ -152,16 +152,16 @@ public:
 
     // We do not deduplicate descriptions here
     if(d1.type == UNIONTYPE) {
-      d.descriptions.insert(d.descriptions.end(), d1.descriptions.begin(), d1.descriptions.end());
+      d.queries.insert(d.queries.end(), d1.queries.begin(), d1.queries.end());
     }
     else {
-      d.descriptions.push_back(d1);
+      d.queries.push_back(d1);
     }
     if(d2.type == UNIONTYPE) {
-      d.descriptions.insert(d.descriptions.end(), d2.descriptions.begin(), d2.descriptions.end());
+      d.queries.insert(d.queries.end(), d2.queries.begin(), d2.queries.end());
     }
     else {
-      d.descriptions.push_back(d2);
+      d.queries.push_back(d2);
     }
 
 

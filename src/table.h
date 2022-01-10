@@ -48,6 +48,12 @@ protected:
   fs::path file_path;
 public:
   Table(fs::path path) {
+    open(path);
+  }
+
+  Table() {}
+
+  virtual void open(fs::path path) {
     //Check if there is already a config file
     if(fs::exists(path)) {
       Config config(path);
@@ -109,6 +115,13 @@ private:
   T data;
 public:
   FSizeTable(fs::path path) : Table<T>(path) {
+    open(path);
+  }
+
+  FSizeTable() :Table<T>() {}
+
+  virtual void open(fs::path path) {
+    Table<T>::open(path);
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
     if(n_values != n_values_file) {
@@ -122,7 +135,6 @@ public:
     }
 
     file.exceptions(std::fstream::failbit);
-
   }
 
 
@@ -224,7 +236,17 @@ private:
   // Size, actual value
   T value;
 public:
-  VSizeTable(fs::path path) : Table<T>(path), offset_table(path.parent_path().append(path.filename().string() + "_offset")) {
+  VSizeTable(fs::path path) {
+    open(path);
+  }
+
+  VSizeTable() {}
+
+  virtual void open(fs::path path) {
+    Table<T>::open(path);
+
+    offset_table.open(path.parent_path().append(path.filename().string() + "_offset"));
+
     file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
 
     if(!file) {
@@ -246,6 +268,8 @@ public:
 
     n_values++;
   }
+
+
 
   virtual void append(const std::vector<T>& values) {
     for(const auto& value : values) {
