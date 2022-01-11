@@ -211,6 +211,14 @@ public:
     file.close();
   }
 
+  const std::vector<T>& memory_view() {
+    if(!in_memory) {
+      load_all();
+    }
+
+    return store;
+  }
+
   virtual ~FSizeTable() {
     uint64_t nb_new_values = n_values - last_written_index;
     if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {

@@ -17,10 +17,12 @@
 #include "query.h"
 #include "search_index.h"
 #include "utils.h"
+#include "hasher.h"
 
 #include "robin_hood.h"
 #include "xxhash.h"
 #include "roaring.hh"
+
 
 typedef XXH128_hash_t sexp_hash;
 
@@ -60,7 +62,7 @@ private:
   //TODO: Try to share the sexp_hash from the table in the hash table
   // Create a new Table derivative for that?
   FSizeTable<sexp_hash> hashes;
-  robin_hood::unordered_map<sexp_hash, uint64_t> unique_sexps;
+  robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher> unique_sexps;
 
   VSizeTable<std::vector<std::byte>> sexp_table;
   FSizeTable<runtime_meta_t> runtime_meta;//Data that changes at runtime

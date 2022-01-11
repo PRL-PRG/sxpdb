@@ -18,8 +18,9 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
   if(std::filesystem::exists(config_path)) {
     // Check the lock file
-    if(std::filesystem::exists(lock_path)) {
+    if(std::filesystem::exists(lock_path) && write_mode) {
       Rprintf("Database did not exit properly. Will perform check_db in slow mode.\n");
+      Rprintf("It might also be because the database is also open in write mode from another process.\n");
       to_check = true;
     }
 
@@ -68,8 +69,8 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     write_configuration();
   }
 
-  // We can now create the lock file
-  if(!to_check) {
+  // We can now create the lock file if we are in write mode
+  if(!to_check && write_mode) {
     std::ofstream lock_file(lock_path);
     lock_file << std::chrono::system_clock::now().time_since_epoch().count() << std::endl;
   }
@@ -120,6 +121,13 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     debug_counters.load_all();
   }
 
+  // Load the hashes and build the hash map
+  const std::vector<sexp_hash>& hash_vec = hashes.memory_view();
+  unique_sexps.reserve(hashes.nb_values());
+  for(uint64_t i = 0; i < hash_vec.size() ; i++) {
+    unique_sexps.insert({&hash_vec[i], i});
+  }
+
   if(!quiet) {
     Rprintf("Loaded database at %s with %ld values.\n", config_path.parent_path().c_str(), nb_total_values);
   }
@@ -134,8 +142,10 @@ Database::~Database() {
     }
 
     // Remove the LOCK to witness that the database left without problems
-    fs::path lock_path = config_path.parent_path() / ".LOCK";
-    fs::remove(lock_path);
+    if(write_mode) {
+      fs::path lock_path = config_path.parent_path() / ".LOCK";
+      fs::remove(lock_path);
+    }
   }
 }
 

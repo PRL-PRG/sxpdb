@@ -37,6 +37,16 @@ struct xxh128_hasher {
   }
 };
 
+struct xxh128_pointer_hasher {
+  std::size_t operator()(const sexp_hash* const c) const
+  {
+    std::size_t result = 0;
+    hash_combine(result, c->low64);
+    hash_combine(result, c->high64);
+    return result;
+  }
+};
+
 inline bool operator==(const sexp_hash& h1, const sexp_hash& h2)
 {
   return XXH128_isEqual(h1, h2);
