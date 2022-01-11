@@ -4,7 +4,7 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
-#include "Rversion.h"
+#include <Rversion.h>
 
 #include <vector>
 #include <cstdint>
@@ -15,10 +15,13 @@
 #include <unordered_map>
 #include <string>
 #include <cassert>
+#include <cstdio>
+#include <unistd.h>
 
 #include "config.h"
 
 namespace fs = std::filesystem;
+
 
 template<typename T>
 class Table;
@@ -46,12 +49,13 @@ protected:
   bool new_elements = false;
 
   fs::path file_path;
+  pid_t pid;
 public:
-  Table(fs::path path) {
+  Table(fs::path path) : pid(getpid()) {
     open(path);
   }
 
-  Table() {}
+  Table() : pid(getpid()) {}
 
   virtual void open(fs::path path) {
     //Check if there is already a config file
@@ -73,7 +77,7 @@ public:
   }
 
   ~Table() {
-    if(new_elements) {
+    if(new_elements && pid == getpid()) {
       std::unordered_map<std::string, std::string> conf;
       fs::path path = file_path.stem();// without the .bin extension
       conf["path"] = file_path.string();
@@ -98,6 +102,8 @@ public:
 
   //virtual TableIterator<T> begin() = 0;
   //virtual TableIterator<T> end() = 0;
+
+  virtual const fs::path& get_path() const {return file_path;}
 };
 
 //Table for fixed size elements
@@ -108,6 +114,7 @@ private:
   using Table<T>::n_values;
   using Table<T>::in_memory;
   using Table<T>::new_elements;
+  using Table<T>::pid;
   std::fstream file;
   std::vector<T> store;
   uint64_t last_written_index = 0;
@@ -120,7 +127,7 @@ public:
 
   FSizeTable() :Table<T>() {}
 
-  virtual void open(fs::path path) {
+  void open(fs::path path) override {
     Table<T>::open(path);
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
@@ -138,28 +145,28 @@ public:
   }
 
 
-  virtual void append(const T& value) {
+  void append(const T& value) override {
     if(in_memory) {
       store.push_back(value);
     }
     else {
-      file.write(reinterpret_cast<char*>(&value), sizeof(value));
+      file.write(reinterpret_cast<const char*>(&value), sizeof(value));
     }
 
     n_values++;
   }
 
-  virtual void append(const std::vector<T>& values) {
+  void append(const std::vector<T>& values) override {
     if(in_memory) {
         store.insert(store.end(), values.begin(), values.end());
     }
     else {
-      file.write(reinterpret_cast<char*>(values.data()), sizeof(T) * values.size());
+      file.write(reinterpret_cast<const char*>(values.data()), sizeof(T) * values.size());
     }
     n_values += values.size();
   }
 
-  virtual const T& read(uint64_t index) {
+  const T& read(uint64_t index) override {
     if(in_memory) {
       return store[index];
     }
@@ -170,7 +177,7 @@ public:
     }
   }
 
-  virtual void read_in(uint64_t index, T& value) {
+  void read_in(uint64_t index, T& value) override {
     if(in_memory) {
       value = store[index];
     }
@@ -180,20 +187,20 @@ public:
     }
   }
 
-  virtual void write(uint64_t index, const T& value) {
+  void write(uint64_t index, const T& value) override {
     if(in_memory) {
       store[index] = value;
     }
     else {
       file.seekp(index * sizeof(T));
-      file.write(reinterpret_cast<char*>(&value), sizeof(value));
+      file.write(reinterpret_cast<const char*>(&value), sizeof(value));
       // seek back to the end
       file.seekp(0, std::ios_base::end);
     }
     only_append = false;
   }
 
-  virtual void load_all() {
+  void load_all() override {
     store.resize(n_values);
     file.read(reinterpret_cast<char*>(store.data()), n_values * sizeof(T));
     in_memory = true;
@@ -206,7 +213,7 @@ public:
 
   virtual ~FSizeTable() {
     uint64_t nb_new_values = n_values - last_written_index;
-    if(in_memory && only_append && nb_new_values > 0) {
+    if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
       file.write(reinterpret_cast<char*>(store.data() + last_written_index), nb_new_values * sizeof(T));
@@ -232,7 +239,7 @@ private:
   FSizeTable<uint64_t> offset_table;
   std::fstream file;// for the actual values
   // Layout:
-  // 8 bytes (64 bit unsigned integer), 1 byte, n bytes
+  // 8 bytes (64 bit unsigned integer),  n bytes
   // Size, actual value
   T value;
 public:
@@ -242,10 +249,10 @@ public:
 
   VSizeTable() {}
 
-  virtual void open(fs::path path) {
+  void open(fs::path path) override {
     Table<T>::open(path);
 
-    offset_table.open(path.parent_path().append(path.filename().string() + "_offset"));
+    offset_table.open(path.parent_path() / (path.filename().string() + "_offset"));
 
     file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
 
@@ -256,13 +263,13 @@ public:
     file.exceptions(std::fstream::failbit);
   }
 
-  virtual void append(const T& value) {
+  void append(const T& value) override {
     uint64_t size = value.size();
 
     auto pos = file.tellp();
 
     file.write(reinterpret_cast<char*>(&size), sizeof(size));
-    file.write(reinterpret_cast<char*>(&value.data()), sizeof(T::value_type) * size);
+    file.write(reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size);
 
     offset_table.append(pos);
 
@@ -271,18 +278,18 @@ public:
 
 
 
-  virtual void append(const std::vector<T>& values) {
+  void append(const std::vector<T>& values) override {
     for(const auto& value : values) {
       append(value);
     }
   }
 
-  virtual T read(uint64_t idx) {
+  const T& read(uint64_t idx) override {
     read_in(idx, value);
     return value;
   }
 
-  virtual void read_in(uint64_t idx, T& val) {
+  void read_in(uint64_t idx, T& val) override {
     int64_t offset = offset_table.read(idx);
 
     file.seekg(offset);
@@ -290,14 +297,14 @@ public:
     file.read(reinterpret_cast<char*>(&size), sizeof(size));
     assert(size > 0);
 
-    file.read(reinterpret_cast<char*>(val.data()), sizeof(T::value_type) * size);
+    file.read(reinterpret_cast<char*>(val.data()), sizeof(typename T::value_type) * size);
   }
 
-  virtual void load_all() {
+  void load_all() override {
     offset_table.load_all();
   }
 
-  virtual void write(uint64_t idx, const T& value) {
+  void write(uint64_t idx, const T& value) override {
     uint64_t offset = offset_table.read(idx);
 
     file.seekg(offset);
@@ -306,13 +313,12 @@ public:
     assert(size > 0 );
 
     if(value.size() != size) {
-      Rf_warning("Cannot write at index %lu a value of a different size in table %s : %lu vs %lu ", index, file_path.c_str(), size, value.size());
+      Rf_warning("Cannot write at index %lu a value of a different size in table %s : %lu vs %ld.\n", idx, file_path.c_str(), size, value.size());
       return;
     }
 
     file.seekp(offset);
-    value.resize(size);
-    file.write(reinterpret_cast<char*>(value.data()), sizeof(T::value_type) * size);
+    file.write(reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size);
     // seek back to the end
     file.seekp(0, std::ios_base::end);
   }

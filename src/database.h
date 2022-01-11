@@ -73,6 +73,8 @@ private:
   //TODO: add the SourceRefs store (but modify it first so that it uses the new Table<T> derivatives)
 
   fs::path config_path;
+
+  void write_configuration();
 public:
   // write_mode entails loading more data structures in memory
   // So choosing to read only should be much quicker

@@ -6,13 +6,13 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
   pid(getpid())
 {
-  fs::path sexp_table_path = config_path.parent_path().append("sexp_table.bin");
-  fs::path hashes_path = config_path.parent_path().append("hashes_table.bin");
-  fs::path runtime_meta_path = config_path.parent_path().append("runtime_meta.bin");
-  fs::path static_meta_path = config_path.parent_path().append("static_meta.bin");
-  fs::path debug_counters_path = config_path.parent_path().append("debug_counters.bin");
+  fs::path sexp_table_path = config_path.parent_path() / "sexp_table.bin";
+  fs::path hashes_path = config_path.parent_path() / "hashes_table.bin";
+  fs::path runtime_meta_path = config_path.parent_path() / "runtime_meta.bin";
+  fs::path static_meta_path = config_path.parent_path() / "static_meta.bin";
+  fs::path debug_counters_path = config_path.parent_path() / "debug_counters.bin";
 
-  fs::path lock_path = config_path.parent_path().append(".LOCK");
+  fs::path lock_path = config_path.parent_path() / ".LOCK";
 
   bool to_check = false;
 
@@ -28,7 +28,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     const int vmajor = std::stoi(config["major"]);
     const int vminor = std::stoi(config["minor"]);
     const int vpatch = std::stoi(config["patch"]);
-    const int vdevelopment = std::stoi(config["devlopment"]);
+    const int vdevelopment = std::stoi(config["devel"]);
 
     if(vmajor != version_major || (vmajor == 0 && version_major == 0 && vminor != version_minor)) {
         Rf_error("The database was created with version %d.%d.%d of the library, which is not compatible with the loaded version %d.%d.%d.\n",
@@ -36,13 +36,13 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
                  version_major, version_minor, version_patch);
     }
 
-    fs::path sexp_table_path = config["sexp_table"];
-    fs::path hashes_path = config["hashes_table"];
-    fs::path runtime_meta_path = config["runtime_meta"];
-    fs::path static_meta_path = config["static_meta"];
+    sexp_table_path = config["sexp_table"];
+    hashes_path = config["hashes_table"];
+    runtime_meta_path = config["runtime_meta"];
+    static_meta_path = config["static_meta"];
 #ifndef NDEBUG
     if(config.has_key("debug_counters")) {
-      fs::path debug_counters_path = config["debug_counters"];
+      debug_counters_path = config["debug_counters"];
     }
     else {
       Rf_warning("No debug counters in the database.\n");
@@ -57,10 +57,15 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   else {
     if(!quiet) Rprintf("Creating new database at %s.\n", config_path.parent_path().c_str());
 
-    // Write a first configuration file
-    // TODO
+    // Set up paths for the tables
+    sexp_table_path = config_path.parent_path() / "sexp_table";
+    hashes_path = config_path.parent_path() / "hashes";
+    runtime_meta_path = config_path.parent_path() / "runtime_meta";
+    static_meta_path = config_path.parent_path() / "static_meta";
+    debug_counters_path = config_path.parent_path() / "debug_counters";
 
-    // Path for the tables are already set-up by default and tables will hold the paths themselves
+    //This will also set-up the paths for the search index
+    write_configuration();
   }
 
   // We can now create the lock file
@@ -124,12 +129,37 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
 Database::~Database() {
   if(pid == getpid()) {
-    if(new_elements || nb_total_values == 0)
+    if(new_elements || nb_total_values == 0) {
       write_configuration();
     }
 
     // Remove the LOCK to witness that the database left without problems
-    fs::path lock_path = config_path.parent_path().append(".LOCK");
+    fs::path lock_path = config_path.parent_path() / ".LOCK";
     fs::remove(lock_path);
   }
+}
+
+void Database::write_configuration() {
+  std::unordered_map<std::string, std::string> conf;
+
+  conf["major"] = std::to_string(version_major);
+  conf["minor"] = std::to_string(version_minor);
+  conf["patch"] = std::to_string(version_patch);
+  conf["devel"] = std::to_string(version_development);
+  conf["nb_values"] = std::to_string(nb_total_values);
+
+  conf["sexp_table"] = sexp_table.get_path().string();
+  conf["hashes_table"] = hashes.get_path().string();
+  conf["runtime_meta"] = runtime_meta.get_path().string();
+  conf["static_meta"] = static_meta.get_path().string();
+#ifndef NDEBUG
+  conf["debug_counters"] = debug_counters.get_path().string();
+#endif
+
+  // The search indexes
+  search_index.add_paths_config(conf, config_path);
+
+
+  Config config(std::move(conf));
+  config.write(config_path);
 }
