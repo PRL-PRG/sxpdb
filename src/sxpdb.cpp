@@ -499,3 +499,14 @@ SEXP build_indexes(SEXP sxpdb) {
 
   return R_NilValue;
 }
+
+
+SEXP get_integer_real(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+
+  return db->get_integer_real();
+}

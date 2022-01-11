@@ -691,13 +691,15 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
                            roaring::Roaring64Map& na_index,
                            roaring::Roaring64Map& class_index,
                            roaring::Roaring64Map& vector_index,
-                           roaring::Roaring64Map attributes_index) {
+                           roaring::Roaring64Map& attributes_index,
+                           roaring::Roaring64Map& integer_real) {
     // clear everything
     type_indexes.clear();
     na_index.clear();
     class_index.clear();
     vector_index.clear();
     attributes_index.clear();
+    integer_real.clear();
 
     type_indexes.resize(26); // SEXPTYPE is up to 25
 
@@ -733,6 +735,18 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
       if(find_na(val)) {
         na_index.add(i);
       }
+      
+      // Are the real actually integers?
+      // Additionally, that could be stored on 64 bits...
+      if(meta.sexptype == REALSXP) {
+        double* d = REAL(val);
+        bool is_integer = std::all_of(d, d + Rf_xlength(val), [](double d) -> bool {
+          double iptr = 0;
+          return std::isinf(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
+        });
+        
+        integer_real.add(i);
+      }
 
       SEXP klass = Rf_getAttrib(val, R_ClassSymbol);
       if(klass != R_NilValue) {
@@ -747,6 +761,57 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
     // But we can use flip?
     type_indexes[ANYSXP].flip(0, n_values); // [a, b[
   }
+
+SEXP GenericStore::get_integer_real(roaring::Roaring64Map& integer_real) {
+  if(integer_real.isEmpty()) {
+    uint64_t i = 0;
+    for(auto it : index) { // we iterate on the index to get the same order
+      auto meta_it = metadata.find(it.first);
+      if(meta_it == metadata.end()) {
+        Rf_error("Value %lu not in the metadata table!\n", i);
+      }
+      
+      metadata_t meta = meta_it->second;
+      
+      if(meta.sexptype != REALSXP) {
+        continue;
+      }
+      uint64_t offset = it.second;
+      store_file.seekg(offset);
+      uint64_t size = 0;
+      store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+      assert(size> 0);
+      
+      std::vector<std::byte> buf(size);
+      store_file.read(reinterpret_cast<char*>(buf.data()), size);
+      
+      SEXP val = PROTECT(ser.unserialize(buf));
+      double* d = REAL(val);
+      bool is_integer = std::all_of(d, d + Rf_xlength(val), [](double d) -> bool {
+        double iptr = 0;
+        return std::isinf(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
+      });
+      
+      integer_real.add(i);
+      
+      UNPROTECT(1);
+      i++;
+    }
+  }
+  
+  // Convert to SEXP now
+  SEXP res = PROTECT(Rf_allocVector(LGLSXP, nb_values()));
+  int* v = LOGICAL(res);
+  std::fill_n(v, nb_values(), FALSE);
+  for(uint64_t i : integer_real) {
+    v[i] = TRUE;
+  }
+  
+  UNPROTECT(1);
+  
+  return res;
+  
+}
 
 bool GenericStore::merge_in(Store& store) {
   GenericStore* st = dynamic_cast<GenericStore*>(&store);

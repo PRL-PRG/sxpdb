@@ -213,8 +213,14 @@ SEXP view_origins(SEXP sxpdb);
  * @param sxpdb external pointer to the target database
  * @return R_NilValue
  */
-
 SEXP build_indexes(SEXP sxpdb);
+
+/**
+ * @method find which real numbvers are actually representable integers on 64 bit signed
+ * @param sxpdb external pointer to the target database
+ * @return vector of the representable integers 
+ */
+SEXP get_integer_real(SEXP sxpdb);
 
 #ifdef __cplusplus
 } // extern "C"

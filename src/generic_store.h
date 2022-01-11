@@ -47,7 +47,10 @@ public:
                              roaring::Roaring64Map& na_index,
                              roaring::Roaring64Map& class_index,
                              roaring::Roaring64Map& vector_index,
-                             roaring::Roaring64Map attributes_index);
+                             roaring::Roaring64Map& attributes_index,
+                             roaring::Roaring64Map& integer_real);
+  
+  virtual SEXP get_integer_real(roaring::Roaring64Map& integer_real);
 
   virtual const std::vector<size_t> check(bool slow_check);
 

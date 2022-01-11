@@ -152,6 +152,11 @@ build_indexes <- function(db) {
   .Call(SXPDB_build_indexes, db)
 }
 
+#' @export
+get_integer_real <- function(db) {
+  .Call(SXPDB_get_integer_real, db)
+}
+
 ## Utilities
 
 types_map <- c("NULL", "symbol", "pairlist", "closure", "environment", "promise",
