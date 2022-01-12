@@ -701,6 +701,7 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
     vector_index.clear();
     attributes_index.clear();
     integer_real.clear();
+    lengths_indexes.clear();
 
     type_indexes.resize(26); // SEXPTYPE is up to 25
 
@@ -763,8 +764,9 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
           double iptr = 0;
           return std::isfinite(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
         });
-        
-        integer_real.add(i);
+        if(is_integer) {
+          integer_real.add(i);
+        }
       }
 
       SEXP klass = Rf_getAttrib(val, R_ClassSymbol);
@@ -793,6 +795,8 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
     vector_index.shrinkToFit();
     attributes_index.runOptimize();
     attributes_index.shrinkToFit();
+    integer_real.runOptimize();
+    integer_real.shrinkToFit();
   }
 
 roaring::Roaring64Map GenericStore::search_length(roaring::Roaring64Map idx, uint64_t length) {
@@ -841,7 +845,9 @@ SEXP GenericStore::get_integer_real(roaring::Roaring64Map& integer_real) {
         return std::isfinite(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
       });
       
-      integer_real.add(i);
+      if(is_integer) {
+        integer_real.add(i);
+      }
       
       UNPROTECT(1);
       i++;
