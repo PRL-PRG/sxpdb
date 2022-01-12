@@ -222,6 +222,8 @@ SEXP build_indexes(SEXP sxpdb);
  */
 SEXP get_integer_real(SEXP sxpdb);
 
+SEXP is_integer_real(SEXP v);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

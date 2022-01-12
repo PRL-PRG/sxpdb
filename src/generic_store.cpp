@@ -742,7 +742,7 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
         double* d = REAL(val);
         bool is_integer = std::all_of(d, d + Rf_xlength(val), [](double d) -> bool {
           double iptr = 0;
-          return std::isinf(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
+          return std::isfinite(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
         });
         
         integer_real.add(i);
@@ -789,7 +789,7 @@ SEXP GenericStore::get_integer_real(roaring::Roaring64Map& integer_real) {
       double* d = REAL(val);
       bool is_integer = std::all_of(d, d + Rf_xlength(val), [](double d) -> bool {
         double iptr = 0;
-        return std::isinf(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
+        return std::isfinite(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
       });
       
       integer_real.add(i);
@@ -813,6 +813,57 @@ SEXP GenericStore::get_integer_real(roaring::Roaring64Map& integer_real) {
   
 }
 
+/*SEXP GenericStore::compute_sharing() {
+  // Find out how much sharing there is, across lists, and across reals
+  // Which metrics?
+  // - how many components per value are shared (along all the SEXP tree)
+  // Should return a data frame with the index of the value, and its number of shared components
+  
+  
+  // We add the hashes of the internal components of the sexp here if they are not in the main hash table.
+  robin_hood::unordered_set<sexp_hash> additional_hashes;
+  
+  uint64_t i = 0;
+  for(auto it : index) {
+    uint64_t offset = it.second;
+    
+    store_file.seekg(offset);
+    uint64_t size = 0;
+    store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+    assert(size> 0);
+    
+    std::vector<std::byte> buf(size);
+    store_file.read(reinterpret_cast<char*>(buf.data()), size);
+    
+    SEXP val = PROTECT(ser.unserialize(buf));
+    
+    if(TYPEOF(val)) {
+      // Check the attributes
+      SEXP attr = ATTRIB(val);
+      
+      auto buf = ser.serialize(attr);
+      //TODO: hash
+      
+      // strip the vector out of its attributes
+      SET_ATTRIB(val, R_NilValue);
+      auto buf = ser.serialize(val);
+      //TODO: hash
+      
+    }
+    else if(TYPEOF(val) == VECSXP) {
+      
+    }
+    else if(TYPEOF(val) == STRSXP) {
+      
+    }
+      
+    UNPROTECT(1);
+    i++;
+  }
+  
+  return;
+}*/
+
 bool GenericStore::merge_in(Store& store) {
   GenericStore* st = dynamic_cast<GenericStore*>(&store);
   if(st == nullptr) {
@@ -822,6 +873,8 @@ bool GenericStore::merge_in(Store& store) {
 
   return merge_in(*st);
 }
+
+
 
 GenericStore::~GenericStore() {
   if((new_elements || n_values == 0) && pid == getpid()) {

@@ -51,6 +51,8 @@ public:
                              roaring::Roaring64Map& integer_real);
   
   virtual SEXP get_integer_real(roaring::Roaring64Map& integer_real);
+  
+  //virtual SEXP compute_sharing();
 
   virtual const std::vector<size_t> check(bool slow_check);
 

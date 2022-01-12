@@ -510,3 +510,13 @@ SEXP get_integer_real(SEXP sxpdb) {
 
   return db->get_integer_real();
 }
+
+SEXP is_integer_real(SEXP val) {
+  double* d = REAL(val);
+  bool is_integer = std::all_of(d, d + Rf_xlength(val), [](double d) -> bool {
+    double iptr = 0;
+    return std::isfinite(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
+  });
+  return Rf_ScalarLogical(is_integer);
+}
+

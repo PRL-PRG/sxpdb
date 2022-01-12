@@ -174,4 +174,9 @@ string_sexp_type <- function(int_type) {
   }
 }
 
+#' @export
+is_integer_real <- function(v) {
+  stopifnot(is.double(v))
+  .Call(SXPDB_is_integer_real, v)
+}
 
