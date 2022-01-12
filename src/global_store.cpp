@@ -447,6 +447,15 @@ SEXP GlobalStore::sample_value(const Description& d) {
     nonattributes.flip(safe_minimum(index), index.maximum() + 1);
     index &= nonattributes;
   }
+  //TODO: union
+  /*else if(d.type == UNIONTYPE) {
+    roaring::Roaring64Map attrindex;
+
+    for(auto& desc : d.descriptions) {
+
+    }
+  }
+   */
 
   if(d.is_vector && d.is_vector.value()) {
     index &= vector_index;
@@ -466,7 +475,25 @@ SEXP GlobalStore::sample_value(const Description& d) {
     index &= nonna;
   }
 
-  //TODO: length, class names, n dimensions
+  if(d.length) {
+    auto low_bound = std::lower_bound(length_intervals.begin(), length_intervals.end(), d.length.value());
+    if(low_bound == length_intervals.end()) {
+      return R_NilValue;// should never happen
+    }
+    int length_idx = std::distance(length_intervals.begin(), low_bound);
+    // Check if the index in tat slot represents one length or several ones
+    // Either it is the last slot or the length difference is > 1
+    if( length_idx == nb_intervals - 1 || length_intervals.at(length_idx + 1) - length_intervals.at(length_idx) > 1) {
+        // we manually build an index for the given length
+        roaring::Roaring64Map precise_length_index = stores[0]->search_length(lengths_index[length_idx], d.length.value());
+        index &= precise_length_index;
+    }
+    else {
+      index &= lengths_index[length_idx];
+    }
+  }
+
+  //TODO: class names, n dimensions
 
   //TODO: better API: rather generate a sampler, which will hold the unioned/intersected indexes already, so as not to renegenerate it after
   // each request
@@ -498,7 +525,7 @@ void GlobalStore::build_indexes() {
   //TODO: use a build index function from the generic store...
 
   assert(stores.size() == 1);
-  stores[0]->build_indexes(types_index, na_index, class_index, vector_index, attributes_index, integer_real);
+  stores[0]->build_indexes(types_index, lengths_index, na_index, class_index, vector_index, attributes_index, integer_real);
 
   // we should have ANYSXP which should be an index of all the database
 
@@ -507,6 +534,10 @@ void GlobalStore::build_indexes() {
   index_generated = true;
 }
 
+
+const SEXP GlobalStore::get_integer_real() {
+  return stores[0]->get_integer_real(integer_real);
+}
 
 void GlobalStore::write_configuration() {
   CSVFile file;

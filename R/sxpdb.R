@@ -48,9 +48,17 @@ sample_val <- function(db) {
 }
 
 #' @export
-sample_similar <- function(db, val) {
-  .Call(SXPDB_sample_similar, db, val)
+sample_similar <- function(db, ...) {
+  vals <- list(...)
+
+  if(length(vals) == 1) {
+    .Call(SXPDB_sample_similar, db, vals[[1]], FALSE)
+  }
+  else {
+    .Call(SXPDB_sample_similar, db, vals, TRUE)
+  }
 }
+
 
 #' @export
 merge_db <- function(db1, db2) {

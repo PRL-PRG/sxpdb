@@ -2,6 +2,7 @@
 #define SXPDB_GENERIC_STORE_H
 
 #include "default_store.h"
+#include "global_store.h"
 #include "source_ref.h"
 #include "hasher.h"
 
@@ -44,6 +45,7 @@ public:
 
 
   virtual void build_indexes(std::vector<roaring::Roaring64Map>& type_indexes,
+                             std::vector<roaring::Roaring64Map>& lengths_indexes,
                              roaring::Roaring64Map& na_index,
                              roaring::Roaring64Map& class_index,
                              roaring::Roaring64Map& vector_index,
@@ -53,6 +55,8 @@ public:
   virtual SEXP get_integer_real(roaring::Roaring64Map& integer_real);
   
   //virtual SEXP compute_sharing();
+
+  virtual roaring::Roaring64Map search_length(roaring::Roaring64Map idx, uint64_t length);
 
   virtual const std::vector<size_t> check(bool slow_check);
 

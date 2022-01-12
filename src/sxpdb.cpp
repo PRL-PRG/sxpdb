@@ -331,14 +331,33 @@ SEXP sample_val(SEXP sxpdb) {
   return db->sample_value();
 }
 
-SEXP sample_similar(SEXP sxpdb, SEXP val) {
+SEXP sample_similar(SEXP sxpdb, SEXP vals, SEXP multiple) {
   void* ptr = R_ExternalPtrAddr(sxpdb);
   if(ptr== nullptr) {
     return R_NilValue;
   }
   GlobalStore* db = static_cast<GlobalStore*>(ptr);
 
-  Description d = Description::description_from_value(val);
+  Description d;
+
+  // should we consider vals as a list or as the result of list(...)?
+  if(Rf_asLogical(multiple) == TRUE) {
+    if(TYPEOF(vals) != VECSXP) {
+      Rf_error("Should be a  list but is a %s.\n", Rf_type2char(TYPEOF(vals)));
+    }
+
+    if(Rf_length(vals) == 0) {
+      return R_NilValue;
+    }
+
+    Description d = Description::from_value(VECTOR_ELT(vals, 0));
+    for(int i = 1; i < Rf_length(vals) ; i++) {
+      d = Description::unify(d, Description::from_value(VECTOR_ELT(vals, i)));
+    }
+  }
+  else {
+    d = Description::from_value(vals);
+  }
 
   return db->sample_value(d);
 }
