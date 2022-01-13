@@ -6,6 +6,8 @@
 #include "store.h"
 
 
+
+
 // from boost::hash_combine
 inline void hash_combine(std::size_t& seed, std::size_t value) {
   seed ^= value + 0x9e3779b9 + (seed<<6) + (seed>>2);
@@ -44,6 +46,18 @@ struct xxh128_pointer_hasher {
     hash_combine(result, c->low64);
     hash_combine(result, c->high64);
     return result;
+  }
+};
+
+struct string_pointer_hasher {
+  std::size_t operator()(const std::string*  s) const {
+    return std::hash<std::string>()(*s);
+  }
+};
+
+struct string_pointer_equal{
+  std::size_t operator()(const std::string*   s1, const std::string* s2) const {
+    return *s1 == *s2;
   }
 };
 

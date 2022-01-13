@@ -12,13 +12,15 @@
 #include <fstream>
 #include <cstddef>
 #include <filesystem>
-#include <unordered_map>
 #include <string>
 #include <cassert>
-#include <cstdio>
 #include <unistd.h>
+#include <iterator>
+#include <unordered_set>
 
 #include "config.h"
+#include "robin_hood.h"
+#include "hasher.h"
 
 namespace fs = std::filesystem;
 
@@ -282,6 +284,7 @@ public:
     offset_table.append(pos);
 
     n_values++;
+    new_elements = true;
   }
 
 
@@ -310,6 +313,7 @@ public:
 
   void load_all() override {
     offset_table.load_all();
+    in_memory = true;
   }
 
   void write(uint64_t idx, const T& value) override {
@@ -329,6 +333,109 @@ public:
     file.write(reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size);
     // seek back to the end
     file.seekp(0, std::ios_base::end);
+  }
+
+};
+
+
+// Store only unique values
+class UniqTextTable : Table<std::string> {
+private:
+  using Table<std::string>::file_path;
+  using Table<std::string>::n_values;
+  using Table<std::string>::in_memory;
+  using Table<std::string>::new_elements;
+  using Table<std::string>::pid;
+
+  std::fstream file;
+
+  std::string val;
+
+  std::vector<std::string> store;
+  robin_hood::unordered_set<const std::string*, string_pointer_hasher, string_pointer_equal> unique_lines;
+  uint64_t last_written_index = 0;
+
+public:
+  UniqTextTable(fs::path path) {
+    open(path);
+  }
+
+  void open(fs::path) override {
+    file.open(file_path, std::fstream::in);
+
+    if(!file) {
+      Rf_error("Impossible to open the table file at %s\n", file_path.c_str());
+    }
+
+    file.exceptions(std::fstream::failbit);
+
+    // Populate the vector with all the lines. We assume that all lines are unique
+    std::copy(std::istream_iterator<std::string>(file),
+              std::istream_iterator<std::string>(),
+              std::back_inserter(store));
+
+    file.close();
+
+    last_written_index = store.size() - 1;
+
+    // Populate the hash table
+    unique_lines.reserve(store.size());
+    for(const auto& s : store) {
+      unique_lines.insert(&s);
+    }
+
+    assert(n_values == store.size());
+
+    in_memory = true;
+
+  }
+
+  void append(const std::string& value) override {
+    auto it = unique_lines.find(&value);
+
+    if(it == unique_lines.end()) {
+      store.push_back(value);
+      unique_lines.insert(&store.back());
+      n_values++;
+    }
+  }
+
+  void append(const std::vector<std::string>& values) override {
+    store.reserve(store.size() + values.size());
+    for(const auto& value : values) {
+     append(value);
+    }
+  }
+
+  void read_in(uint64_t index, std::string& value) override {
+    value = store[index];
+  }
+
+  const std::string& read(uint64_t index) override {
+    read_in(index, val);
+    return val;
+  }
+
+  void write(uint64_t index, const std::string& value) override {
+   Rf_error("write for UniqTexttable is not implemented.\n");
+  }
+
+  // Nothing to do as it is already in memory
+  void load_all() override { }
+
+  virtual ~UniqTextTable() {
+    int nb_new_elements = n_values - last_written_index;
+    if(pid== getpid() && nb_new_elements > 0 ) {
+      file.open(file_path, std::fstream::out | std::fstream::app);
+      for(const auto& line : store) {
+        file << line << "\n";
+      }
+      file << std::flush;
+    }
+
+    if(nb_new_elements > 0) {
+      new_elements = true;
+    }
   }
 
 };

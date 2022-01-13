@@ -118,18 +118,24 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   if(write_mode) {
     if(!quiet) Rprintf("Loading runtime changing metadata into memory.\n");
     runtime_meta.load_all();
+
+    if(!quiet) Rprintf("Loading debug counters into memory.\n");
     debug_counters.load_all();
   }
 
+  if(!quiet) Rprintf("Loading hashes into memory.\n");
   // Load the hashes and build the hash map
   const std::vector<sexp_hash>& hash_vec = hashes.memory_view();
+
+  if(!quiet) Rprintf("Allocating memory for the hash table.\n");
   unique_sexps.reserve(hashes.nb_values());
+  if(!quiet) Rprintf("Building the hash table.\n");
   for(uint64_t i = 0; i < hash_vec.size() ; i++) {
     unique_sexps.insert({&hash_vec[i], i});
   }
 
   if(!quiet) {
-    Rprintf("Loaded database at %s with %ld values.\n", config_path.parent_path().c_str(), nb_total_values);
+    Rprintf("Loaded database at %s with %ld unique values.\n", config_path.parent_path().c_str(), nb_total_values);
   }
 
 }
