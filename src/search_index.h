@@ -37,6 +37,7 @@ private:
   roaring::Roaring64Map attributes_index;
   std::vector<roaring::Roaring64Map> lengths_index;
 
+  bool index_generated = false;
 
   friend class Database;
 
@@ -98,6 +99,8 @@ public:
     lengths_index.resize(nb_intervals);
   }
 
+  bool is_initialized() const {return index_generated; }
+
   void open_from_config(const Config& config) {
     types_index_path = config["types_index"];
     na_index_path = config["na_index"];
@@ -133,6 +136,7 @@ public:
         lengths_index[i] = read_index(lengths_index_path.parent_path() / (lengths_index_path.filename().string() + "_" + std::to_string(i) + ".ror"));
       }
     }
+
   }
 
 

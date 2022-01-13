@@ -54,6 +54,8 @@ public:
   static const int version_minor = stoi(PKG_V_MINOR);
   static const int version_patch = stoi(PKG_V_PATCH);
   static const int version_development = stoi(PKG_V_DEVEL);
+
+  friend class Query;
 private:
   uint64_t nb_total_values = 0;
   bool new_elements = false;
@@ -93,16 +95,16 @@ private:
   void write_configuration();
 public:
   // write_mode entails loading more data structures in memory
-  // So choosing to read only should be much quicker
+  // So choosing to read only should be much quickerif teh goal is just to sample from the database
   Database(const fs::path& config_, bool write_mode = false, bool quiet_ = true);
 
   // Merge two databases
   void merge_in(Database& db);
 
   // Adding R values/origins
-  std::pair<const sexp_hash*, bool> add_value(SEXP val);
+  std::pair<const sexp_hash*, bool> add_value(SEXP val);//TODO this should add dummy origins
   std::pair<const sexp_hash*, bool> add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
-  bool add_origins(const sexp_hash& hash, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
+  bool add_origins(uint64_t index, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
 
   // Accessors for individual elements
   bool have_seen(SEXP val) const;
@@ -113,8 +115,8 @@ public:
   const std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> source_locations(uint64_t index) const;
 
   //Accessors for sampling
-  const SEXP sample_value();
-  const SEXP sample_value(Query& query);
+  const SEXP sample_value() const;
+  const SEXP sample_value(Query& query) const;
 
   // Accessors for elements in bulk
   const SEXP view_values();// or just have a special query that returns everything in an efficient way?
@@ -136,7 +138,7 @@ public:
   // Utilities
   const std::vector<size_t> check(bool slow_check);
   const fs::path& configuration_path() const {return config_path; }
-  uint64_t nb_values() const;
+  uint64_t nb_values() const { return nb_total_values; }
 
   virtual ~Database();
 

@@ -14,6 +14,10 @@
 #include <algorithm>
 #include <execution>
 
+#include "roaring.hh"
+
+#include "database.h"
+
 inline const SEXPTYPE UNIONTYPE = 40;
 
 
@@ -69,6 +73,9 @@ inline bool find_na(SEXP val) {
 }
 
 class Query {
+private:
+  bool init = false;
+  roaring::Roaring64Map index_cache;
 public:
   SEXPTYPE type = ANYSXP;
   std::optional<bool> is_vector;
@@ -82,6 +89,12 @@ public:
 public:
   Query() {}
   Query(SEXPTYPE type_) : type(type_) {}
+
+  bool update(const Database& db);//TODO
+  uint64_t sample() const;//TODO
+  //TODO: add a sampling without repetition?
+  const roaring::Roaring64Map& view() const {return index_cache; }//TODO
+  bool is_initialized() const {return init;}
 
   void relax_na() {has_na.reset();}
   void relax_vector() {is_vector.reset();}

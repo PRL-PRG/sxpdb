@@ -250,6 +250,15 @@ const SEXP Database::get_metadata(uint64_t index) const {
   if(debug_counters.nb_values() > 0) {
     names.insert(names.end(), {"maybed_shared", "sexp_addr_optim"});
   }
+  // are our indexes ready? we just check if they are empty or not
+  if(!search_index.na_index.isEmpty()) {
+    names.push_back("is_na");
+  }
+  if(!search_index.class_index.isEmpty()) {
+    names.push_back("has_class");
+  }
+  // Add the other indexes...
+
   names.push_back("");
 
   SEXP res = PROTECT(Rf_mkNamed(VECSXP, names.data()));
@@ -271,6 +280,13 @@ const SEXP Database::get_metadata(uint64_t index) const {
 
     SET_VECTOR_ELT(res, 7, Rf_ScalarInteger(debug_cnt.n_maybe_shared));
     SET_VECTOR_ELT(res, 8, Rf_ScalarInteger(debug_cnt.n_sexp_address_opt));
+  }
+
+  if(!search_index.na_index.isEmpty()) {
+    SET_VECTOR_ELT(res, 9, Rf_ScalarLogical(search_index.na_index.contains(index)));
+  }
+  if(!search_index.class_index.isEmpty()) {
+    SET_VECTOR_ELT(res, 10, Rf_ScalarLogical(search_index.class_index.contains(index)));
   }
 
   UNPROTECT(1);
@@ -320,4 +336,23 @@ const sexp_hash& Database::compute_cached_hash(SEXP val, const std::vector<std::
   SET_RTRACE(val, 1);// set the tracing bit to show later that it is a value we actually touched
 
   return res.first->second;
+}
+
+
+const SEXP Database::sample_value() const {
+  if(nb_total_values > 0) {
+    std::uniform_int_distribution<uint64_t> dist(0, nb_total_values - 1);
+
+    return get_value(dist(rand_engine));
+  }
+
+  return R_NilValue;
+}
+
+const SEXP Database::sample_value(Query& query) const {
+  if(new_elements || !query.is_initialized()) {
+    query.update(*this);
+  }
+
+  return get_value(query.sample());
 }
