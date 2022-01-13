@@ -1,6 +1,5 @@
 #include "database.h"
 
-
 Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   config_path(config_),  write_mode(write_mode_),   quiet(quiet_),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
@@ -31,10 +30,13 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     const int vpatch = std::stoi(config["patch"]);
     const int vdevelopment = std::stoi(config["devel"]);
 
-    if(vmajor != version_major || (vmajor == 0 && version_major == 0 && vminor != version_minor)) {
-        Rf_error("The database was created with version %d.%d.%d of the library, which is not compatible with the loaded version %d.%d.%d.\n",
-                 vmajor, vminor, vpatch,
-                 version_major, version_minor, version_patch);
+    // Breaking change for the db are major version numbers
+    // Or if we are still in development mode, any change in development number
+    if(vmajor != version_major || (vmajor == 0 && version_major == 0 && vminor == 0 &&
+       version_minor == 0 && vpatch == 0 && version_patch && vdevelopment != version_development)) {
+        Rf_error("The database was created with version %d.%d.%d.%d of the library, which is not compatible with the loaded version %d.%d.%d.%d\n",
+                 vmajor, vminor, vpatch, vdevelopment,
+                 version_major, version_minor, version_patch, version_development);
     }
 
     sexp_table_path = config["sexp_table"];
@@ -51,6 +53,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 #endif
 
     // The search indexes
+    if(!quiet) Rprintf("Loading search indexes.\n");
     search_index.open_from_config(config);
 
     nb_total_values = std::stoul(config["nb_values"]);
@@ -83,6 +86,9 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   debug_counters.open(debug_counters_path);
 #endif
 
+  if(!quiet) Rprintf("Loading origins.\n");
+  origins.open(config_path.parent_path());
+
   // Check if the number of values in tables are coherent
   if(sexp_table.nb_values() == nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and"
@@ -102,6 +108,11 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   if(static_meta.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and"
                "in the static_meta table: %lu vs %lu\n", nb_total_values, hashes.nb_values());
+  }
+
+  if(origins.nb_values() != nb_total_values) {
+    Rf_error("Inconsistent number of values in the global configuration file and"
+               "in the origin tables: %lu vs %lu.\n", nb_total_values, origins.nb_values());
   }
 
   if(to_check) {
@@ -135,7 +146,11 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   }
 
   if(!quiet) {
-    Rprintf("Loaded database at %s with %ld unique values.\n", config_path.parent_path().c_str(), nb_total_values);
+    Rprintf("Loaded database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters.\n",
+            config_path.parent_path().c_str(), nb_total_values,
+            origins.nb_packages(),
+            origins.nb_functions(),
+            origins.nb_parameters());
   }
 
 }
@@ -171,6 +186,7 @@ void Database::write_configuration() {
 #ifndef NDEBUG
   conf["debug_counters"] = debug_counters.get_path().string();
 #endif
+  conf["compilation_time"] = std::string(__DATE__) + ":" + __TIME__;
 
   // The search indexes
   search_index.add_paths_config(conf, config_path);

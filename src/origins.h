@@ -27,13 +27,13 @@
 struct location_t {
   uint32_t package = 0;
   uint32_t function = 0;
-  uint32_t argument = 0;//std::numeric_limits<uint32_t>::max() will be the magic value to indicate that it is a return value
+  uint32_t param = 0;//std::numeric_limits<uint32_t>::max() will be the magic value to indicate that it is a return value
 
   bool operator== (const location_t& loc) const  {
-    return package == loc.package && function == loc.function && argument == loc.argument;
+    return package == loc.package && function == loc.function && param == loc.param;
   }
 
-  location_t(uint32_t pkg, uint32_t fun, uint32_t param) : package(pkg), function(fun), argument(param) {}
+  location_t(uint32_t pkg, uint32_t fun, uint32_t par) : package(pkg), function(fun), param(par) {}
 };
 
 
@@ -47,7 +47,7 @@ namespace std
       std::size_t result = 0;
       hash_combine(result, c->package);
       hash_combine(result, c->function);
-      hash_combine(result, c->argument);
+      hash_combine(result, c->param);
       return result;
     }
   };
@@ -65,15 +65,26 @@ private:
 
   bool new_origins;
 
-  fs::path base_path;
+  fs::path base_path = "";
 public:
+  Origins() : pid(getpid()) {}
+
   Origins(const fs::path& base_path_) : pid(getpid()), base_path(base_path_) {
+    open(base_path);
+  }
+
+  void open(const fs::path& base_path) {
     VSizeTable<std::vector<location_t>> location_table(base_path / "origins");
     package_names.open(base_path / "packages.txt");
     function_names.open(base_path/ "functions.txt");
     param_names.open(base_path/ "params.txt");
 
-    // Now populate the locations and the hash table
+    package_names.load_all();
+    function_names.load_all();
+    param_names.load_all();
+
+    // Now populate the locations
+    locations.clear();
     locations.resize(locations.size());
     for(uint64_t i = 0; i < location_table.nb_values() ; i++) {
       std::vector<location_t> locs = location_table.read(i);
@@ -107,18 +118,23 @@ public:
   }
 
   const robin_hood::unordered_set<location_t>& get_locs(uint64_t index) const {
+    assert(index < locations.size());
     return locations[index];
   }
 
   const std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> source_locations(uint64_t index) const {
     auto locs = get_locs(index);
 
+    assert(loc.package < package_names.nb_values());
+    assert(loc.function < function_names.nb_values());
+    assert(loc.param < param_names.nb_values());
+
     std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> str_locs;
     str_locs.reserve(locs.size());
     for(const auto& loc : locs) {
       str_locs.emplace_back(package_names.read(loc.package),
                             function_names.read(loc.function),
-                            param_names.read(loc.argument));
+                            param_names.read(loc.param));
     }
 
     return str_locs;
@@ -151,6 +167,8 @@ public:
       fs::rename(base_path / "origins-new_offsets.bin", base_path / "origins_offsets.bin");
     }
   }
+
+  uint64_t nb_values() const { return locations.size(); }
 };
 
 #endif
