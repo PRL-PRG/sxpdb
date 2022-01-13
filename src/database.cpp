@@ -3,7 +3,8 @@
 Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   config_path(config_),  write_mode(write_mode_),   quiet(quiet_),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
-  pid(getpid())
+  pid(getpid()),
+  ser(32768)
 {
   fs::path sexp_table_path = config_path.parent_path() / "sexp_table.bin";
   fs::path hashes_path = config_path.parent_path() / "hashes_table.bin";
@@ -43,14 +44,17 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     hashes_path = config["hashes_table"];
     runtime_meta_path = config["runtime_meta"];
     static_meta_path = config["static_meta"];
-#ifndef NDEBUG
+
     if(config.has_key("debug_counters")) {
       debug_counters_path = config["debug_counters"];
     }
     else {
-      Rf_warning("No debug counters in the database.\n");
-    }
+#ifndef NDEBUG
+      Rf_warning("No debug counters in the database. Did you create the database in debug mode?\n");
+#else
+      R_ShowMessage("The database does not contain debug informations.\n");
 #endif
+    }
 
     // The search indexes
     if(!quiet) Rprintf("Loading search indexes.\n");
@@ -82,9 +86,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   hashes.open(hashes_path);
   runtime_meta.open(runtime_meta_path);
   static_meta.open(static_meta_path);
-#ifndef NDEBUG
   debug_counters.open(debug_counters_path);
-#endif
 
   if(!quiet) Rprintf("Loading origins.\n");
   origins.open(config_path.parent_path());
@@ -115,6 +117,11 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
                "in the origin tables: %lu vs %lu.\n", nb_total_values, origins.nb_values());
   }
 
+  if(debug_counters.nb_values() != 0 && debug_counters.nb_values() != nb_total_values) {
+    Rf_error("Inconsistent number of values in the global configuration file and"
+               "in the debug counters tables: %lu vs %lu.\n", nb_total_values, debug_counters.nb_values());
+  }
+
   if(to_check) {
     Rprintf("Checking the database in slow mode.\n");
     auto errors = check(true);
@@ -139,10 +146,10 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   const std::vector<sexp_hash>& hash_vec = hashes.memory_view();
 
   if(!quiet) Rprintf("Allocating memory for the hash table.\n");
-  unique_sexps.reserve(hashes.nb_values());
+  sexp_index.reserve(hashes.nb_values());
   if(!quiet) Rprintf("Building the hash table.\n");
   for(uint64_t i = 0; i < hash_vec.size() ; i++) {
-    unique_sexps.insert({&hash_vec[i], i});
+    sexp_index.insert({&hash_vec[i], i});
   }
 
   if(!quiet) {
@@ -194,4 +201,123 @@ void Database::write_configuration() {
 
   Config config(std::move(conf));
   config.write(config_path);
+}
+
+bool Database::have_seen(SEXP val) const {
+  std::optional<sexp_hash> key;
+  // if we are in write mode, we can bother looking into the cache of SEXP
+  if(write_mode) {
+    key = cached_hash(val);
+  }
+
+  if(!key) {
+    key = compute_hash(val);
+  }
+
+  return sexp_index.find(&key.value()) != sexp_index.end();
+}
+
+
+const sexp_hash& Database::get_hash(uint64_t index) const {
+  return hashes.read(index);
+}
+
+std::optional<uint64_t> Database::get_index(const sexp_hash& h) const {
+  auto it = sexp_index.find(&h);
+  return (it != sexp_index.end()) ? std::optional<uint64_t>(it->second) : std::nullopt;
+}
+
+const SEXP Database::get_value(uint64_t index) const {
+  std::vector<std::byte> buf;
+  sexp_table.read_in(index, buf);
+
+  SEXP res = ser.unserialize(buf);
+
+  return res;
+}
+
+const SEXP Database::get_metadata(uint64_t index) const {
+  if(index >= nb_total_values) {
+    return R_NilValue;
+  }
+
+  std::vector<const char*> names = {"type", "length", "n_attributes", "n_dims", "size", "n_calls", "n_merges"};
+
+  auto s_meta = static_meta.read(index);
+  auto d_meta = runtime_meta.read(index);
+
+  // We might not have debug information at all
+  if(debug_counters.nb_values() > 0) {
+    names.insert(names.end(), {"maybed_shared", "sexp_addr_optim"});
+  }
+  names.push_back("");
+
+  SEXP res = PROTECT(Rf_mkNamed(VECSXP, names.data()));
+
+  // Static meta
+  SET_VECTOR_ELT(res, 0, Rf_ScalarInteger(s_meta.sexptype));
+  SET_VECTOR_ELT(res, 1, Rf_ScalarInteger(s_meta.length));
+  SET_VECTOR_ELT(res, 2, Rf_ScalarInteger(s_meta.n_attributes));
+  SET_VECTOR_ELT(res, 3, Rf_ScalarInteger(s_meta.n_dims));
+  SET_VECTOR_ELT(res, 4, Rf_ScalarInteger(s_meta.size));
+
+  //Runtime meta
+  SET_VECTOR_ELT(res, 5, Rf_ScalarInteger(d_meta.n_calls));
+  SET_VECTOR_ELT(res, 6, Rf_ScalarInteger(d_meta.n_merges));
+
+  //Debug counters
+  if(debug_counters.nb_values() > 0) {
+    auto debug_cnt = debug_counters.read(index);
+
+    SET_VECTOR_ELT(res, 7, Rf_ScalarInteger(debug_cnt.n_maybe_shared));
+    SET_VECTOR_ELT(res, 8, Rf_ScalarInteger(debug_cnt.n_sexp_address_opt));
+  }
+
+  UNPROTECT(1);
+
+  return res;
+}
+
+const std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> Database::source_locations(uint64_t index) const {
+  return origins.source_locations(index);
+}
+
+const std::optional<std::reference_wrapper<sexp_hash>>  Database::cached_hash(SEXP val) const {
+  if(TYPEOF(val) == ENVSXP) {
+    return {};
+  }
+
+  // Don't even do a lookup in that case
+  // if the tracing bit is not set, we have not seen the value for sure
+  // if the value is not shared, then its content can be modified in place
+  // so we should hash the value again anyway
+  if(!maybe_shared(val) || RTRACE(val) == 0 ) {
+    return {};
+  }
+
+  auto it = sexp_addresses.find(val);
+
+  if(it != sexp_addresses.end()) {
+    return it->second;
+  }
+
+  return {};
+}
+
+const sexp_hash Database::compute_hash(SEXP val) const {
+  const std::vector<std::byte>& buf = ser.serialize(val);
+
+  sexp_hash ser_hash  = XXH3_128bits(buf.data(), buf.size());
+
+  return ser_hash;
+}
+
+const sexp_hash& Database::compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const {
+  sexp_hash ser_hash  = XXH3_128bits(buf.data(), buf.size());
+
+  auto res = sexp_addresses.insert_or_assign(val, ser_hash);
+
+  SET_RTRACE(val, 1);// set the tracing bit to show later that it is a value we actually touched
+
+  return res.first->second;
 }

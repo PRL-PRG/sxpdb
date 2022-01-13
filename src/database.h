@@ -6,12 +6,14 @@
 #endif
 
 #ifndef PKG_V_DEVEL
-#define PKG_V_DEVEL "0"
+#pragma message("Not a development version.")
+#define PKG_V_DEVEL "0" // if it were in devel, it would be at least 9000
 #endif
 
 #include <unistd.h>
 #include <optional>
 #include <random>
+#include <optional>
 
 #include "table.h"
 #include "query.h"
@@ -19,6 +21,7 @@
 #include "utils.h"
 #include "hasher.h"
 #include "origins.h"
+#include "serialization.h"
 
 #include "robin_hood.h"
 #include "xxhash.h"
@@ -58,26 +61,34 @@ private:
   bool quiet;
   pid_t pid;
   std::default_random_engine rand_engine;
+  fs::path config_path;
 
-
-  //TODO: Try to share the sexp_hash from the table in the hash table
-  // Create a new Table derivative for that?
+  // Tables:
+  // values, metadata, debug counters,
+  // search indexes and origin tables
+  // **********************************
   FSizeTable<sexp_hash> hashes;
-  robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher> unique_sexps;
+  robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher> sexp_index;
 
   VSizeTable<std::vector<std::byte>> sexp_table;
-  FSizeTable<runtime_meta_t> runtime_meta;//Data that changes at runtime
+  FSizeTable<runtime_meta_t> runtime_meta;//Data that change at runtime
   FSizeTable<static_meta_t> static_meta;//Data that will never change after being written once
-
-  FSizeTable<debug_counters_t> debug_counters;// will be loaded into in debug mode
-
+  FSizeTable<debug_counters_t> debug_counters;// will be loaded into in debug mode only
   SearchIndex search_index;
-
   Origins origins;
 
-  //TODO: add the SourceRefs store (but modify it first so that it uses the new Table<T> derivatives)
+  // Handling of SEXP serialization,
+  // SEXP caching and so on
+  // We usually do not need these things in read mode
+  // ********************
+  mutable robin_hood::unordered_map<SEXP, sexp_hash> sexp_addresses;
+  mutable Serializer ser;
 
-  fs::path config_path;
+  static inline const bool maybe_shared(SEXP val) { return REFCNT(val) - 1 > 1;}
+  std::optional<std::reference_wrapper<sexp_hash>> const cached_hash(SEXP val) const;
+  const sexp_hash compute_hash(SEXP val) const;
+  const sexp_hash& compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const;
+
 
   void write_configuration();
 public:
@@ -96,10 +107,10 @@ public:
   // Accessors for individual elements
   bool have_seen(SEXP val) const;
   const sexp_hash& get_hash(uint64_t index) const;
-  uint64_t get_index(const sexp_hash& h) const;
+  std::optional<uint64_t> get_index(const sexp_hash& h) const;
   const SEXP get_value(uint64_t index) const;
   const SEXP get_metadata(uint64_t index) const;
-  const std::vector<std::tuple<const std::string, const std::string, const std::string>> source_locations(size_t index) const;
+  const std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> source_locations(uint64_t index) const;
 
   //Accessors for sampling
   const SEXP sample_value();

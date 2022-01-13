@@ -341,6 +341,7 @@ public:
     file.read(reinterpret_cast<char*>(&size), sizeof(size));
     assert(size > 0);
 
+    val.resize(size);// Ensure the target element is big enough
     file.read(reinterpret_cast<char*>(val.data()), sizeof(typename T::value_type) * size);
   }
 

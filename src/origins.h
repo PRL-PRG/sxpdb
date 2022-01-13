@@ -33,6 +33,8 @@ struct location_t {
     return package == loc.package && function == loc.function && param == loc.param;
   }
 
+  location_t() {}
+
   location_t(uint32_t pkg, uint32_t fun, uint32_t par) : package(pkg), function(fun), param(par) {}
 };
 
@@ -40,14 +42,14 @@ struct location_t {
 namespace std
 {
   template <>
-  struct hash<location_t*>
+  struct hash<location_t>
   {
-    std::size_t operator()(const location_t* c) const
+    std::size_t operator()(const location_t& c) const
     {
       std::size_t result = 0;
-      hash_combine(result, c->package);
-      hash_combine(result, c->function);
-      hash_combine(result, c->param);
+      hash_combine(result, c.package);
+      hash_combine(result, c.function);
+      hash_combine(result, c.param);
       return result;
     }
   };
@@ -107,7 +109,8 @@ public:
         }
       }
       else if(index == locations.size()) {
-          locations.emplace_back(loc);
+          robin_hood::unordered_set<location_t> locs{loc};
+          locations.push_back(locs);
           new_origins = true;
       }
       else {

@@ -263,7 +263,7 @@ bool DefaultStore::have_seen(SEXP val) const {
   sexp_hash* key = cached_hash(val);
 
   if(key == nullptr) {
-    *key = compute_hash(val);
+    *key = compute_hash(val);// BOOM!
   }
 
   return index.find(*key) == index.end();
