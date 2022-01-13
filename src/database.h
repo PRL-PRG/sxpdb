@@ -18,6 +18,7 @@
 #include "search_index.h"
 #include "utils.h"
 #include "hasher.h"
+#include "origins.h"
 
 #include "robin_hood.h"
 #include "xxhash.h"
@@ -72,6 +73,8 @@ private:
 
   SearchIndex search_index;
 
+  Origins origins;
+
   //TODO: add the SourceRefs store (but modify it first so that it uses the new Table<T> derivatives)
 
   fs::path config_path;
@@ -114,6 +117,7 @@ public:
 
   // Map on all the elements and return an R value
   const SEXP map(const SEXP function);
+  const SEXP map(const Query& query, const SEXP function);
 
   //Rebuilding the indexes from scratch
   void build_indexes();

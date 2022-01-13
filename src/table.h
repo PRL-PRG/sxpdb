@@ -53,24 +53,25 @@ protected:
   fs::path file_path;
   pid_t pid;
 public:
-  Table(fs::path path) : pid(getpid()) {
+  Table(const fs::path& path) : pid(getpid()) {
     open(path);
   }
 
   Table() : pid(getpid()) {}
 
-  virtual void open(fs::path path) {
+  virtual void open(const fs::path& path) {
     //Check if there is already a config file
     if(fs::exists(path)) {
       Config config(path);
       fs::path conf_path = config["path"];
-      file_path = fs::absolute(fs::path(conf_path));
+      file_path = fs::absolute(conf_path);
       n_values = std::stoul(config["nb_values"]);
     }
     else {
       std::unordered_map<std::string, std::string> conf;
       fs::path ext = "bin";
-      file_path = path.replace_extension(ext);
+      file_path = fs::absolute(path);
+      file_path.replace_extension(ext);
       conf["path"] = path.filename().string();
       conf["nb_values"] = "0";
       Config config(std::move(conf));
@@ -86,13 +87,28 @@ public:
       conf["nb_values"] = std::to_string(n_values);
       Config config(std::move(conf));
       config.write(path);
+
+      new_elements = false;
+    }
+  }
+
+  virtual void flush() {
+    if(new_elements && pid == getpid()) {
+      std::unordered_map<std::string, std::string> conf;
+      fs::path path = file_path.stem();// without the .bin extension
+      conf["path"] = file_path.string();
+      conf["nb_values"] = std::to_string(n_values);
+      Config config(std::move(conf));
+      config.write(path);
+
+      new_elements = false;
     }
   }
 
   virtual void append(const T& value) = 0;
   virtual void append(const std::vector<T>& values) = 0;
-  virtual const T& read(uint64_t index) = 0;
-  virtual void read_in(uint64_t index,  T& value) = 0;
+  virtual const T& read(uint64_t index) const = 0;
+  virtual void read_in(uint64_t index,  T& value) const = 0;
   virtual void write(uint64_t index, const T& value) = 0;
   //Should all the table be loaded in memory?
   // If yes, writes and reads will be performed in memory and
@@ -117,19 +133,19 @@ private:
   using Table<T>::in_memory;
   using Table<T>::new_elements;
   using Table<T>::pid;
-  std::fstream file;
+  mutable std::fstream file;
   std::vector<T> store;
   uint64_t last_written_index = 0;
   bool only_append = true;
-  T data;
+  mutable T data;
 public:
-  FSizeTable(fs::path path) : Table<T>(path) {
+  FSizeTable(const fs::path& path) : Table<T>(path) {
     open(path);
   }
 
   FSizeTable() :Table<T>() {}
 
-  void open(fs::path path) override {
+  void open(const fs::path& path) override {
     Table<T>::open(path);
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
@@ -168,7 +184,7 @@ public:
     n_values += values.size();
   }
 
-  const T& read(uint64_t index) override {
+  const T& read(uint64_t index) const override {
     if(in_memory) {
       return store[index];
     }
@@ -179,7 +195,7 @@ public:
     }
   }
 
-  void read_in(uint64_t index, T& value) override {
+  void read_in(uint64_t index, T& value) const override {
     if(in_memory) {
       value = store[index];
     }
@@ -221,6 +237,22 @@ public:
     return store;
   }
 
+  void flush() override {
+    uint64_t nb_new_values = n_values - last_written_index;
+    if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
+      //only materialize new values
+      file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
+      file.write(reinterpret_cast<char*>(store.data() + last_written_index), nb_new_values * sizeof(T));
+      file.close();
+    }
+
+    if(nb_new_values > 0) {
+      new_elements = true;
+      Table<T>::flush();
+      last_written_index = n_values - 1;
+    }
+  }
+
   virtual ~FSizeTable() {
     uint64_t nb_new_values = n_values - last_written_index;
     if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
@@ -246,23 +278,23 @@ private:
   using Table<T>::n_values;
   using Table<T>::in_memory;
   using Table<T>::new_elements;
-  FSizeTable<uint64_t> offset_table;
-  std::fstream file;// for the actual values
+  mutable FSizeTable<uint64_t> offset_table;
+  mutable std::fstream file;// for the actual values
   // Layout:
   // 8 bytes (64 bit unsigned integer),  n bytes
   // Size, actual value
-  T value;
+  mutable T value;
 public:
-  VSizeTable(fs::path path) {
+  VSizeTable(const fs::path& path) {
     open(path);
   }
 
   VSizeTable() {}
 
-  void open(fs::path path) override {
+  void open(const fs::path& path) override {
     Table<T>::open(path);
 
-    offset_table.open(path.parent_path() / (path.filename().string() + "_offset"));
+    offset_table.open(path.parent_path() / (path.stem().string() + "_offsets"));
 
     file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
 
@@ -279,6 +311,7 @@ public:
     auto pos = file.tellp();
 
     file.write(reinterpret_cast<char*>(&size), sizeof(size));
+    // TODO: have a variant for non-contiguous types that would use begin and end
     file.write(reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size);
 
     offset_table.append(pos);
@@ -295,12 +328,12 @@ public:
     }
   }
 
-  const T& read(uint64_t idx) override {
+  const T& read(uint64_t idx) const override {
     read_in(idx, value);
     return value;
   }
 
-  void read_in(uint64_t idx, T& val) override {
+  void read_in(uint64_t idx, T& val) const override {
     int64_t offset = offset_table.read(idx);
 
     file.seekg(offset);
@@ -314,6 +347,16 @@ public:
   void load_all() override {
     offset_table.load_all();
     in_memory = true;
+  }
+
+  std::vector<T> materialize() {
+    std::vector<T> buf;
+    buf.reserve(Table<T>::nb_values());
+    for(uint64_t i = 0; i < Table<T>::nb_values() ; i++) {
+      buf.push_back(read(i));
+    }
+
+    return buf;
   }
 
   void write(uint64_t idx, const T& value) override {
@@ -335,11 +378,18 @@ public:
     file.seekp(0, std::ios_base::end);
   }
 
+
+  void flush() override {
+      offset_table.flush();
+      Table<T>::flush();
+      new_elements = false;
+  }
+
 };
 
 
 // Store only unique values
-class UniqTextTable : Table<std::string> {
+class UniqTextTable : public Table<std::string> {
 private:
   using Table<std::string>::file_path;
   using Table<std::string>::n_values;
@@ -347,20 +397,21 @@ private:
   using Table<std::string>::new_elements;
   using Table<std::string>::pid;
 
-  std::fstream file;
+  mutable std::fstream file;
 
-  std::string val;
+  mutable std::string val;
 
   std::vector<std::string> store;
-  robin_hood::unordered_set<const std::string*, string_pointer_hasher, string_pointer_equal> unique_lines;
+  robin_hood::unordered_map<const std::string*, uint64_t, string_pointer_hasher, string_pointer_equal> unique_lines;
   uint64_t last_written_index = 0;
 
 public:
+  UniqTextTable() {}
   UniqTextTable(fs::path path) {
     open(path);
   }
 
-  void open(fs::path) override {
+  void open(const fs::path& path) override {
     file.open(file_path, std::fstream::in);
 
     if(!file) {
@@ -380,8 +431,8 @@ public:
 
     // Populate the hash table
     unique_lines.reserve(store.size());
-    for(const auto& s : store) {
-      unique_lines.insert(&s);
+    for(uint64_t i = 0; i < store.size() ; i++) {
+      unique_lines.insert({&store[i], i});
     }
 
     assert(n_values == store.size());
@@ -390,14 +441,22 @@ public:
 
   }
 
-  void append(const std::string& value) override {
+  uint64_t append_index(const std::string& value) {
     auto it = unique_lines.find(&value);
 
     if(it == unique_lines.end()) {
       store.push_back(value);
-      unique_lines.insert(&store.back());
+      unique_lines.insert({&store.back(), store.size()});
       n_values++;
+      return store.size();
     }
+    else {
+      return it->second;
+    }
+  }
+
+  void append(const std::string& value) override {
+    append_index(value);
   }
 
   void append(const std::vector<std::string>& values) override {
@@ -407,17 +466,17 @@ public:
     }
   }
 
-  void read_in(uint64_t index, std::string& value) override {
+  void read_in(uint64_t index, std::string& value) const override {
     value = store[index];
   }
 
-  const std::string& read(uint64_t index) override {
+  const std::string& read(uint64_t index) const override {
     read_in(index, val);
     return val;
   }
 
   void write(uint64_t index, const std::string& value) override {
-   Rf_error("write for UniqTexttable is not implemented.\n");
+   Rf_error("Write for UniqTextTable is not implemented.\n");
   }
 
   // Nothing to do as it is already in memory
@@ -435,6 +494,23 @@ public:
 
     if(nb_new_elements > 0) {
       new_elements = true;
+    }
+  }
+
+  void flush() override {
+    int nb_new_elements = n_values - last_written_index;
+    if(pid== getpid() && nb_new_elements > 0 ) {
+      file.open(file_path, std::fstream::out | std::fstream::app);
+      for(const auto& line : store) {
+        file << line << "\n";
+      }
+      file << std::flush;
+    }
+
+    if(nb_new_elements > 0) {
+      new_elements = true;
+      Table<std::string>::flush();
+      last_written_index = n_values - 1;
     }
   }
 
