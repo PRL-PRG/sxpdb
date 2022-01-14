@@ -16,6 +16,7 @@
 namespace fs = std::filesystem;
 
 class SearchIndex {
+  friend class Query;
 public:
   inline static const int nb_intervals= 200;
   inline static std::array<uint64_t, nb_intervals> length_intervals{0};
@@ -38,6 +39,7 @@ private:
   std::vector<roaring::Roaring64Map> lengths_index;
 
   bool index_generated = false;
+  bool new_elements = false;
 
   friend class Database;
 
@@ -112,28 +114,34 @@ public:
     if(!types_index_path.empty()) {
       for(int i = 0; i < 25; i++) {
           types_index[i] = read_index(types_index_path.parent_path() / (types_index_path.filename().string() + "_" + std::to_string(i) + ".ror"));
+          new_elements = true;
       }
     }
 
     if(!na_index_path.empty()) {
       na_index = read_index(na_index_path);
+      new_elements = true;
     }
 
     if(!class_index_path.empty()) {
       class_index = read_index(class_index_path);
+      new_elements = true;
     }
 
     if(!vector_index_path.empty()) {
       vector_index = read_index(vector_index_path);
+      new_elements = true;
     }
 
     if(!attributes_index_path.empty()) {
       attributes_index = read_index(attributes_index_path);
+      new_elements = true;
     }
 
     if(!lengths_index_path.empty()) {
       for(int i = 0; i < nb_intervals; i++) {
         lengths_index[i] = read_index(lengths_index_path.parent_path() / (lengths_index_path.filename().string() + "_" + std::to_string(i) + ".ror"));
+        new_elements = true;
       }
     }
 
@@ -166,6 +174,8 @@ public:
     }
     conf["lengths_index"] = lengths_index_path;
   }
+
+  roaring::Roaring64Map search_length(const roaring::Roaring64Map& bin_index, uint64_t precise_length) const;
 
   virtual ~SearchIndex() {
     // Write all the indexes

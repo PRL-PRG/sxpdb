@@ -55,7 +55,6 @@ public:
   static const int version_patch = stoi(PKG_V_PATCH);
   static const int version_development = stoi(PKG_V_DEVEL);
 
-  friend class Query;
 private:
   uint64_t nb_total_values = 0;
   bool new_elements = false;
@@ -115,18 +114,20 @@ public:
   const std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> source_locations(uint64_t index) const;
 
   //Accessors for sampling
-  const SEXP sample_value() const;
-  const SEXP sample_value(Query& query) const;
+  const SEXP sample_value();
+  // Sample n elements without replacement
+  // TODO: support n > 1 ; what should we return? Simply a list of SEXP?
+  const SEXP sample_value(Query& query, uint64_t n = 1);
 
   // Accessors for elements in bulk
-  const SEXP view_values();// or just have a special query that returns everything in an efficient way?
-  const SEXP view_values(const Query& query);
+  const SEXP view_values() const;// or just have a special query that returns everything in an efficient way?
+  const SEXP view_values(const Query& query) const;
 
-  const SEXP view_metadata();
-  const SEXP view_metadata(const Query& query);
+  const SEXP view_metadata() const;
+  const SEXP view_metadata(const Query& query) const;
 
-  const SEXP view_origins();
-  const SEXP view_origins(const Query& query);
+  const SEXP view_origins() const;
+  const SEXP view_origins(const Query& query) const;
 
   // Map on all the elements and return an R value
   const SEXP map(const SEXP function);

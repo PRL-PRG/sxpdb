@@ -339,7 +339,7 @@ const sexp_hash& Database::compute_cached_hash(SEXP val, const std::vector<std::
 }
 
 
-const SEXP Database::sample_value() const {
+const SEXP Database::sample_value() {
   if(nb_total_values > 0) {
     std::uniform_int_distribution<uint64_t> dist(0, nb_total_values - 1);
 
@@ -349,10 +349,146 @@ const SEXP Database::sample_value() const {
   return R_NilValue;
 }
 
-const SEXP Database::sample_value(Query& query) const {
+const SEXP Database::sample_value(Query& query, uint64_t n) {
   if(new_elements || !query.is_initialized()) {
-    query.update(*this);
+    query.update(search_index);
   }
 
-  return get_value(query.sample());
+  auto index = query.sample(rand_engine);
+
+  if(index) {
+    return get_value(*index);
+  }
+  else {
+    return R_NilValue;
+  }
 }
+
+const SEXP Database::view_metadata() const {
+  // "type", "length", "n_attributes", "n_dims", "size", "n_calls", "n_merges"
+  // maybe_shared, address_optim, (if debug counters)
+  // is_na, has_class, if they have been created
+
+  int n_to_protect = 7;
+  SEXP s_type = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
+  SEXP s_length = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
+  SEXP n_attributes = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
+  SEXP n_dims = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
+  SEXP s_size = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
+
+  SEXP n_calls = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
+  SEXP n_merges = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
+
+  SEXP n_maybe_shared = R_NilValue;
+  SEXP n_sexp_address_opt = R_NilValue;
+  if(debug_counters.nb_values() > 0) {
+    n_maybe_shared = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
+    n_sexp_address_opt = PROTECT(Rf_allocVector(INTSXP, nb_total_values));;
+    n_to_protect += 2;
+  }
+
+  SEXP b_is_na = R_NilValue;
+  SEXP b_has_class = R_NilValue;
+  if(!search_index.na_index.isEmpty()) {
+    b_is_na = PROTECT(Rf_allocVector(LGLSXP, nb_total_values));
+    n_to_protect++;
+  }
+  if(!search_index.class_index.isEmpty()) {
+    b_has_class = PROTECT(Rf_allocVector(LGLSXP, nb_total_values));;
+    n_to_protect++;
+  }
+
+  //Static metadata
+
+  int* s_type_it = INTEGER(s_type);
+  int* s_length_it = INTEGER(s_length);
+  int* n_attr_it = INTEGER(n_attributes);
+  int* n_dims_it = INTEGER(n_dims);
+  int* s_size_it = INTEGER(s_size);
+
+  for(uint64_t i = 0 ; i < nb_total_values ; i++) {
+    const static_meta_t& meta = static_meta.read(i);
+
+    s_type_it[i] = meta.sexptype;
+    s_length_it[i] = meta.length;
+    n_attr_it[i] = meta.n_attributes;
+    n_dims_it[i] = meta.n_dims;
+    assert(meta.size < std::numeric_limits<int>::max() / 2);// R integers are on 31 bits
+    s_size_it[i] = meta.size;
+  }
+
+  // Runtime metadata
+  int* n_calls_it = INTEGER(n_calls);
+  int* n_merges_it = INTEGER(n_merges);
+
+  for(uint64_t i = 0 ; i < nb_total_values ; i++) {
+    const runtime_meta_t& meta = runtime_meta.read(i);
+
+    n_calls_it[i] = meta.n_calls;
+    n_merges_it[i] = meta.n_merges;
+  }
+
+  // Debug counters
+  if(debug_counters.nb_values() > 0) {
+    int* n_shared_it = INTEGER(n_maybe_shared);
+    int* n_opt_it = INTEGER(n_sexp_address_opt);
+
+    for(uint64_t i = 0; i < nb_total_values ; i++) {
+      const debug_counters_t& cnts = debug_counters.read(i);
+
+      n_shared_it[i] = cnts.n_maybe_shared;
+      n_opt_it[i] = cnts.n_sexp_address_opt;
+    }
+  }
+
+  // Indexes
+  if(b_is_na != R_NilValue) {
+    int* is_na_it = LOGICAL(b_is_na);
+    std::fill_n(is_na_it, nb_total_values, FALSE);
+    for(uint64_t idx : search_index.na_index) {
+      is_na_it[idx] = TRUE;
+    }
+  }
+  if(b_has_class != R_NilValue) {
+    int* has_class_it = LOGICAL(b_has_class);
+    std::fill_n(has_class_it, nb_total_values, FALSE);
+    for(uint64_t idx : search_index.class_index) {
+      has_class_it[idx] = TRUE;
+    }
+  }
+
+
+  // Build the result dataframe
+
+  std::vector<std::pair<std::string, SEXP>> columns = {
+    {"type", s_type},
+    {"length", s_length},
+    {"n_attributes", n_attributes},
+    {"n_dims", n_dims},
+    {"size", s_size},
+    {"n_calls", n_calls},
+    {"n_merges", n_merges}
+  };
+
+  if(debug_counters.nb_values() > 0) {
+    columns.insert(columns.end(), {
+      {"n_maybe_shared", n_maybe_shared},
+      {"n_sexp_addr_opt", n_sexp_address_opt}
+      });
+  }
+  if(b_is_na != R_NilValue) {
+    columns.push_back({"is_na", b_is_na});
+  }
+  if(b_has_class != R_NilValue) {
+    columns.push_back({"has_class", b_has_class});
+  }
+
+  SEXP df = PROTECT(create_data_frame(columns));
+
+  UNPROTECT(n_to_protect + 1);
+
+  return df;
+}
+
+const SEXP view_metadata(const Query& query);
+

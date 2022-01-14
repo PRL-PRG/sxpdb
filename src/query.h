@@ -13,9 +13,12 @@
 #include <string>
 #include <algorithm>
 #include <execution>
+#include <random>
 
 #include "roaring.hh"
 
+#include "utils.h"
+#include "search_index.h"
 #include "database.h"
 
 inline const SEXPTYPE UNIONTYPE = 40;
@@ -75,7 +78,9 @@ inline bool find_na(SEXP val) {
 class Query {
 private:
   bool init = false;
+  bool quiet = false;
   roaring::Roaring64Map index_cache;
+  std::uniform_int_distribution<uint64_t> dist_cache;
 public:
   SEXPTYPE type = ANYSXP;
   std::optional<bool> is_vector;
@@ -87,12 +92,132 @@ public:
   std::vector<std::string> class_names;
   std::vector<Query> queries;// For union types, lists...
 public:
-  Query() {}
-  Query(SEXPTYPE type_) : type(type_) {}
+  Query(bool quiet_ = true) : quiet(quiet_) {}
+  Query(SEXPTYPE type_, bool quiet_ = true) : type(type_), quiet(quiet_) {}
 
-  bool update(const Database& db);//TODO
-  uint64_t sample() const;//TODO
-  //TODO: add a sampling without repetition?
+  bool update(const SearchIndex& search_index) {
+    if(!search_index.is_initialized()) {
+        Rf_error("Please build the search indexes to be able to sample with a complex query.\n");
+    }
+
+    if(!init&& !quiet) {
+      Rprintf("Building the search index for the query.\n");
+    }
+    else if(init && search_index.new_elements && !quiet) {
+      Rprintf("Updating the search index for the query.\n");
+    }
+    if(type != UNIONTYPE) {
+      index_cache |= search_index.types_index[type];
+    }
+    else if(type == UNIONTYPE) {
+      for(auto& desc : queries) {
+        assert(desc.type != UNIONTYPE);
+        index_cache |= search_index.types_index[desc.type];
+      }
+    }
+
+    if(has_class && has_class.value()) {
+      index_cache &= search_index.class_index;
+    }
+    else if(has_class && !has_class.value()) {
+      roaring::Roaring64Map nonclass = search_index.class_index;
+
+      // range end excluded
+      nonclass.flip(safe_minimum(index_cache), index_cache.maximum() + 1);
+
+      index_cache &= nonclass;
+    }
+
+    if(has_attributes && has_attributes.value()) {
+      index_cache &= search_index.attributes_index;
+    }
+    else if(has_attributes && !has_attributes.value()) {
+      roaring::Roaring64Map nonattributes = search_index.attributes_index;
+      nonattributes.flip(safe_minimum(index_cache), index_cache.maximum() + 1);
+      index_cache &= nonattributes;
+    }
+    //TODO: union
+    /*else if(d.type == UNIONTYPE) {
+     roaring::Roaring64Map attrindex;
+
+     for(auto& desc : d.queries) {
+
+     }
+    }
+     */
+
+    if(is_vector && is_vector.value()) {
+      index_cache &= search_index.vector_index;
+    }
+    else if(is_vector && !is_vector.value()) {
+      roaring::Roaring64Map nonvector = search_index.vector_index;
+      nonvector.flip(safe_minimum(index_cache), index_cache.maximum() + 1);
+      index_cache &= nonvector;
+    }
+
+    if(has_na && has_na.value()) {
+      index_cache &= search_index.na_index;
+    }
+    else if(has_na && !has_na.value()) {
+      roaring::Roaring64Map nonna = search_index.na_index;
+      nonna.flip(safe_minimum(index_cache), index_cache.maximum() + 1);
+      index_cache &= nonna;
+    }
+
+    if(length) {
+      auto low_bound = std::lower_bound(search_index.length_intervals.begin(), search_index.length_intervals.end(), length.value());
+      if(low_bound == search_index.length_intervals.end()) {
+        return R_NilValue;// should never happen
+      }
+      int length_idx = std::distance(SearchIndex::length_intervals.begin(), low_bound);
+      // Check if the index_cache in tat slot represents one length or several ones
+      // Either it is the last slot or the length difference is > 1
+      if( length_idx == SearchIndex::nb_intervals - 1 || SearchIndex::length_intervals.at(length_idx + 1) - SearchIndex::length_intervals.at(length_idx) > 1) {
+        // we manually build an index_cache for the given length
+        // it will perform a linear search but there should not be more than 10^2 elements in those slots anyway
+        roaring::Roaring64Map precise_length_index = search_index.search_length(search_index.lengths_index[length_idx], length.value());
+        index_cache &= precise_length_index;
+      }
+      else {
+        index_cache &= search_index.lengths_index[length_idx];
+      }
+    }
+
+  }
+
+  std::optional<uint64_t> sample(std::default_random_engine& rand_engine) {
+    if(index_cache.cardinality() == 0) {
+      return {};
+    }
+
+    if(dist_cache.max() == 0) {
+      std::uniform_int_distribution<uint64_t> dist(0, index_cache.cardinality() - 1);
+      dist_cache.param(dist.param());
+    }
+
+    uint64_t element;
+
+    bool res = index_cache.select(dist_cache(rand_engine), &element);
+
+    return res ? std::optional<uint64_t>(element) : std::nullopt;
+  }
+
+  // Sample without replacement: uses selection sampling or reservoir sampling
+  // it will generate min(n, index_cache.cardinality())
+  const std::vector<uint64_t> sample_n(uint64_t n, std::default_random_engine& rand_engine) {
+    if(index_cache.cardinality() == 0) {
+      return std::vector<uint64_t>();
+    }
+
+    uint64_t nb_samples = std::min(n, index_cache.cardinality());
+
+    std::vector<uint64_t> samples;
+    samples.reserve(nb_samples);
+    std::sample(index_cache.begin(), index_cache.end(), std::back_inserter(samples), n, rand_engine);
+
+    return samples;
+  }
+
   const roaring::Roaring64Map& view() const {return index_cache; }//TODO
   bool is_initialized() const {return init;}
 
@@ -106,8 +231,8 @@ public:
 
   // returns the closest description of the SEXP
   // We may relax it later on
-  inline static const Query from_value(SEXP val) {
-    Query d(TYPEOF(val));
+  inline static const Query from_value(SEXP val, bool quiet = true) {
+    Query d(TYPEOF(val), quiet = quiet);
 
     d.length = Rf_length(val);
 
