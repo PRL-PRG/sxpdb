@@ -302,6 +302,9 @@ public:
       d.queries.push_back(d2);
     }
 
+    // Non quietness wins!
+    d.quiet = d1.quiet || d2.quiet;
+
 
     return d;
   }

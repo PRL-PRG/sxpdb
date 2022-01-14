@@ -9,9 +9,14 @@
 #include <filesystem>
 #include <fstream>
 #include <unistd.h>
+#include <thread>
+#include <future>
+#include <vector>
+#include <string>
 
 #include "roaring.hh"
 #include "config.h"
+#include "database.h"
 
 namespace fs = std::filesystem;
 
@@ -80,6 +85,8 @@ private:
 
     index_file.write(buf.data(), buf.size());
   }
+
+  static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_index(const Database& db, uint64_t start, uint64_t end);
 
 public:
   SearchIndex() : pid(getpid()) {
@@ -195,6 +202,56 @@ public:
     }
   }
 
+  void build_indexes(const Database& db, int nb_workers = std::thread::hardware_concurrency() - 1) {
+    // We dot no clear the indexes: indeed, we cannot remove values from the database
+
+    //TODO: only do it for the ones that are actually reading from the value store, because ifstream is not thread-safe
+    // So we also need to add a mutex...
+
+    // Would be better if we could use the new execution policies of C++17, so we could do it at the level
+    // of individual value and use work stealing
+
+    uint64_t chunk_size = db.nb_values() / nb_workers;
+    std::vector<std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>>> future_results;
+    future_results.reserve(nb_workers + 1);
+
+    for(uint64_t end = chunk_size ; end < db.nb_values() ; end += chunk_size) {
+      future_results.push_back(std::async(std::launch::async, build_index, db, end - chunk_size, end));
+    }
+    // there is  a remaining chunk that is smaller than chunk_size
+    future_results.push_back(std::async(std::launch::async, build_index, db, (nb_workers - 1) * chunk_size, db.nb_values()));
+
+    // Wait for the results
+    std::vector<std::vector<std::pair<std::string, roaring::Roaring64Map>>> results;
+    results.reserve(nb_workers + 1);
+    std::transform(future_results.begin(), future_results.end(), results.begin(), [](auto& fut) { return fut.get(); });
+
+    for(const auto& indexes : results) {
+      assert(indexes.size() == types_index.size() + 4 + lengths_index.size());
+      int i = 0;
+      for(; i < types_index.size() ; i ++) {
+        assert(indexes[i].first == "type_index");
+        types_index[i] |= indexes[i].second;
+      }
+      assert(indexes[i].first == "na_index");
+      na_index |= indexes[i].second;
+      i++;
+      assert(indexes[i].first == "class_index");
+      class_index |= indexes[i].second;
+      i++;
+      assert(indexes[i].first == "vector_index");
+      vector_index |= indexes[i].second;
+      i++;
+      assert(indexes[i].first == "na_index");
+      attributes_index |= indexes[i].second;
+      i++;
+      int start = i;
+      for(; i < start + lengths_index.size() ; i++) {
+        assert(indexes[i].first == "length_index");
+        lengths_index[i] |= indexes[i].second;
+      }
+    }
+  }
 
 };
 
