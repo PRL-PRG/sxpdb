@@ -331,7 +331,7 @@ SEXP sample_val(SEXP sxpdb) {
   return db->sample_value();
 }
 
-SEXP sample_similar(SEXP sxpdb, SEXP vals, SEXP multiple) {
+SEXP sample_similar(SEXP sxpdb, SEXP vals, SEXP multiple, SEXP relax) {
   void* ptr = R_ExternalPtrAddr(sxpdb);
   if(ptr== nullptr) {
     return R_NilValue;
@@ -356,7 +356,33 @@ SEXP sample_similar(SEXP sxpdb, SEXP vals, SEXP multiple) {
     }
   }
   else {
-    d = Description::from_value(vals);
+    d = Description::from_value(vals); 
+  }
+  
+  std::string relax_param = "";
+  for(int i = 0 ; i < Rf_length(relax) ; i++) {
+    relax_param = CHAR(STRING_ELT(relax, i));
+    if(relax_param == "na") {
+      d.relax_na();
+    }
+    else if (relax_param == "vector") {
+      d.relax_vector();
+    }
+    else if(relax_param == "length") {
+      d.relax_length();
+    }
+    else if(relax_param == "attributes") {
+      d.relax_attributes();
+    }
+    else if(relax_param == "ndims") {
+      d.relax_ndims();
+    }
+    else if(relax_param == "class") {
+      d.relax_class();
+    }
+    else if(relax_param == "type") {
+      d.relax_type();
+    }
   }
 
   return db->sample_value(d);
