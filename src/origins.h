@@ -24,6 +24,9 @@
 #include "table.h"
 #include "hasher.h"
 
+constexpr inline uint32_t return_value =std::numeric_limits<uint32_t>::max();
+inline const std::string return_value_str = "";
+
 struct location_t {
   uint32_t package = 0;
   uint32_t function = 0;
@@ -120,6 +123,11 @@ public:
       }
   }
 
+  void append_empty_origin() {
+    robin_hood::unordered_set<location_t> locs;
+    locations.push_back(locs);
+  }
+
   const robin_hood::unordered_set<location_t>& get_locs(uint64_t index) const {
     assert(index < locations.size());
     return locations[index];
@@ -148,6 +156,10 @@ public:
   uint64_t nb_packages() const { return package_names.nb_values(); }
   uint64_t nb_functions() const { return function_names.nb_values(); }
   uint64_t nb_parameters() const { return param_names.nb_values(); }
+
+  const SEXP package_cache() const {return package_names.to_sexp(); }
+  const SEXP function_cache() const {return function_names.to_sexp(); }
+  const SEXP parameter_cache() const {return param_names.to_sexp();}
 
   virtual ~Origins() {
     if(pid == getpid() && new_origins) {

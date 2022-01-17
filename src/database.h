@@ -31,8 +31,8 @@
 typedef XXH128_hash_t sexp_hash;
 
 struct runtime_meta_t {
-  uint64_t n_calls;
-  uint32_t n_merges;
+  uint64_t n_calls = 0;
+  uint32_t n_merges = 0;
 };
 
 struct static_meta_t {
@@ -41,6 +41,7 @@ struct static_meta_t {
   uint64_t length;
   uint64_t n_attributes;
   uint32_t n_dims;
+  uint32_t n_rows;// length will n_rows * n_cols in the case of matrixes
 };
 
 struct debug_counters_t {
@@ -84,19 +85,20 @@ private:
   // SEXP caching and so on
   // We usually do not need these things in read mode
   // ********************
-  mutable robin_hood::unordered_map<SEXP, sexp_hash> sexp_addresses;
+  mutable robin_hood::unordered_map<SEXP, uint64_t> sexp_addresses;
   mutable Serializer ser;
 
   static inline const bool maybe_shared(SEXP val) { return REFCNT(val) - 1 > 1;}
-  std::optional<std::reference_wrapper<sexp_hash>> const cached_hash(SEXP val) const;
+  std::optional<uint64_t> cached_sexp(SEXP val) const;
+  void cache_sexp(SEXP val, uint64_t index);
   const sexp_hash compute_hash(SEXP val) const;
-  const sexp_hash& compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const;
+  const sexp_hash compute_hash(SEXP val, const std::vector<std::byte>& buf) const;
 
 
   void write_configuration();
 public:
   // write_mode entails loading more data structures in memory
-  // So choosing to read only should be much quickerif teh goal is just to sample from the database
+  // So choosing to read only should be much quicker if the goal is just to sample from the database
   Database(const fs::path& config_, bool write_mode = false, bool quiet_ = true);
 
   // Merge two databases
@@ -105,7 +107,7 @@ public:
   // Adding R values/origins
   std::pair<const sexp_hash*, bool> add_value(SEXP val);//TODO this should add dummy origins
   std::pair<const sexp_hash*, bool> add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
-  bool add_origins(uint64_t index, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
+  void add_origin(uint64_t index, const std::string& pkg_name, const std::string& func_name, const std::string& param_name);
 
   // Accessors for individual elements
   bool have_seen(SEXP val) const;
@@ -121,6 +123,8 @@ public:
   // TODO: support n > 1 ; what should we return? Simply a list of SEXP?
   const SEXP sample_value(Query& query, uint64_t n = 1);
 
+  // TODO: see if it is possible to implement the version without Query in terms of
+  // the other version, in an efficient way.
   // Accessors for elements in bulk
   const SEXP view_values() const;// or just have a special query that returns everything in an efficient way?
   const SEXP view_values(Query& query) const;
@@ -129,14 +133,14 @@ public:
   const SEXP view_metadata(Query& query) const;
 
   const SEXP view_origins() const;
-  const SEXP view_origins(const Query& query) const;
+  const SEXP view_origins(Query& query) const;
 
   // Map on all the elements and return an R value
   const SEXP map(const SEXP function);
-  const SEXP map(const Query& query, const SEXP function);
+  const SEXP map(Query& query, const SEXP function);
 
   //Rebuilding the indexes from scratch
-  void build_indexes();
+  void build_indexes() { search_index.build_indexes(*this, 1) ; }
 
   // Utilities
   const std::vector<size_t> check(bool slow_check);

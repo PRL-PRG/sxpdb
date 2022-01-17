@@ -206,8 +206,9 @@ void Database::write_configuration() {
 bool Database::have_seen(SEXP val) const {
   std::optional<sexp_hash> key;
   // if we are in write mode, we can bother looking into the cache of SEXP
-  if(write_mode) {
-    key = cached_hash(val);
+  // if it is in, it means we already saw the value
+  if(write_mode && cached_sexp(val)) {
+    return true;
   }
 
   if(!key) {
@@ -298,7 +299,7 @@ const std::vector<std::tuple<const std::string_view, const std::string_view, con
   return origins.source_locations(index);
 }
 
-const std::optional<std::reference_wrapper<sexp_hash>>  Database::cached_hash(SEXP val) const {
+std::optional<uint64_t>  Database::cached_sexp(SEXP val) const {
   if(TYPEOF(val) == ENVSXP) {
     return {};
   }
@@ -328,14 +329,15 @@ const sexp_hash Database::compute_hash(SEXP val) const {
   return ser_hash;
 }
 
-const sexp_hash& Database::compute_cached_hash(SEXP val, const std::vector<std::byte>& buf) const {
+const sexp_hash Database::compute_hash(SEXP val, const std::vector<std::byte>& buf) const {
   sexp_hash ser_hash  = XXH3_128bits(buf.data(), buf.size());
 
-  auto res = sexp_addresses.insert_or_assign(val, ser_hash);
+  return ser_hash;
+}
 
-  SET_RTRACE(val, 1);// set the tracing bit to show later that it is a value we actually touched
-
-  return res.first->second;
+void Database::cache_sexp(SEXP val, uint64_t index) {
+  SET_RTRACE(val, 1);
+  sexp_addresses.insert_or_assign(val, index);
 }
 
 
@@ -543,26 +545,32 @@ const SEXP Database::view_metadata(Query& query) const  {
   int* n_dims_it = INTEGER(n_dims);
   int* s_size_it = INTEGER(s_size);
 
+  uint64_t j = 0;
   for(uint64_t i : index) {
     const static_meta_t& meta = static_meta.read(i);
 
-    s_type_it[i] = meta.sexptype;
-    s_length_it[i] = meta.length;
-    n_attr_it[i] = meta.n_attributes;
-    n_dims_it[i] = meta.n_dims;
+    s_type_it[j] = meta.sexptype;
+    s_length_it[j] = meta.length;
+    n_attr_it[j] = meta.n_attributes;
+    n_dims_it[j] = meta.n_dims;
     assert(meta.size < std::numeric_limits<int>::max() / 2);// R integers are on 31 bits
-    s_size_it[i] = meta.size;
+    s_size_it[j] = meta.size;
+
+    j++;
   }
 
   // Runtime metadata
   int* n_calls_it = INTEGER(n_calls);
   int* n_merges_it = INTEGER(n_merges);
 
+  j = 0;
   for(uint64_t i : index) {
     const runtime_meta_t& meta = runtime_meta.read(i);
 
-    n_calls_it[i] = meta.n_calls;
-    n_merges_it[i] = meta.n_merges;
+    n_calls_it[j] = meta.n_calls;
+    n_merges_it[j] = meta.n_merges;
+
+    j++;
   }
 
   // Debug counters
@@ -570,11 +578,14 @@ const SEXP Database::view_metadata(Query& query) const  {
     int* n_shared_it = INTEGER(n_maybe_shared);
     int* n_opt_it = INTEGER(n_sexp_address_opt);
 
+    j = 0;
     for(uint64_t i : index) {
       const debug_counters_t& cnts = debug_counters.read(i);
 
-      n_shared_it[i] = cnts.n_maybe_shared;
-      n_opt_it[i] = cnts.n_sexp_address_opt;
+      n_shared_it[j] = cnts.n_maybe_shared;
+      n_opt_it[j] = cnts.n_sexp_address_opt;
+
+      j++;
     }
   }
 
@@ -582,15 +593,25 @@ const SEXP Database::view_metadata(Query& query) const  {
   if(b_is_na != R_NilValue) {
     int* is_na_it = LOGICAL(b_is_na);
     std::fill_n(is_na_it, index_size, FALSE);
-    for(uint64_t idx : search_index.na_index | index) {
-      is_na_it[idx] = TRUE;
+
+    j= 0 ;
+    for(uint64_t idx : index) {
+      if(search_index.na_index.contains(idx)) {
+        is_na_it[j] = TRUE;
+      }
+      j++;
     }
   }
   if(b_has_class != R_NilValue) {
     int* has_class_it = LOGICAL(b_has_class);
     std::fill_n(has_class_it, index_size, FALSE);
-    for(uint64_t idx : search_index.class_index | index ) {
-      has_class_it[idx] = TRUE;
+
+    j = 0;
+    for(uint64_t idx : index ) {
+      if(search_index.class_index.contains(idx)) {
+        has_class_it[j] = TRUE;
+      }
+      j++;
     }
   }
 
@@ -657,10 +678,12 @@ const SEXP Database::view_values(Query& query) const {
 
   SEXP l = PROTECT(Rf_allocVector(VECSXP, nb_values()));
 
+  uint64_t j = 0;
   for(uint64_t i : index) {
     sexp_table.read_in(i, buf);
     SEXP val = ser.unserialize(buf);
-    SET_VECTOR_ELT(l, i, val);
+    SET_VECTOR_ELT(l, j, val);
+    j++;
   }
 
   UNPROTECT(1);
@@ -668,3 +691,314 @@ const SEXP Database::view_values(Query& query) const {
   return l;
 }
 
+
+const SEXP Database::view_origins() const {
+  SEXP pkg_cache = PROTECT(origins.package_cache());
+  SEXP fun_cache = PROTECT(origins.function_cache());
+  SEXP param_cache = PROTECT(origins.parameter_cache());
+
+  SEXP dfs = PROTECT(Rf_allocVector(VECSXP, nb_total_values));
+
+
+  for(uint64_t i = 0 ; i < nb_total_values ; i++) {
+    auto locs = origins.get_locs(i);
+
+    SEXP value_idx = PROTECT(Rf_allocVector(INTSXP, locs.size()));
+    int* val_idx = INTEGER(value_idx);
+    SEXP packages = PROTECT(Rf_allocVector(STRSXP, locs.size()));
+    SEXP functions = PROTECT(Rf_allocVector(STRSXP, locs.size()));
+    SEXP params = PROTECT(Rf_allocVector(STRSXP, locs.size()));
+
+    R_xlen_t j = 0;
+    for(auto& loc : locs) {
+      val_idx[j] = i;
+      SET_STRING_ELT(packages, j, STRING_ELT(pkg_cache, loc.package));
+      SET_STRING_ELT(functions, j, STRING_ELT(fun_cache, loc.function));
+      SET_STRING_ELT(params, j, loc.param == return_value ? NA_STRING : STRING_ELT(param_cache, loc.param));
+      j++;
+    }
+
+    SEXP df = PROTECT(create_data_frame({
+      {"id", value_idx},
+      {"pkg", packages},
+      {"fun", functions},
+      {"param", params}
+    }));
+    SET_VECTOR_ELT(dfs, i, df);
+    UNPROTECT(5);
+  }
+
+  SEXP origs = PROTECT(bind_rows(dfs));
+
+  UNPROTECT(5);
+  return origs;
+}
+
+const SEXP Database::view_origins(Query& query) const {
+  if(new_elements || !query.is_initialized()) {
+    query.update(search_index);
+  }
+
+  auto index = query.view();
+  uint64_t index_size = index.cardinality();
+
+  //TODO: we should actually cache it
+  SEXP pkg_cache = PROTECT(origins.package_cache());
+  SEXP fun_cache = PROTECT(origins.function_cache());
+  SEXP param_cache = PROTECT(origins.parameter_cache());
+
+  SEXP dfs = PROTECT(Rf_allocVector(VECSXP, index_size));
+
+  uint64_t k = 0;
+  for(uint64_t i : index) {
+    auto locs = origins.get_locs(i);
+
+    SEXP value_idx = PROTECT(Rf_allocVector(INTSXP, locs.size()));
+    int* val_idx = INTEGER(value_idx);
+    SEXP packages = PROTECT(Rf_allocVector(STRSXP, locs.size()));
+    SEXP functions = PROTECT(Rf_allocVector(STRSXP, locs.size()));
+    SEXP params = PROTECT(Rf_allocVector(STRSXP, locs.size()));
+
+    R_xlen_t j = 0;
+    for(auto& loc : locs) {
+      val_idx[j] = i;
+      SET_STRING_ELT(packages, j, STRING_ELT(pkg_cache, loc.package));
+      SET_STRING_ELT(functions, j, STRING_ELT(fun_cache, loc.function));
+      SET_STRING_ELT(params, j, loc.param == return_value ? NA_STRING : STRING_ELT(param_cache, loc.param));
+      j++;
+    }
+
+    SEXP df = PROTECT(create_data_frame({
+      {"id", value_idx},
+      {"pkg", packages},
+      {"fun", functions},
+      {"param", params}
+    }));
+    SET_VECTOR_ELT(dfs, k, df);
+    UNPROTECT(5);
+    k++;
+  }
+
+  SEXP origs = PROTECT(bind_rows(dfs));
+
+  UNPROTECT(5);
+  return origs;
+}
+
+const SEXP Database::map(const SEXP function) {
+  std::vector<std::byte> buf;
+  buf.reserve(128);
+
+  // Build the call
+  SEXP call = PROTECT(Rf_lang2(function, Rf_install("unserialized_sxpdb_value")));
+  SEXP l = PROTECT(Rf_allocVector(VECSXP, nb_values()));
+
+  // Prepare un environment where we will put the unserialized value
+#if defined(R_VERSION) && R_VERSION >= R_Version(4, 1, 0)
+  SEXP env = R_NewEnv(R_GetCurrentEnv(), TRUE, 1);
+#else
+  SEXP env = Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv());
+  assert(TYPEOF(env) == ENVSXP);
+#endif
+
+  SEXP unserialized_sxpdb_value = Rf_install("unserialized_sxpdb_value");
+
+  for(uint64_t i = 0 ; i < nb_total_values ; i++) {
+    sexp_table.read_in(i, buf);
+
+    SEXP val = PROTECT(ser.unserialize(buf));// no need to protect as it is going to be bound just after
+    // or not?
+
+    // Update the argument for the next call
+    Rf_defineVar(unserialized_sxpdb_value, val, env);
+
+    // Perform the call
+    SEXP res = Rf_eval(call, env);
+
+
+    SET_VECTOR_ELT(l, i, res);
+
+    UNPROTECT(1);
+  }
+
+  UNPROTECT(2);
+
+  return l;
+}
+
+
+const SEXP Database::map(Query& query, const SEXP function) {
+  if(new_elements || !query.is_initialized()) {
+    query.update(search_index);
+  }
+
+  auto index = query.view();
+  uint64_t index_size = index.cardinality();
+
+  std::vector<std::byte> buf;
+  buf.reserve(128);
+
+  // Build the call
+  SEXP call = PROTECT(Rf_lang2(function, Rf_install("unserialized_sxpdb_value")));
+  SEXP l = PROTECT(Rf_allocVector(VECSXP, index_size));
+
+  // Prepare un environment where we will put the unserialized value
+#if defined(R_VERSION) && R_VERSION >= R_Version(4, 1, 0)
+  SEXP env = R_NewEnv(R_GetCurrentEnv(), TRUE, 1);
+#else
+  SEXP env = Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv());
+  assert(TYPEOF(env) == ENVSXP);
+#endif
+
+  SEXP unserialized_sxpdb_value = Rf_install("unserialized_sxpdb_value");
+
+  uint64_t j = 0;
+  for(uint64_t i : index) {
+    sexp_table.read_in(i, buf);
+
+    SEXP val = PROTECT(ser.unserialize(buf));// no need to protect as it is going to be bound just after
+    // or not?
+
+    // Update the argument for the next call
+    Rf_defineVar(unserialized_sxpdb_value, val, env);
+
+    // Perform the call
+    SEXP res = Rf_eval(call, env);
+
+
+    SET_VECTOR_ELT(l, j, res);
+
+    UNPROTECT(1);
+
+    j++;
+  }
+
+  UNPROTECT(2);
+
+  return l;
+}
+
+void Database::add_origin(uint64_t index, const std::string& pkg_name, const std::string& func_name, const std::string& param_name) {
+  origins.add_origin(index, pkg_name, func_name, param_name);
+}
+
+std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
+  // Ignore environments and closures
+  if(TYPEOF(val) == ENVSXP || TYPEOF(val) == CLOSXP) {
+    return std::make_pair(nullptr, false);
+  }
+
+  // Check if the instrumented program has not evily forked itself
+  if(pid != getpid()) {
+    return std::make_pair(nullptr, false);
+  }
+
+  std::optional<uint64_t> idx = cached_sexp(val);
+  const std::vector<std::byte>*  buf = nullptr;
+  std::optional<sexp_hash> key;
+
+  bool sexp_address_optim = idx.has_value();
+
+  if(!idx) {
+    const std::vector<std::byte>& buffer = ser.serialize(val);
+    key  = compute_hash(val, buffer);
+    buf = &buffer;
+    idx = get_index(*key);
+
+    // if the hash is already known, idx will get the index of the value
+  }
+
+
+  // If idx has a value, it means that we have already seen the SEXP
+  if(idx.has_value()) {
+    // We need to modify the runtime metadata and the debug counters
+    auto meta = runtime_meta.read(*idx);
+    meta.n_calls++;
+    runtime_meta.write(*idx, meta);
+
+#ifndef NDEBUG
+  auto debug_cnts = debug_counters.read(*idx);
+  debug_cnts.n_sexp_address_opt += sexp_address_optim;
+  debug_cnts.n_maybe_shared+= maybe_shared(val);
+  debug_counters.write(*idx, debug_cnts);
+#endif
+
+  }
+  else {
+    assert(buf != nullptr);
+    // We have to add the value to the sexp table and hashes
+    // and create the metadata and the debug counters
+    idx = nb_total_values;
+    sexp_table.append(*buf);
+
+    // Add hash in the table of hashes
+    hashes.append(*key);
+    // Add it also in the hashmap
+    auto res = sexp_index.insert({&hashes.memory_view().back(), *idx});
+    assert(res.second);// it should be a new value
+
+    // Static meta
+    static_meta_t s_meta;
+    s_meta.sexptype = TYPEOF(val);
+    s_meta.size = buf->size();
+    s_meta.length = Rf_xlength(val);
+    s_meta.n_attributes = Rf_xlength(ATTRIB(val));
+
+    SEXP dims = Rf_getAttrib(val, R_DimSymbol);
+    s_meta.n_dims = Rf_length(dims);
+
+    if(dims != R_NilValue) {
+      if(s_meta.n_dims <= 1) {
+        s_meta.n_rows = 0;
+      }
+      else if(s_meta.n_dims == 2) {
+        s_meta.n_rows = Rf_nrows(val);
+      }
+      else {
+        s_meta.n_rows= INTEGER(dims)[0];
+      }
+    }
+    if(Rf_isFrame(val)) {
+      s_meta.n_rows = s_meta.length == 0 ? 0 : Rf_xlength(VECTOR_ELT(val, 0));
+    }
+    static_meta.append(s_meta);
+
+    // runtime meta
+    runtime_meta_t r_meta;
+    r_meta.n_calls = 0;
+    runtime_meta.append(r_meta);
+
+    // debug counters
+#ifndef NDEBUG
+    debug_counters_t debug_cnts;
+    debug_cnts.n_sexp_address_opt = sexp_address_optim;
+    debug_cnts.n_maybe_shared = maybe_shared(val);
+    debug_counters.append(debug_cnts);
+#endif
+
+    // origins
+    origins.append_empty_origin();
+
+    nb_total_values++;
+    new_elements= true;
+    assert(nb_total_values == sexp_table.nb_values());
+    assert(nb_total_values == static_meta.nb_values());
+    assert(nb_total_values == runtime_meta.nb_values());
+    assert(nb_total_values == origins.nb_values());
+  }
+
+  // Now we can cache the index if it was not before
+  if(!sexp_address_optim) {
+    cache_sexp(val, *idx);
+  };
+
+  return {&hashes.read(*idx), buf != nullptr};
+}
+
+std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& param_name) {
+  auto res = add_value(val, pkg_name, func_name, param_name);
+  assert(nb_total_values > 0);
+  origins.add_origin(nb_total_values - 1, pkg_name, func_name, param_name);
+
+  return res;
+}

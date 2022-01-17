@@ -515,6 +515,18 @@ public:
     }
   }
 
+  const SEXP to_sexp() const {
+    SEXP s = PROTECT(Rf_allocVector(STRSXP, nb_values()));
+    int i = 0;
+    for(auto& name : store) {
+      SET_STRING_ELT(s, i, Rf_mkChar(name.c_str()));
+      i++;
+    }
+
+    UNPROTECT(1);
+    return s;
+  }
+
 };
 
 
