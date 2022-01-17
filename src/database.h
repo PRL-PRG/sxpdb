@@ -55,6 +55,8 @@ public:
   static const int version_patch = stoi(PKG_V_PATCH);
   static const int version_development = stoi(PKG_V_DEVEL);
 
+  friend class SearchIndex;
+
 private:
   uint64_t nb_total_values = 0;
   bool new_elements = false;
@@ -121,10 +123,10 @@ public:
 
   // Accessors for elements in bulk
   const SEXP view_values() const;// or just have a special query that returns everything in an efficient way?
-  const SEXP view_values(const Query& query) const;
+  const SEXP view_values(Query& query) const;
 
   const SEXP view_metadata() const;
-  const SEXP view_metadata(const Query& query) const;
+  const SEXP view_metadata(Query& query) const;
 
   const SEXP view_origins() const;
   const SEXP view_origins(const Query& query) const;

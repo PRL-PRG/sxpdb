@@ -23,57 +23,22 @@
 
 inline const SEXPTYPE UNIONTYPE = 40;
 
+// The compiler did not manage to infer iterator_traits by itself
+template<>
+struct std::iterator_traits<roaring::Roaring64MapSetBitForwardIterator> {
+  typedef std::forward_iterator_tag iterator_category;
+  typedef uint64_t *pointer;
+  typedef uint64_t &reference_type;
+  typedef uint64_t value_type;
+  typedef int64_t difference_type;
+  typedef roaring::Roaring64MapSetBitForwardIterator type_of_iterator;
+};
 
 /**
  * Description of a value (aka type...)
  *
  */
 
-template <typename T>
-bool na_in(SEXP value, T check_na) {
-  int length = Rf_length(value);
-
-  for (int i = 0; i < length; ++i) {
-    if (check_na(value, i)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-
-
-inline bool find_na(SEXP val) {
-  switch(TYPEOF(val)) {
-  case STRSXP:
-    return na_in(val, [](SEXP vector, int index) -> bool {
-      return STRING_ELT(vector, index) == NA_STRING;
-    });
-  case CPLXSXP: {
-      Rcomplex* v = COMPLEX(val);
-      int length = Rf_length(val);
-      return std::find_if(std::execution::par_unseq, v, v + length, [](const Rcomplex& c) -> bool {return ISNAN(c.r) || ISNAN(c.i);}) != v + length;
-    }
-  case REALSXP: {
-      double* v = REAL(val);
-      int length = Rf_length(val);
-      return std::find_if(std::execution::par_unseq, v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
-    }
-  case LGLSXP:{
-    int* v = LOGICAL(val);
-    int length = Rf_length(val);
-
-    return std::find(std::execution::par_unseq, v, v + length, NA_LOGICAL) != v + length;
-  }
-  case INTSXP: {
-    int* v = INTEGER(val);
-    int length = Rf_length(val);
-
-    return std::find(std::execution::par_unseq, v, v + length, NA_INTEGER) != v + length;
-    }
-  }
-  return false;
-}
 
 class Query {
 private:
@@ -95,7 +60,7 @@ public:
   Query(bool quiet_ = true) : quiet(quiet_) {}
   Query(SEXPTYPE type_, bool quiet_ = true) : type(type_), quiet(quiet_) {}
 
-  bool update(const SearchIndex& search_index) {
+  void update(const SearchIndex& search_index) {
     if(!search_index.is_initialized()) {
         Rf_error("Please build the search indexes to be able to sample with a complex query.\n");
     }
@@ -167,10 +132,11 @@ public:
     if(length) {
       auto low_bound = std::lower_bound(search_index.length_intervals.begin(), search_index.length_intervals.end(), length.value());
       if(low_bound == search_index.length_intervals.end()) {
-        return R_NilValue;// should never happen
+        // That should never happen
+        Rf_error("Cannot find the search index for the provided length %lu.\n", length);
       }
       int length_idx = std::distance(SearchIndex::length_intervals.begin(), low_bound);
-      // Check if the index_cache in tat slot represents one length or several ones
+      // Check if the index_cache in that slot represents one length or several ones
       // Either it is the last slot or the length difference is > 1
       if( length_idx == SearchIndex::nb_intervals - 1 || SearchIndex::length_intervals.at(length_idx + 1) - SearchIndex::length_intervals.at(length_idx) > 1) {
         // we manually build an index_cache for the given length

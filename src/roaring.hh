@@ -1817,6 +1817,7 @@ class Roaring64MapSetBitForwardIterator {
     api::roaring_uint32_iterator_t i{}; // The empty constructor silences warnings from pedantic static analyzers.
 };
 
+
 class Roaring64MapSetBitBiDirectionalIterator final :public Roaring64MapSetBitForwardIterator {
  public:
 	explicit Roaring64MapSetBitBiDirectionalIterator(const Roaring64Map &parent,
