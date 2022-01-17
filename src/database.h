@@ -102,7 +102,8 @@ public:
   Database(const fs::path& config_, bool write_mode = false, bool quiet_ = true);
 
   // Merge two databases
-  void merge_in(Database& db);
+  // returns the number of new values
+  uint64_t merge_in(Database& db);
 
   // Adding R values/origins
   std::pair<const sexp_hash*, bool> add_value(SEXP val);//TODO this should add dummy origins
@@ -110,7 +111,7 @@ public:
   void add_origin(uint64_t index, const std::string& pkg_name, const std::string& func_name, const std::string& param_name);
 
   // Accessors for individual elements
-  bool have_seen(SEXP val) const;
+  std::optional<uint64_t> have_seen(SEXP val) const;
   const sexp_hash& get_hash(uint64_t index) const;
   std::optional<uint64_t> get_index(const sexp_hash& h) const;
   const SEXP get_value(uint64_t index) const;

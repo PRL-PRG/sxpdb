@@ -203,19 +203,29 @@ void Database::write_configuration() {
   config.write(config_path);
 }
 
-bool Database::have_seen(SEXP val) const {
+std::optional<uint64_t> Database::have_seen(SEXP val) const {
   std::optional<sexp_hash> key;
   // if we are in write mode, we can bother looking into the cache of SEXP
   // if it is in, it means we already saw the value
-  if(write_mode && cached_sexp(val)) {
-    return true;
+  if(write_mode) {
+    auto res = cached_sexp(val);
+    if(res) {
+      return *res;
+    }
   }
 
   if(!key) {
     key = compute_hash(val);
   }
 
-  return sexp_index.find(&key.value()) != sexp_index.end();
+  auto res = sexp_index.find(&key.value());
+
+  if(res == sexp_index.end()) {
+    return {};
+  }
+  else {
+    return res->second;
+  }
 }
 
 
@@ -1001,4 +1011,52 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::strin
   origins.add_origin(nb_total_values - 1, pkg_name, func_name, param_name);
 
   return res;
+}
+
+
+uint64_t Database::merge_in(Database& other) {
+  uint64_t old_total_values = nb_total_values;
+
+  sexp_hash key;
+  for(uint64_t i = 0; i < other.nb_values(); i++) {
+     hashes.read_in(i, key);
+
+   // This will take time
+    auto has_hash = other.sexp_addresses.find(&key);
+
+    // It is not present in the target db
+    if(has_hash == has_hash.end()) {
+      uint64_t other_idx = has_hash->second;
+
+      sexp_table.append(other.sexp_table.read(other_idx));
+
+      static_meta.append(other.static_meta.read(other_idx));
+
+      runtime_meta.append(other.runtime_meta.read(other_idx));
+
+      //TODO: handle merging of origins
+      // Pre-merge the origin tables (package, function, and parameters names?)
+#ifndef NDEBUG
+      // TODO: check if there are debug counters in the other database
+    debug_counters.append(other.debug_counters.read(other_idx));
+#endif
+
+    // TODO: update the hash table
+
+    nb_total_values++;
+
+    }
+    else {
+    // It is present in the target db: we just have to update the runtime metadata
+    // the debug counters,
+    // and the possible new origins
+
+    }
+  }
+
+  assert(nb_total_values >= old_total_values);
+
+  assert(sexp_table.nb_values() == nb_total_values());
+
+  return nb_total_values - old_total_values;
 }

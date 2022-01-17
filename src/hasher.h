@@ -40,7 +40,7 @@ struct xxh128_hasher {
 };
 
 struct xxh128_pointer_hasher {
-  std::size_t operator()(const sexp_hash* const c) const
+  std::size_t operator()(const sexp_hash* c) const
   {
     std::size_t result = 0;
     hash_combine(result, c->low64);
