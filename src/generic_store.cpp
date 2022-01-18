@@ -1,7 +1,6 @@
 #include "generic_store.h"
 #include "xxhash.h"
 #include "utils.h"
-#include "description.h"
 
 #include <cassert>
 

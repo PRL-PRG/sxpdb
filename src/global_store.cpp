@@ -407,7 +407,7 @@ SEXP GlobalStore::sample_value() {
   return get_value(dist(rand_engine));
 }
 
-SEXP GlobalStore::sample_value(const Description& d) {
+SEXP GlobalStore::sample_value(const Query& d) {
   if(!index_generated) {
     Rf_error("You first need to generate the search indexes.\n");
   }

@@ -6,7 +6,7 @@
 #include "generic_store.h"
 #include "source_ref.h"
 #include "roaring.hh"
-#include "description.h"
+#include "query.h"
 #include "robin_hood.h"
 
 #include "table.h"
@@ -88,7 +88,7 @@ class GlobalStore : Store {
 
     virtual SEXP sample_value();
 
-    virtual SEXP sample_value(const Description& description);
+    virtual SEXP sample_value(const Query& Query);
 
     virtual void build_indexes();
 
