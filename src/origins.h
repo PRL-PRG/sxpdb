@@ -133,6 +133,10 @@ public:
     return locations[index];
   }
 
+  const std::string& package_name(uint32_t i) const {return package_names.read(i); }
+  const std::string& function_name(uint32_t i) const { return function_names.read(i);}
+  const std::string& param_name(uint32_t i) const { return param_names.read(i); }
+
   const std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> source_locations(uint64_t index) const {
     auto locs = get_locs(index);
 

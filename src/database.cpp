@@ -1017,40 +1017,75 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::strin
 uint64_t Database::merge_in(Database& other) {
   uint64_t old_total_values = nb_total_values;
 
+  // Parallelize mergin:
+  // first parallelize the search for not present hashes of the otehr db into the target one
+  // then parallelize across the various tables
+
   sexp_hash key;
-  for(uint64_t i = 0; i < other.nb_values(); i++) {
-     hashes.read_in(i, key);
+  runtime_meta_t meta;
+  debug_counters_t cnts;
+  for(uint64_t other_idx = 0; other_idx < other.nb_values(); other_idx++) {
+     other.hashes.read_in(other_idx, key);
 
    // This will take time
-    auto has_hash = other.sexp_addresses.find(&key);
+    auto has_hash = sexp_index.find(&key);
 
     // It is not present in the target db
-    if(has_hash == has_hash.end()) {
-      uint64_t other_idx = has_hash->second;
-
+    if(has_hash == sexp_index.end()) {
       sexp_table.append(other.sexp_table.read(other_idx));
 
       static_meta.append(other.static_meta.read(other_idx));
 
       runtime_meta.append(other.runtime_meta.read(other_idx));
 
-      //TODO: handle merging of origins
-      // Pre-merge the origin tables (package, function, and parameters names?)
+      // Origins
+      for(auto& loc : other.origins.get_locs(other_idx)) {
+        origins.add_origin(nb_total_values, other.origins.package_name(loc.package),
+                           other.origins.function_name(loc.function),
+                           other.origins.param_name(loc.param));
+      }
+      //TODO: Pre-merge the origin tables (package, function, and parameters names?)
 #ifndef NDEBUG
       // TODO: check if there are debug counters in the other database
     debug_counters.append(other.debug_counters.read(other_idx));
 #endif
 
-    // TODO: update the hash table
+    // Hashes
+    hashes.append(key);
+    sexp_index.insert({&key, nb_total_values});
 
     nb_total_values++;
+    new_elements = true;
 
     }
     else {
-    // It is present in the target db: we just have to update the runtime metadata
-    // the debug counters,
-    // and the possible new origins
+      // It is present in the target db: we just have to update the runtime metadata
+      // the debug counters,
+      // and the possible new origins
+      uint64_t db_idx = has_hash->second;
 
+      // Runtime metadata
+      runtime_meta.read_in(db_idx, meta);
+      const runtime_meta_t& other_meta = other.runtime_meta.read(other_idx);
+      meta.n_calls += other_meta.n_calls;
+      meta.n_merges++;
+      runtime_meta.write(db_idx, meta);
+
+      // Debug counters
+#ifndef NDEBUG
+      debug_counters.read(db_idx, cnts);
+      debug_counters_t other_cnts = other.debug_counters.read(other_idx);
+      cnts.n_maybe_shared += other_cnts.n_maybe_shared;
+      cnts.n_sexp_address_opt += other_cnts.n_sexp_address_opt;
+      debug_counters.write(db_idx, cnts);
+#endif
+
+      // New origins
+      for(auto& loc : other.origins.get_locs(other_idx)) {
+        origins.add_origin(db_idx, other.origins.package_name(loc.package),
+                           other.origins.function_name(loc.function),
+                           other.origins.param_name(loc.param));
+      }
     }
   }
 
@@ -1059,4 +1094,11 @@ uint64_t Database::merge_in(Database& other) {
   assert(sexp_table.nb_values() == nb_total_values());
 
   return nb_total_values - old_total_values;
+}
+
+const std::vector<size_t> Database::check(bool slow_check) {
+  std::vector<size_t> errors;
+
+  //TODO!
+  return errors;
 }

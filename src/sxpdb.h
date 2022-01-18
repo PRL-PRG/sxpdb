@@ -2,7 +2,9 @@
 #define SXPDB_SXPDB_H
 
 #define R_NO_REMAP
+#include <R.h>
 #include <Rinternals.h>
+#include <Rversion.h>
 
 
 #ifdef __cplusplus
@@ -45,7 +47,7 @@ SEXP add_val(SEXP db, SEXP val);
  * @method have_seen
  * @param  db       external pointer to the database
  * @param  val       R value in form of SEXP
- * @return           R value of True or False as a SEXP
+ * @return integer  or R_NilValue index of the value in the db if is inside, NULL otherwise
  */
 SEXP have_seen(SEXP db, SEXP val);
 
@@ -157,7 +159,7 @@ SEXP get_origins_idx(SEXP sxpdb, SEXP idx);
  * @param package name
  * @param function name
  * @param argument name ; "" or NA mean that it is a return value
- * @return Boolean TRUE if its a new origin for this hash
+ * @return NULL
  */
 SEXP add_origin_(SEXP sxpdb, const void* hash, const char* package_name, const char* function_name, const char* argument_name);
 

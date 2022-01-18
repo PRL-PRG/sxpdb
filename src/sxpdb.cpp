@@ -1,6 +1,6 @@
 #include "sxpdb.h"
 
-#include "global_store.h"
+#include "database.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -9,9 +9,9 @@
 #define EMPTY_ORIGIN_PART ""
 
 SEXP open_db(SEXP filename, SEXP quiet) {
-  GlobalStore* db = nullptr;
+  Database* db = nullptr;
   try{
-    db = new GlobalStore(CHAR(STRING_ELT(filename, 0)), Rf_asLogical(quiet));
+    db = new Database(CHAR(STRING_ELT(filename, 0)), Rf_asLogical(quiet));
   }
   catch(std::exception& e) {
     Rf_error("Error opening the database %s : %s\n", CHAR(STRING_ELT(filename, 0)), e.what());
@@ -37,7 +37,7 @@ SEXP close_db(SEXP sxpdb) {
     return R_NilValue;
   }
 
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
   delete db;
 
 
@@ -53,7 +53,7 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   auto hash = db->add_value(val);
 
@@ -89,7 +89,7 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
     argument_name = EMPTY_ORIGIN_PART;
   }
 
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   try {
 
@@ -130,17 +130,21 @@ SEXP add_origin_(SEXP sxpdb, const void* hash, const char* package_name, const c
     argument_name = EMPTY_ORIGIN_PART;
   }
 
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
+  auto idx = db->get_index(*static_cast<const sexp_hash*>(hash));
+  if(!idx.has_value()) {
+    Rf_error("Cannot add origin to value with given hash: no value with such a hash in the database.\n");
+  }
   try {
-    return Rf_ScalarLogical(db->add_origins(*static_cast<const sexp_hash*>(hash), package_name, function_name, argument_name));
+    db->add_origin(*idx, package_name, function_name, argument_name);
   }
   catch(std::exception& e) {
     Rf_error("Error adding value from package %s, function %s and argument %s, into the database: %s\n",
              package_name, function_name, argument_name, e.what());
   }
 
-  return Rf_ScalarLogical(FALSE);
+  return R_NilValue;
 }
 
 SEXP add_origin(SEXP sxpdb, SEXP hash, SEXP package, SEXP function, SEXP argument) {
@@ -214,13 +218,18 @@ SEXP get_origins(SEXP sxpdb, SEXP hash_s) {
     return R_NilValue;
   }
 
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   sexp_hash hash;
   assert(Rf_length(hash_s) == sizeof(sexp_hash));
   hash = XXH128_hashFromCanonical(reinterpret_cast<XXH128_canonical_t*>(RAW(hash_s)));
 
-  auto src_locs = db->source_locations(hash);
+  auto idx = db->get_index(hash);
+
+  std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> src_locs;
+  if(idx.has_value()) {
+    src_locs = db->source_locations(*idx);
+  }
 
   const char*names[] = {"pkg", "fun", "param", ""};
   SEXP origs = PROTECT(Rf_mkNamed(VECSXP, names));
@@ -232,9 +241,9 @@ SEXP get_origins(SEXP sxpdb, SEXP hash_s) {
 
   int i = 0;
   for(auto& loc : src_locs) {
-    SET_STRING_ELT(packages, i, std::get<0>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<0>(loc).c_str()));
-    SET_STRING_ELT(functions, i, std::get<1>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<1>(loc).c_str()));
-    SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).c_str()));
+    SET_STRING_ELT(packages, i, std::get<0>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<0>(loc).data()));
+    SET_STRING_ELT(functions, i, std::get<1>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<1>(loc).data()));
+    SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).data()));
     i++;
   }
 
@@ -264,7 +273,7 @@ SEXP get_origins_idx(SEXP sxpdb, SEXP idx) {
     return R_NilValue;
   }
 
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
 
   auto src_locs = db->source_locations(Rf_asInteger(idx));
@@ -279,9 +288,9 @@ SEXP get_origins_idx(SEXP sxpdb, SEXP idx) {
 
   int i = 0;
   for(auto& loc : src_locs) {
-    SET_STRING_ELT(packages, i, std::get<0>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<0>(loc).c_str()));
-    SET_STRING_ELT(functions, i, std::get<1>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<1>(loc).c_str()));
-    SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).c_str()));
+    SET_STRING_ELT(packages, i, std::get<0>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<0>(loc).data()));
+    SET_STRING_ELT(functions, i, std::get<1>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<1>(loc).data()));
+    SET_STRING_ELT(arguments, i, std::get<2>(loc) == "" ? NA_STRING : Rf_mkChar(std::get<2>(loc).data()));
     i++;
   }
 
@@ -311,12 +320,18 @@ SEXP have_seen(SEXP sxpdb, SEXP val) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
-  SEXP res = PROTECT(Rf_ScalarLogical(db->have_seen(val)));
+  std::optional<uint64_t> idx = db->have_seen(val);
+  if(idx.has_value()) {
+    SEXP res = PROTECT(Rf_ScalarInteger(*idx));
 
-  UNPROTECT(1);
-  return res;
+    UNPROTECT(1);
+    return res;
+  }
+  else {
+    return R_NilValue;
+  }
 }
 
 
@@ -325,7 +340,7 @@ SEXP sample_val(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
 
   return db->sample_value();
@@ -336,9 +351,9 @@ SEXP sample_similar(SEXP sxpdb, SEXP vals, SEXP multiple) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
-  Description d;
+  Query d;
 
   // should we consider vals as a list or as the result of list(...)?
   if(Rf_asLogical(multiple) == TRUE) {
@@ -350,13 +365,13 @@ SEXP sample_similar(SEXP sxpdb, SEXP vals, SEXP multiple) {
       return R_NilValue;
     }
 
-    Description d = Description::from_value(VECTOR_ELT(vals, 0));
+    Query d = Query::from_value(VECTOR_ELT(vals, 0));
     for(int i = 1; i < Rf_length(vals) ; i++) {
-      d = Description::unify(d, Description::from_value(VECTOR_ELT(vals, i)));
+      d = Query::unify(d, Query::from_value(VECTOR_ELT(vals, i)));
     }
   }
   else {
-    d = Description::from_value(vals);
+    d = Query::from_value(vals);
   }
 
   return db->sample_value(d);
@@ -368,7 +383,7 @@ SEXP get_val(SEXP sxpdb, SEXP i) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   int index = Rf_asInteger(i);
   return db->get_value(index);
@@ -379,19 +394,19 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
   if(ptr1== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db1 = static_cast<GlobalStore*>(ptr1);
+  Database* db1 = static_cast<Database*>(ptr1);
 
   void* ptr2 = R_ExternalPtrAddr(sxpdb2);
   if(ptr2== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db2 = static_cast<GlobalStore*>(ptr2);
+  Database* db2 = static_cast<Database*>(ptr2);
 
   try{
     db1->merge_in(*db2);
   }
   catch(std::exception& e) {
-    Rf_error("Error merging database %s into %s: %s\n", db2->description_path().c_str(), db1->description_path().c_str(), e.what());
+    Rf_error("Error merging database %s into %s: %s\n", db2->configuration_path()c_str(), db1->configuration_path().c_str(), e.what());
   }
 
   return Rf_ScalarInteger(db1->nb_values());
@@ -402,7 +417,7 @@ SEXP size_db(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   return Rf_ScalarInteger(db->nb_values());
 }
@@ -412,7 +427,7 @@ SEXP get_meta(SEXP sxpdb, SEXP val) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   return db->get_metadata(val);
 }
@@ -422,7 +437,7 @@ SEXP get_meta_idx(SEXP sxpdb, SEXP idx) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   return db->get_metadata(Rf_asInteger(idx));
 }
@@ -433,11 +448,11 @@ SEXP path_db(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   // This returns the path of the description file
   // so we just need to get the dirname
-  auto path = std::filesystem::absolute(db->description_path().parent_path());
+  auto path = std::filesystem::absolute(db->configuration_path().parent_path());
 
   SEXP res = PROTECT(Rf_mkString(path.c_str()));
 
@@ -451,7 +466,7 @@ SEXP check_db(SEXP sxpdb, SEXP slow) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   std::vector<size_t> errors = db->check(Rf_asLogical(slow));
 
@@ -469,7 +484,7 @@ SEXP map_db(SEXP sxpdb, SEXP fun) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   return db->map(fun);
 }
@@ -482,7 +497,7 @@ SEXP view_db(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   return db->view_values();
 }
@@ -492,7 +507,7 @@ SEXP view_metadata(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   return db->view_metadata();
 }
@@ -503,7 +518,7 @@ SEXP view_origins(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
 
   return db->view_origins();
 }
@@ -513,7 +528,7 @@ SEXP build_indexes(SEXP sxpdb) {
   if(ptr== nullptr) {
     return R_NilValue;
   }
-  GlobalStore* db = static_cast<GlobalStore*>(ptr);
+  Database* db = static_cast<Database*>(ptr);
   db->build_indexes();
 
   return R_NilValue;

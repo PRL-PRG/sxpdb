@@ -28,6 +28,8 @@
 #include "roaring.hh"
 
 
+class Query;
+
 typedef XXH128_hash_t sexp_hash;
 
 struct runtime_meta_t {
