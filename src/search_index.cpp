@@ -64,7 +64,7 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
 
 
 
-void SearchIndex::build_indexes(const Database& db, int nb_workers) {
+void SearchIndex::build_indexes(const Database& db) {
   // We dot no clear the indexes: indeed, we cannot remove values from the database
 
   //TODO: only do it for the ones that are actually reading from the value store, because ifstream is not thread-safe.
@@ -75,20 +75,11 @@ void SearchIndex::build_indexes(const Database& db, int nb_workers) {
   // Would be better if we could use the new execution policies of C++17, so we could do it at the level
   // of individual value and use work stealing
 
-  uint64_t chunk_size = db.nb_values() / nb_workers;
-  std::vector<std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>>> future_results;
-  future_results.reserve(nb_workers + 1);
 
-  for(uint64_t end = chunk_size ; end < db.nb_values() ; end += chunk_size) {
-    future_results.push_back(std::async(std::launch::async, build_index, db, end - chunk_size, end));
-  }
-  // there is  a remaining chunk that is smaller than chunk_size
-  future_results.push_back(std::async(std::launch::async, build_index, db, (nb_workers - 1) * chunk_size, db.nb_values()));
 
-  // Wait for the results
   std::vector<std::vector<std::pair<std::string, roaring::Roaring64Map>>> results;
-  results.reserve(nb_workers + 1);
-  std::transform(future_results.begin(), future_results.end(), results.begin(), [](auto& fut) { return fut.get(); });
+
+  results.push_back(build_index(db, 0, db.nb_values()));
 
   for(const auto& indexes : results) {
     assert(indexes.size() == types_index.size() + 4 + lengths_index.size());
@@ -142,3 +133,18 @@ void SearchIndex::build_indexes(const Database& db, int nb_workers) {
     ind.shrinkToFit();
   }
 }
+
+roaring::Roaring64Map SearchIndex::search_length(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_length) const {
+  roaring::Roaring64Map precise_index;
+
+  for(uint64_t i : bin_index) {
+    const auto& meta = db.static_meta.read(i);
+
+    if(meta.length == precise_length) {
+      precise_index.add(i);
+    }
+  }
+
+  return precise_index;
+}
+

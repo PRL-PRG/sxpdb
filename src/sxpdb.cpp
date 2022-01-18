@@ -226,7 +226,7 @@ SEXP get_origins(SEXP sxpdb, SEXP hash_s) {
 
   auto idx = db->get_index(hash);
 
-  std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> src_locs;
+  std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> src_locs;
   if(idx.has_value()) {
     src_locs = db->source_locations(*idx);
   }
@@ -406,7 +406,7 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
     db1->merge_in(*db2);
   }
   catch(std::exception& e) {
-    Rf_error("Error merging database %s into %s: %s\n", db2->configuration_path()c_str(), db1->configuration_path().c_str(), e.what());
+    Rf_error("Error merging database %s into %s: %s\n", db2->configuration_path().c_str(), db1->configuration_path().c_str(), e.what());
   }
 
   return Rf_ScalarInteger(db1->nb_values());
@@ -429,7 +429,14 @@ SEXP get_meta(SEXP sxpdb, SEXP val) {
   }
   Database* db = static_cast<Database*>(ptr);
 
-  return db->get_metadata(val);
+  std::optional<uint64_t> idx = db->have_seen(val);
+
+  if(idx.has_value()) {
+    return db->get_metadata(*idx);
+  }
+  else {
+    return R_NilValue;
+  }
 }
 
 SEXP get_meta_idx(SEXP sxpdb, SEXP idx) {

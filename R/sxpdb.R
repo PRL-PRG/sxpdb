@@ -13,7 +13,7 @@ open_db <- function(db = "db", quiet = TRUE) {
     dir.create(db, recursive = TRUE)
 	}
 
-  prefix <- file.path(db, "sxpdb.csv")
+  prefix <- file.path(db, "sxpdb")
 
   .Call(SXPDB_open_db, prefix, quiet)
 }

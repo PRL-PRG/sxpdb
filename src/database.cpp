@@ -6,11 +6,11 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   pid(getpid()),
   ser(32768)
 {
-  fs::path sexp_table_path = config_path.parent_path() / "sexp_table.bin";
-  fs::path hashes_path = config_path.parent_path() / "hashes_table.bin";
-  fs::path runtime_meta_path = config_path.parent_path() / "runtime_meta.bin";
-  fs::path static_meta_path = config_path.parent_path() / "static_meta.bin";
-  fs::path debug_counters_path = config_path.parent_path() / "debug_counters.bin";
+  fs::path sexp_table_path = config_path.parent_path() / "sexp_table.conf";
+  fs::path hashes_path = config_path.parent_path() / "hashes_table.conf";
+  fs::path runtime_meta_path = config_path.parent_path() / "runtime_meta.conf";
+  fs::path static_meta_path = config_path.parent_path() / "static_meta.conf";
+  fs::path debug_counters_path = config_path.parent_path() / "debug_counters.conf";
 
   fs::path lock_path = config_path.parent_path() / ".LOCK";
 
@@ -66,11 +66,11 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     if(!quiet) Rprintf("Creating new database at %s.\n", config_path.parent_path().c_str());
 
     // Set up paths for the tables
-    sexp_table_path = config_path.parent_path() / "sexp_table";
-    hashes_path = config_path.parent_path() / "hashes";
-    runtime_meta_path = config_path.parent_path() / "runtime_meta";
-    static_meta_path = config_path.parent_path() / "static_meta";
-    debug_counters_path = config_path.parent_path() / "debug_counters";
+    // sexp_table_path = config_path.parent_path() / "sexp_table";
+    // hashes_path = config_path.parent_path() / "hashes";
+    // runtime_meta_path = config_path.parent_path() / "runtime_meta";
+    // static_meta_path = config_path.parent_path() / "static_meta";
+    // debug_counters_path = config_path.parent_path() / "debug_counters";
 
     //This will also set-up the paths for the search index
     write_configuration();
@@ -92,23 +92,23 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   origins.open(config_path.parent_path());
 
   // Check if the number of values in tables are coherent
-  if(sexp_table.nb_values() == nb_total_values) {
-    Rf_error("Inconsistent number of values in the global configuration file and"
+  if(sexp_table.nb_values() != nb_total_values) {
+    Rf_error("Inconsistent number of values in the global configuration file and "
                 "in the sexp table: %lu vs %lu\n", nb_total_values, sexp_table.nb_values());
   }
 
   if(hashes.nb_values() != nb_total_values) {
-    Rf_error("Inconsistent number of values in the global configuration file and"
+    Rf_error("Inconsistent number of values in the global configuration file and "
                "in the hashes table: %lu vs %lu\n", nb_total_values, hashes.nb_values());
   }
 
   if(runtime_meta.nb_values() != nb_total_values) {
-    Rf_error("Inconsistent number of values in the global configuration file and"
+    Rf_error("Inconsistent number of values in the global configuration file and "
                "in the runtime_meta table: %lu vs %lu\n", nb_total_values, runtime_meta.nb_values());
   }
 
   if(static_meta.nb_values() != nb_total_values) {
-    Rf_error("Inconsistent number of values in the global configuration file and"
+    Rf_error("Inconsistent number of values in the global configuration file and "
                "in the static_meta table: %lu vs %lu\n", nb_total_values, hashes.nb_values());
   }
 
@@ -235,7 +235,13 @@ const sexp_hash& Database::get_hash(uint64_t index) const {
 
 std::optional<uint64_t> Database::get_index(const sexp_hash& h) const {
   auto it = sexp_index.find(&h);
-  return (it != sexp_index.end()) ? std::optional<uint64_t>(it->second) : std::nullopt;
+
+  if(it != sexp_index.end()) {
+    return it->second;
+  }
+  else {
+    return {};
+  }
 }
 
 const SEXP Database::get_value(uint64_t index) const {
@@ -305,7 +311,7 @@ const SEXP Database::get_metadata(uint64_t index) const {
   return res;
 }
 
-const std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> Database::source_locations(uint64_t index) const {
+const std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> Database::source_locations(uint64_t index) const {
   return origins.source_locations(index);
 }
 
@@ -363,7 +369,7 @@ const SEXP Database::sample_value() {
 
 const SEXP Database::sample_value(Query& query, uint64_t n) {
   if(new_elements || !query.is_initialized()) {
-    query.update(search_index);
+    query.update(*this, search_index);
   }
 
   auto index = query.sample(rand_engine);
@@ -506,7 +512,7 @@ const SEXP Database::view_metadata() const {
 
 const SEXP Database::view_metadata(Query& query) const  {
   if(new_elements || !query.is_initialized()) {
-    query.update(search_index);
+    query.update(*this, search_index);
   }
 
   auto index = query.view();
@@ -677,7 +683,7 @@ const SEXP Database::view_values() const {
 
 const SEXP Database::view_values(Query& query) const {
   if(new_elements || !query.is_initialized()) {
-    query.update(search_index);
+    query.update(*this, search_index);
   }
 
   auto index = query.view();
@@ -746,7 +752,7 @@ const SEXP Database::view_origins() const {
 
 const SEXP Database::view_origins(Query& query) const {
   if(new_elements || !query.is_initialized()) {
-    query.update(search_index);
+    query.update(*this, search_index);
   }
 
   auto index = query.view();
@@ -839,7 +845,7 @@ const SEXP Database::map(const SEXP function) {
 
 const SEXP Database::map(Query& query, const SEXP function) {
   if(new_elements || !query.is_initialized()) {
-    query.update(search_index);
+    query.update(*this, search_index);
   }
 
   auto index = query.view();
@@ -938,7 +944,7 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
     assert(buf != nullptr);
     // We have to add the value to the sexp table and hashes
     // and create the metadata and the debug counters
-    idx = nb_total_values;
+    idx = nb_total_values;//before being incremented
     sexp_table.append(*buf);
 
     // Add hash in the table of hashes
@@ -1006,7 +1012,7 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
 }
 
 std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& param_name) {
-  auto res = add_value(val, pkg_name, func_name, param_name);
+  auto res = add_value(val);
   assert(nb_total_values > 0);
   origins.add_origin(nb_total_values - 1, pkg_name, func_name, param_name);
 

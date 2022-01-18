@@ -9,8 +9,6 @@
 #include <filesystem>
 #include <fstream>
 #include <unistd.h>
-#include <thread>
-#include <future>
 #include <vector>
 #include <string>
 #include <execution>
@@ -124,7 +122,7 @@ private:
     std::ofstream index_file(path, std::fstream::binary | std::fstream::trunc);
 
     if(!index_file) {
-      Rf_error("Cannot create index file %s.\n", path.c_str());
+      Rf_error("Cannot create index file %s: %s.\n", path.c_str(), strerror(errno));
     }
 
     size_t size = index.getSizeInBytes();
@@ -172,7 +170,7 @@ public:
 
     if(!types_index_path.empty()) {
       for(int i = 0; i < 25; i++) {
-          types_index[i] = read_index(types_index_path.parent_path() / (types_index_path.filename().string() + "_" + std::to_string(i) + ".ror"));
+          types_index[i] = read_index(types_index_path.parent_path() / (types_index_path.stem().string() + "_" + std::to_string(i) + ".ror"));
           new_elements = true;
       }
     }
@@ -199,7 +197,7 @@ public:
 
     if(!lengths_index_path.empty()) {
       for(int i = 0; i < nb_intervals; i++) {
-        lengths_index[i] = read_index(lengths_index_path.parent_path() / (lengths_index_path.filename().string() + "_" + std::to_string(i) + ".ror"));
+        lengths_index[i] = read_index(lengths_index_path.parent_path() / (lengths_index_path.stem().string() + "_" + std::to_string(i) + ".ror"));
         new_elements = true;
       }
     }
@@ -207,7 +205,9 @@ public:
   }
 
 
-  void add_paths_config(std::unordered_map<std::string, std::string>& conf, const fs::path& base_path) {
+  void add_paths_config(std::unordered_map<std::string, std::string>& conf, const fs::path& base_path_) {
+    fs::path base_path(base_path_.parent_path());
+
     if(types_index_path.empty()) {
       types_index_path = base_path / "types_index";
     }
@@ -234,13 +234,13 @@ public:
     conf["lengths_index"] = lengths_index_path;
   }
 
-  roaring::Roaring64Map search_length(const roaring::Roaring64Map& bin_index, uint64_t precise_length) const;
+  roaring::Roaring64Map search_length(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_length) const;
 
   virtual ~SearchIndex() {
     // Write all the indexes
     if(pid == getpid()) {
       for(int i = 0 ; i < types_index.size() ; i++) {
-        write_index(types_index_path / ("_" + std::to_string(i) + ".ror"), types_index[i]);
+        write_index(types_index_path.parent_path() / (types_index_path.stem().string()  + "_" + std::to_string(i) + ".ror"), types_index[i]);
       }
 
       write_index(na_index_path, na_index);
@@ -249,12 +249,12 @@ public:
       write_index(attributes_index_path, attributes_index);
 
       for(int i = 0; i < lengths_index.size() ; i++) {
-        write_index(lengths_index_path / ("_" + std::to_string(i) + ".ror"), lengths_index[i]);
+        write_index(lengths_index_path.parent_path() / (lengths_index_path.stem().string() + "_" + std::to_string(i) + ".ror"), lengths_index[i]);
       }
     }
   }
 
-  void build_indexes(const Database& db, int nb_workers = std::thread::hardware_concurrency() - 1);
+  void build_indexes(const Database& db);
 
 };
 

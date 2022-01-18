@@ -74,12 +74,14 @@ private:
 public:
   Origins() : pid(getpid()) {}
 
-  Origins(const fs::path& base_path_) : pid(getpid()), base_path(base_path_) {
+  Origins(const fs::path& base_path_) : pid(getpid()) {
     open(base_path);
   }
 
-  void open(const fs::path& base_path) {
-    VSizeTable<std::vector<location_t>> location_table(base_path / "origins");
+  void open(const fs::path& base_path_) {
+    base_path = fs::absolute(base_path_);
+
+    VSizeTable<std::vector<location_t>> location_table(base_path / "origins.bin");
     package_names.open(base_path / "packages.txt");
     function_names.open(base_path/ "functions.txt");
     param_names.open(base_path/ "params.txt");
@@ -137,14 +139,14 @@ public:
   const std::string& function_name(uint32_t i) const { return function_names.read(i);}
   const std::string& param_name(uint32_t i) const { return param_names.read(i); }
 
-  const std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> source_locations(uint64_t index) const {
+  const std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> source_locations(uint64_t index) const {
     auto locs = get_locs(index);
 
     assert(loc.package < package_names.nb_values());
     assert(loc.function < function_names.nb_values());
     assert(loc.param < param_names.nb_values());
 
-    std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> str_locs;
+    std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> str_locs;
     str_locs.reserve(locs.size());
     for(const auto& loc : locs) {
       str_locs.emplace_back(package_names.read(loc.package),
@@ -169,7 +171,7 @@ public:
     if(pid == getpid() && new_origins) {
       {
         //create a new table
-        VSizeTable<std::vector<location_t>> location_table(base_path / "origins-new");
+        VSizeTable<std::vector<location_t>> location_table(base_path / "origins-new.bin");
         std::vector<location_t> buf;
         for(const auto& loc : locations) {
           buf.clear();

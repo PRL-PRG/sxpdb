@@ -59,12 +59,13 @@ public:
 
   Table() : pid(getpid()) {}
 
-  virtual void open(const fs::path& path) {
+  virtual void open(const fs::path& path_) {
     //Check if there is already a config file
+    fs::path path = fs::path(path_).replace_extension("conf");
     if(fs::exists(path)) {
       Config config(path);
-      fs::path conf_path = config["path"];
-      file_path = fs::absolute(conf_path);
+      fs::path bin_path = path.parent_path() / config["path"];
+      file_path = fs::absolute(bin_path);
       n_values = std::stoul(config["nb_values"]);
     }
     else {
@@ -72,19 +73,22 @@ public:
       fs::path ext = "bin";
       file_path = fs::absolute(path);
       file_path.replace_extension(ext);
-      conf["path"] = path.filename().string();
+      conf["path"] = file_path.filename().string();
       conf["nb_values"] = "0";
       Config config(std::move(conf));
-      config.write(path);
+      config.write(fs::absolute(path));
     }
   }
 
   ~Table() {
     if(new_elements && pid == getpid()) {
       std::unordered_map<std::string, std::string> conf;
-      fs::path path = file_path.stem();// without the .bin extension
-      conf["path"] = file_path.string();
+
+      conf["path"] = file_path.filename().string();
       conf["nb_values"] = std::to_string(n_values);
+
+      fs::path path = file_path;
+      path.replace_extension("conf");
       Config config(std::move(conf));
       config.write(path);
 
@@ -135,7 +139,7 @@ private:
   using Table<T>::pid;
   mutable std::fstream file;
   std::vector<T> store;
-  uint64_t last_written_index = 0;
+  uint64_t last_written = 0;
   bool only_append = true;
   mutable T data;
 public:
@@ -147,19 +151,28 @@ public:
 
   void open(const fs::path& path) override {
     Table<T>::open(path);
+    // We have to create the file if it does not exists; it requires other flags than the next ones
+    if(!fs::exists(file_path)) {
+      file.open(file_path, std::fstream::out | std::fstream::app);
+      file.close();
+    }
+
+    file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
+
+    if(!file) {
+      Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
+    }
+
+
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
     if(n_values != n_values_file) {
       Rf_warning("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.c_str(), n_values, n_values_file);
     }
 
-    file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
-
-    if(!file) {
-      Rf_error("Impossible to open the table file at %s\n", file_path.c_str());
-    }
-
     file.exceptions(std::fstream::failbit);
+
+    last_written = n_values;
   }
 
 
@@ -169,6 +182,7 @@ public:
     }
     else {
       file.write(reinterpret_cast<const char*>(&value), sizeof(value));
+      last_written++;
     }
 
     n_values++;
@@ -180,6 +194,7 @@ public:
     }
     else {
       file.write(reinterpret_cast<const char*>(values.data()), sizeof(T) * values.size());
+      last_written++;
     }
     n_values += values.size();
   }
@@ -222,7 +237,7 @@ public:
     store.resize(n_values);
     file.read(reinterpret_cast<char*>(store.data()), n_values * sizeof(T));
     in_memory = true;
-    last_written_index = n_values - 1;// all the values up to that index are already in the file
+    // all the values up to that index are already in the file
 
     // Now we can close the backing file a
     // and open it only when when materializing the data back on disk
@@ -238,27 +253,28 @@ public:
   }
 
   void flush() override {
-    uint64_t nb_new_values = n_values - last_written_index;
+    uint64_t nb_new_values = n_values - last_written;
     if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
-      file.write(reinterpret_cast<char*>(store.data() + last_written_index), nb_new_values * sizeof(T));
+      file.write(reinterpret_cast<char*>(store.data() + last_written - 1), nb_new_values * sizeof(T));
       file.close();
     }
 
     if(nb_new_values > 0) {
       new_elements = true;
       Table<T>::flush();
-      last_written_index = n_values - 1;
+      last_written = n_values;
     }
+    new_elements = false;
   }
 
   virtual ~FSizeTable() {
-    uint64_t nb_new_values = n_values - last_written_index;
+    uint64_t nb_new_values = n_values - last_written;
     if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
-      file.write(reinterpret_cast<char*>(store.data() + last_written_index), nb_new_values * sizeof(T));
+      file.write(reinterpret_cast<char*>(store.data() + last_written - 1), nb_new_values * sizeof(T));
       file.close();
     }
 
@@ -294,12 +310,18 @@ public:
   void open(const fs::path& path) override {
     Table<T>::open(path);
 
-    offset_table.open(path.parent_path() / (path.stem().string() + "_offsets"));
+    offset_table.open(file_path.parent_path() / (file_path.stem().string() + "_offsets.bin"));
+
+    // We have to create the file if it does not exists; it requires other flags than the next ones
+    if(!fs::exists(file_path)) {
+      file.open(file_path, std::fstream::out | std::fstream::app);
+      file.close();
+    }
 
     file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
 
     if(!file) {
-      Rf_error("Impossible to open the table file at %s\n", file_path.c_str());
+      Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
     }
 
     file.exceptions(std::fstream::failbit);
@@ -334,7 +356,7 @@ public:
   }
 
   void read_in(uint64_t idx, T& val) const override {
-    int64_t offset = offset_table.read(idx);
+    uint64_t offset = offset_table.read(idx);
 
     file.seekg(offset);
     uint64_t size = 0;
@@ -404,31 +426,41 @@ private:
 
   std::vector<std::string> store;
   robin_hood::unordered_map<const std::string*, uint64_t, string_pointer_hasher, string_pointer_equal> unique_lines;
-  uint64_t last_written_index = 0;
+  uint64_t last_written = 0;
 
 public:
   UniqTextTable() {}
-  UniqTextTable(fs::path path) {
+  UniqTextTable(const fs::path& path) {
     open(path);
   }
 
   void open(const fs::path& path) override {
-    file.open(file_path, std::fstream::in);
+    Table<std::string>::open(path);
 
-    if(!file) {
-      Rf_error("Impossible to open the table file at %s\n", file_path.c_str());
+    // Create the file if it does not exist
+    if(!fs::exists(file_path)) {
+      file.open(file_path, std::fstream::out | std::fstream::app);
+      file.close();
+    }
+    else {
+      file.open(file_path, std::fstream::in);
+
+      if(!file) {
+        Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
+      }
+
+      file.exceptions(std::fstream::failbit);
+
+      // Populate the vector with all the lines. We assume that all lines are unique
+      std::copy(std::istream_iterator<std::string>(file),
+                std::istream_iterator<std::string>(),
+                std::back_inserter(store));
+
+      file.close();
+
+      last_written = store.size();
     }
 
-    file.exceptions(std::fstream::failbit);
-
-    // Populate the vector with all the lines. We assume that all lines are unique
-    std::copy(std::istream_iterator<std::string>(file),
-              std::istream_iterator<std::string>(),
-              std::back_inserter(store));
-
-    file.close();
-
-    last_written_index = store.size() - 1;
 
     // Populate the hash table
     unique_lines.reserve(store.size());
@@ -447,9 +479,9 @@ public:
 
     if(it == unique_lines.end()) {
       store.push_back(value);
-      unique_lines.insert({&store.back(), store.size()});
+      unique_lines.insert({&store.back(), store.size() - 1});
       n_values++;
-      return store.size();
+      return store.size() - 1;
     }
     else {
       return it->second;
@@ -484,7 +516,7 @@ public:
   void load_all() override { }
 
   virtual ~UniqTextTable() {
-    int nb_new_elements = n_values - last_written_index;
+    int nb_new_elements = n_values - last_written;
     if(pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
       for(const auto& line : store) {
@@ -499,7 +531,7 @@ public:
   }
 
   void flush() override {
-    int nb_new_elements = n_values - last_written_index;
+    int nb_new_elements = n_values - last_written;
     if(pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
       for(const auto& line : store) {
@@ -511,8 +543,9 @@ public:
     if(nb_new_elements > 0) {
       new_elements = true;
       Table<std::string>::flush();
-      last_written_index = n_values - 1;
+      last_written = n_values;
     }
+    new_elements = false;
   }
 
   const SEXP to_sexp() const {

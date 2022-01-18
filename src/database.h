@@ -30,8 +30,6 @@
 
 class Query;
 
-typedef XXH128_hash_t sexp_hash;
-
 struct runtime_meta_t {
   uint64_t n_calls = 0;
   uint32_t n_merges = 0;
@@ -74,7 +72,7 @@ private:
   // search indexes and origin tables
   // **********************************
   FSizeTable<sexp_hash> hashes;
-  robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher> sexp_index;
+  robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher, xxh128_pointer_equal> sexp_index;
 
   VSizeTable<std::vector<std::byte>> sexp_table;
   FSizeTable<runtime_meta_t> runtime_meta;//Data that change at runtime
@@ -118,7 +116,7 @@ public:
   std::optional<uint64_t> get_index(const sexp_hash& h) const;
   const SEXP get_value(uint64_t index) const;
   const SEXP get_metadata(uint64_t index) const;
-  const std::vector<std::tuple<const std::string_view, const std::string_view, const std::string_view>> source_locations(uint64_t index) const;
+  const std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> source_locations(uint64_t index) const;
 
   //Accessors for sampling
   const SEXP sample_value();
@@ -143,7 +141,7 @@ public:
   const SEXP map(Query& query, const SEXP function);
 
   //Rebuilding the indexes from scratch
-  void build_indexes() { search_index.build_indexes(*this, 1) ; }
+  void build_indexes() { search_index.build_indexes(*this) ; }
 
   // Utilities
   const std::vector<size_t> check(bool slow_check);

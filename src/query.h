@@ -60,7 +60,8 @@ public:
   Query(bool quiet_ = true) : quiet(quiet_) {}
   Query(SEXPTYPE type_, bool quiet_ = true) : type(type_), quiet(quiet_) {}
 
-  void update(const SearchIndex& search_index) {
+  // Just pass the db, we can then access the search index from it
+  void update(const Database& db, const SearchIndex& search_index) {
     if(!search_index.is_initialized()) {
         Rf_error("Please build the search indexes to be able to sample with a complex query.\n");
     }
@@ -141,14 +142,14 @@ public:
       if( length_idx == SearchIndex::nb_intervals - 1 || SearchIndex::length_intervals.at(length_idx + 1) - SearchIndex::length_intervals.at(length_idx) > 1) {
         // we manually build an index_cache for the given length
         // it will perform a linear search but there should not be more than 10^2 elements in those slots anyway
-        roaring::Roaring64Map precise_length_index = search_index.search_length(search_index.lengths_index[length_idx], length.value());
+        roaring::Roaring64Map precise_length_index = search_index.search_length(db, search_index.lengths_index[length_idx], length.value());
         index_cache &= precise_length_index;
       }
       else {
         index_cache &= search_index.lengths_index[length_idx];
       }
     }
-
+    //index_cache.runOptimize(); // Maybe not worth it...
   }
 
   std::optional<uint64_t> sample(std::default_random_engine& rand_engine) {
