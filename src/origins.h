@@ -92,7 +92,7 @@ public:
 
     // Now populate the locations
     locations.clear();
-    locations.resize(locations.size());
+    locations.resize(location_table.nb_values());
     for(uint64_t i = 0; i < location_table.nb_values() ; i++) {
       std::vector<location_t> locs = location_table.read(i);
       locations[i].reserve(locs.size());
@@ -170,8 +170,12 @@ public:
   virtual ~Origins() {
     if(pid == getpid() && new_origins) {
       {
+        fs::rename(base_path / "origins.bin", base_path / "origins-old.bin");
+        fs::rename(base_path / "origins.conf", base_path / "origins-old.conf");
+        fs::rename(base_path / "origins_offsets.bin", base_path / "origins_offsets-old.bin");
+        fs::rename(base_path / "origins_offsets.conf", base_path / "origins_offsets-old.conf");
         //create a new table
-        VSizeTable<std::vector<location_t>> location_table(base_path / "origins-new.bin");
+        VSizeTable<std::vector<location_t>> location_table(base_path / "origins.bin");
         std::vector<location_t> buf;
         for(const auto& loc : locations) {
           buf.clear();
@@ -179,13 +183,12 @@ public:
           location_table.append(buf);
         }
         location_table.flush(); // Should not be needed as we leave scope
-      }
 
-      // rename the new one table to the old one, so if there is a crash while we write our big file, it is ok
-      // it will just roll back to the old data
-      // will throw in case of problems
-      fs::rename(base_path / "origins-new.bin", base_path / "origins.bin");
-      fs::rename(base_path / "origins-new_offsets.bin", base_path / "origins_offsets.bin");
+        fs::remove(base_path / "origins-old.bin");
+        fs::remove(base_path / "origins-old.conf");
+        fs::remove(base_path / "origins_offsets-old.bin");
+        fs::remove(base_path / "origins_offsets-old.conf");
+      }
     }
   }
 

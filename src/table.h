@@ -197,7 +197,7 @@ public:
     }
     else {
       file.write(reinterpret_cast<const char*>(values.data()), sizeof(T) * values.size());
-      last_written++;
+      last_written += values.size();
     }
     n_values += values.size();
   }
@@ -207,7 +207,7 @@ public:
       return store[index];
     }
     else {
-      file.seekg(index);
+      file.seekg(index * sizeof(T));
       file.read(reinterpret_cast<char*>(&data), sizeof(T));
       return data;
     }
@@ -218,7 +218,7 @@ public:
       value = store[index];
     }
     else {
-      file.seekg(index);
+      file.seekg(index * sizeof(T));
       file.read(reinterpret_cast<char*>(&value), sizeof(T));
     }
   }
@@ -238,6 +238,7 @@ public:
 
   void load_all() override {
     store.resize(n_values);
+    file.seekg(0);
     file.read(reinterpret_cast<char*>(store.data()), n_values * sizeof(T));
     in_memory = true;
     // all the values up to that index are already in the file
@@ -263,12 +264,9 @@ public:
       file.write(reinterpret_cast<char*>(store.data() + last_written - 1), nb_new_values * sizeof(T));
       file.close();
     }
-
-    if(nb_new_values > 0) {
-      new_elements = true;
-      Table<T>::flush();
-      last_written = n_values;
-    }
+    // Always rewrite the configuration file
+    new_elements = true;
+    Table<T>::flush();
     new_elements = false;
   }
 
@@ -280,10 +278,7 @@ public:
       file.write(reinterpret_cast<char*>(store.data() + last_written - 1), nb_new_values * sizeof(T));
       file.close();
     }
-
-    if(nb_new_values > 0) {
-      new_elements = true;
-    }
+    new_elements = true;// Always force writing of the config file
   }
 
 };

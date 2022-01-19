@@ -58,19 +58,12 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
     // The search indexes
     if(!quiet) Rprintf("Loading search indexes.\n");
-    search_index.open_from_config(config);
+    search_index.open_from_config(config_path.parent_path(), config);
 
     nb_total_values = std::stoul(config["nb_values"]);
   }
   else {
     if(!quiet) Rprintf("Creating new database at %s.\n", config_path.parent_path().c_str());
-
-    // Set up paths for the tables
-    // sexp_table_path = config_path.parent_path() / "sexp_table";
-    // hashes_path = config_path.parent_path() / "hashes";
-    // runtime_meta_path = config_path.parent_path() / "runtime_meta";
-    // static_meta_path = config_path.parent_path() / "static_meta";
-    // debug_counters_path = config_path.parent_path() / "debug_counters";
 
     //This will also set-up the paths for the search index
     write_configuration();
@@ -165,6 +158,14 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
 
 Database::~Database() {
+  if(!quiet) {
+    Rprintf("Closing database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters.\n",
+            config_path.parent_path().c_str(), nb_total_values,
+            origins.nb_packages(),
+            origins.nb_functions(),
+            origins.nb_parameters());
+  }
+
   if(pid == getpid()) {
     if(new_elements || nb_total_values == 0) {
       write_configuration();
@@ -197,7 +198,7 @@ void Database::write_configuration() {
   conf["compilation_time"] = std::string(__DATE__) + ":" + __TIME__;
 
   // The search indexes
-  search_index.add_paths_config(conf, config_path);
+  search_index.add_paths_config(conf, config_path.parent_path());
 
 
   Config config(std::move(conf));
