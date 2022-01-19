@@ -31,7 +31,7 @@
 class Query;
 
 struct runtime_meta_t {
-  uint64_t n_calls = 0;
+  uint64_t n_calls = 1;
   uint32_t n_merges = 0;
 };
 

@@ -64,6 +64,8 @@ private:
 
   std::vector<robin_hood::unordered_set<location_t>> locations;
 
+  robin_hood::unordered_set<location_t> empty_loc;
+
   UniqTextTable package_names;
   UniqTextTable function_names;
   UniqTextTable param_names;
@@ -72,9 +74,9 @@ private:
 
   fs::path base_path = "";
 public:
-  Origins() : pid(getpid()) {}
+  Origins() : pid(getpid()), empty_loc({location_t(0, 0, 0)}) {}
 
-  Origins(const fs::path& base_path_) : pid(getpid()) {
+  Origins(const fs::path& base_path_) : pid(getpid()), empty_loc({location_t(0, 0, 0)}) {
     open(base_path);
   }
 
@@ -97,6 +99,13 @@ public:
       std::vector<location_t> locs = location_table.read(i);
       locations[i].reserve(locs.size());
       locations[i].insert(locs.begin(), locs.end());
+    }
+    if(location_table.nb_values() == 0) {
+      // inject empty strings in each table, at positions 0
+      // it will be used for the empty origins
+      package_names.append("");
+      function_names.append("");
+      param_names.append("");
     }
   }
 
@@ -126,13 +135,16 @@ public:
   }
 
   void append_empty_origin() {
-    robin_hood::unordered_set<location_t> locs;
-    locations.push_back(locs);
+    locations.push_back(empty_loc);
   }
 
   const robin_hood::unordered_set<location_t>& get_locs(uint64_t index) const {
-    assert(index < locations.size());
-    return locations[index];
+    if(index < locations.size()) {
+      return locations[index];
+    }
+    else {
+      return empty_loc;
+    }
   }
 
   const std::string& package_name(uint32_t i) const {return package_names.read(i); }

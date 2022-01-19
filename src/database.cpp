@@ -106,13 +106,13 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
                "in the static_meta table: %lu vs %lu\n", nb_total_values, static_meta.nb_values());
   }
 
-  if(origins.nb_values() != nb_total_values) {
-    Rf_error("Inconsistent number of values in the global configuration file and"
+  if(origins.nb_values() > nb_total_values) {
+    Rf_error("Inconsistent number of values in the global configuration file and "
                "in the origin tables: %lu vs %lu.\n", nb_total_values, origins.nb_values());
   }
 
   if(debug_counters.nb_values() != 0 && debug_counters.nb_values() != nb_total_values) {
-    Rf_error("Inconsistent number of values in the global configuration file and"
+    Rf_error("Inconsistent number of values in the global configuration file and "
                "in the debug counters tables: %lu vs %lu.\n", nb_total_values, debug_counters.nb_values());
   }
 
@@ -260,7 +260,7 @@ const SEXP Database::get_metadata(uint64_t index) const {
     return R_NilValue;
   }
 
-  std::vector<const char*> names = {"type", "length", "n_attributes", "n_dims", "size", "n_calls", "n_merges"};
+  std::vector<const char*> names = {"type", "length", "n_attributes", "n_dims", "n_rows", "size", "n_calls", "n_merges"};
 
   auto s_meta = static_meta.read(index);
   auto d_meta = runtime_meta.read(index);
@@ -287,25 +287,30 @@ const SEXP Database::get_metadata(uint64_t index) const {
   SET_VECTOR_ELT(res, 1, Rf_ScalarInteger(s_meta.length));
   SET_VECTOR_ELT(res, 2, Rf_ScalarInteger(s_meta.n_attributes));
   SET_VECTOR_ELT(res, 3, Rf_ScalarInteger(s_meta.n_dims));
-  SET_VECTOR_ELT(res, 4, Rf_ScalarInteger(s_meta.size));
+  SET_VECTOR_ELT(res, 4, Rf_ScalarInteger(s_meta.n_rows));
+  SET_VECTOR_ELT(res, 5, Rf_ScalarInteger(s_meta.size));
 
   //Runtime meta
-  SET_VECTOR_ELT(res, 5, Rf_ScalarInteger(d_meta.n_calls));
-  SET_VECTOR_ELT(res, 6, Rf_ScalarInteger(d_meta.n_merges));
+  SET_VECTOR_ELT(res, 7, Rf_ScalarInteger(d_meta.n_calls));
+  SET_VECTOR_ELT(res, 8, Rf_ScalarInteger(d_meta.n_merges));
 
+  int column_id = 9;
   //Debug counters
   if(debug_counters.nb_values() > 0) {
     auto debug_cnt = debug_counters.read(index);
 
-    SET_VECTOR_ELT(res, 7, Rf_ScalarInteger(debug_cnt.n_maybe_shared));
-    SET_VECTOR_ELT(res, 8, Rf_ScalarInteger(debug_cnt.n_sexp_address_opt));
+    SET_VECTOR_ELT(res, column_id, Rf_ScalarInteger(debug_cnt.n_maybe_shared));
+    column_id++;
+    SET_VECTOR_ELT(res, column_id, Rf_ScalarInteger(debug_cnt.n_sexp_address_opt));
+    column_id++;
   }
 
   if(!search_index.na_index.isEmpty()) {
-    SET_VECTOR_ELT(res, 9, Rf_ScalarLogical(search_index.na_index.contains(index)));
+    SET_VECTOR_ELT(res, column_id, Rf_ScalarLogical(search_index.na_index.contains(index)));
+    column_id++;
   }
   if(!search_index.class_index.isEmpty()) {
-    SET_VECTOR_ELT(res, 10, Rf_ScalarLogical(search_index.class_index.contains(index)));
+    SET_VECTOR_ELT(res, column_id, Rf_ScalarLogical(search_index.class_index.contains(index)));
   }
 
   UNPROTECT(1);
@@ -391,11 +396,12 @@ const SEXP Database::view_metadata() const {
 
   // TODO: rewrite with async to process separately the various tables
 
-  int n_to_protect = 7;
+  int n_to_protect = 8;
   SEXP s_type = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
   SEXP s_length = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
   SEXP n_attributes = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
   SEXP n_dims = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
+  SEXP n_rows = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
   SEXP s_size = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
 
   SEXP n_calls = PROTECT(Rf_allocVector(INTSXP, nb_total_values));
@@ -426,6 +432,7 @@ const SEXP Database::view_metadata() const {
   int* s_length_it = INTEGER(s_length);
   int* n_attr_it = INTEGER(n_attributes);
   int* n_dims_it = INTEGER(n_dims);
+  int* n_rows_it = INTEGER(n_rows);
   int* s_size_it = INTEGER(s_size);
 
   for(uint64_t i = 0 ; i < nb_total_values ; i++) {
@@ -435,6 +442,7 @@ const SEXP Database::view_metadata() const {
     s_length_it[i] = meta.length;
     n_attr_it[i] = meta.n_attributes;
     n_dims_it[i] = meta.n_dims;
+    n_rows_it[i] = meta.n_rows;
     assert(meta.size < std::numeric_limits<int>::max() / 2);// R integers are on 31 bits
     s_size_it[i] = meta.size;
   }
@@ -487,6 +495,7 @@ const SEXP Database::view_metadata() const {
     {"length", s_length},
     {"n_attributes", n_attributes},
     {"n_dims", n_dims},
+    {"n_rows", n_rows},
     {"size", s_size},
     {"n_calls", n_calls},
     {"n_merges", n_merges}
@@ -526,10 +535,11 @@ const SEXP Database::view_metadata(Query& query) const  {
 
   // TODO: rewrite with async to process separately the various tables
 
-  int n_to_protect = 7;
+  int n_to_protect = 8;
   SEXP s_type = PROTECT(Rf_allocVector(INTSXP, index_size));
   SEXP s_length = PROTECT(Rf_allocVector(INTSXP, index_size));
   SEXP n_attributes = PROTECT(Rf_allocVector(INTSXP, index_size));
+  SEXP n_rows = PROTECT(Rf_allocVector(INTSXP, index_size));
   SEXP n_dims = PROTECT(Rf_allocVector(INTSXP, index_size));
   SEXP s_size = PROTECT(Rf_allocVector(INTSXP, index_size));
 
@@ -561,6 +571,7 @@ const SEXP Database::view_metadata(Query& query) const  {
   int* s_length_it = INTEGER(s_length);
   int* n_attr_it = INTEGER(n_attributes);
   int* n_dims_it = INTEGER(n_dims);
+  int* n_rows_it = INTEGER(n_rows);
   int* s_size_it = INTEGER(s_size);
 
   uint64_t j = 0;
@@ -571,6 +582,7 @@ const SEXP Database::view_metadata(Query& query) const  {
     s_length_it[j] = meta.length;
     n_attr_it[j] = meta.n_attributes;
     n_dims_it[j] = meta.n_dims;
+    n_rows_it[i] = meta.n_rows;
     assert(meta.size < std::numeric_limits<int>::max() / 2);// R integers are on 31 bits
     s_size_it[j] = meta.size;
 
@@ -643,6 +655,7 @@ const SEXP Database::view_metadata(Query& query) const  {
     {"n_dims", n_dims},
     {"size", s_size},
     {"n_calls", n_calls},
+    {"n_rows", n_rows},
     {"n_merges", n_merges}
   };
 
