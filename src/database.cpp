@@ -135,6 +135,9 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     debug_counters.load_all();
   }
 
+  // TODO: Maybe if we have a strict read mode, we do not have to load them into memory
+  // nor to build the hash table
+
   if(!quiet) Rprintf("Loading hashes into memory.\n");
   // Load the hashes and build the hash map
   const std::vector<sexp_hash>& hash_vec = hashes.memory_view();
@@ -996,7 +999,6 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
 
     // runtime meta
     runtime_meta_t r_meta;
-    r_meta.n_calls = 0;
     runtime_meta.append(r_meta);
 
     // debug counters

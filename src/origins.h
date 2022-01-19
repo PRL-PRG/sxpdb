@@ -64,6 +64,7 @@ private:
 
   std::vector<robin_hood::unordered_set<location_t>> locations;
 
+  robin_hood::unordered_set<location_t> dummy_loc;
   robin_hood::unordered_set<location_t> empty_loc;
 
   UniqTextTable package_names;
@@ -98,13 +99,19 @@ public:
     for(uint64_t i = 0; i < location_table.nb_values() ; i++) {
       std::vector<location_t> locs = location_table.read(i);
       locations[i].reserve(locs.size());
-      locations[i].insert(locs.begin(), locs.end());
+      if(locs.size() > 1 || (locs.size() == 1 && !(locs[0] == location_t(0, 0, 0)))) {
+        locations[i].insert(locs.begin(), locs.end());
+      }
     }
-    if(location_table.nb_values() == 0) {
-      // inject empty strings in each table, at positions 0
-      // it will be used for the empty origins
+    // inject empty strings in each table, at positions 0
+    // it will be used for the empty origins
+    if(package_names.nb_values() == 0) {
       package_names.append("");
+    }
+    if(function_names.nb_values() == 0) {
       function_names.append("");
+    }
+    if(param_names.nb_values() == 0) {
       param_names.append("");
     }
   }
@@ -171,9 +178,10 @@ public:
 
   const fs::path& get_base_path() const { return base_path; }
 
-  uint64_t nb_packages() const { return package_names.nb_values(); }
-  uint64_t nb_functions() const { return function_names.nb_values(); }
-  uint64_t nb_parameters() const { return param_names.nb_values(); }
+  // DO not count the dummy packages
+  uint64_t nb_packages() const { return package_names.nb_values() - 1; }
+  uint64_t nb_functions() const { return function_names.nb_values() - 1; }
+  uint64_t nb_parameters() const { return param_names.nb_values() - 1; }
 
   const SEXP package_cache() const {return package_names.to_sexp(); }
   const SEXP function_cache() const {return function_names.to_sexp(); }
@@ -191,7 +199,12 @@ public:
         std::vector<location_t> buf;
         for(const auto& loc : locations) {
           buf.clear();
-          buf.insert(buf.end(), loc.begin(), loc.end());
+          if(loc.empty()) {
+            buf.push_back(*dummy_loc.begin());
+          } else {
+            buf.insert(buf.end(), loc.begin(), loc.end());
+          }
+
           location_table.append(buf);
         }
         location_table.flush(); // Should not be needed as we leave scope

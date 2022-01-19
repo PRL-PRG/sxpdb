@@ -275,7 +275,7 @@ public:
     if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
-      file.write(reinterpret_cast<char*>(store.data() + last_written - 1), nb_new_values * sizeof(T));
+      file.write(reinterpret_cast<char*>(store.data() + last_written), nb_new_values * sizeof(T));
       file.close();
     }
     new_elements = true;// Always force writing of the config file
