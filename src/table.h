@@ -99,9 +99,12 @@ public:
   virtual void flush() {
     if(new_elements && pid == getpid()) {
       std::unordered_map<std::string, std::string> conf;
-      fs::path path = file_path.stem();// without the .bin extension
-      conf["path"] = file_path.string();
+
+      conf["path"] = file_path.filename().string();
       conf["nb_values"] = std::to_string(n_values);
+
+      fs::path path = file_path;
+      path.replace_extension("conf");
       Config config(std::move(conf));
       config.write(path);
 
