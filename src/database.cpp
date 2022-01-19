@@ -538,7 +538,8 @@ const SEXP Database::view_metadata(Query& query) const  {
 
   // TODO: rewrite with async to process separately the various tables
 
-  int n_to_protect = 8;
+  int n_to_protect = 9;
+  SEXP indexes = PROTECT(Rf_allocVector(INTSXP, index_size));
   SEXP s_type = PROTECT(Rf_allocVector(INTSXP, index_size));
   SEXP s_length = PROTECT(Rf_allocVector(INTSXP, index_size));
   SEXP n_attributes = PROTECT(Rf_allocVector(INTSXP, index_size));
@@ -620,6 +621,16 @@ const SEXP Database::view_metadata(Query& query) const  {
 
       j++;
     }
+  }
+
+  // Index number
+  int* indexes_it = INTEGER(indexes);
+  // R Integers are 32 bits...
+  // Rather put strings for indexes larger than 2^32 - 1 ?
+  j = 0;
+  for(uint64_t i : index) {
+    indexes_it[j] = i;
+    j++;
   }
 
   // Indexes
@@ -975,7 +986,7 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
     static_meta_t s_meta;
     s_meta.sexptype = TYPEOF(val);
     s_meta.size = buf->size();
-    s_meta.length = Rf_xlength(val);
+    s_meta.length = Rf_xlength(val);// TODO: where to store that if the size is larger than 32 bits?
     s_meta.n_attributes = Rf_xlength(ATTRIB(val));
 
     SEXP dims = Rf_getAttrib(val, R_DimSymbol);
@@ -991,6 +1002,9 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
       else {
         s_meta.n_rows= INTEGER(dims)[0];
       }
+    }
+    else {
+      s_meta.n_rows = 0;
     }
     if(Rf_isFrame(val)) {
       s_meta.n_rows = s_meta.length == 0 ? 0 : Rf_xlength(VECTOR_ELT(val, 0));

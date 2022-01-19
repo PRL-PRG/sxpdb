@@ -22,6 +22,11 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
     results[k].first = "length_index";
   }
 
+  //TODO:
+  // start at max(start, index.maximum())
+  // Indeed, we cannot remove values from the database
+  // And values are appended...
+
   // Static meta
   for(uint64_t i = start; i < end; i++) {
     auto meta = db.static_meta.read(i);
@@ -79,7 +84,7 @@ void SearchIndex::build_indexes(const Database& db) {
 
   std::vector<std::vector<std::pair<std::string, roaring::Roaring64Map>>> results;
 
-  results.push_back(build_index(db, 0, db.nb_values()));
+  results.push_back(build_index(db, last_computed, db.nb_values()));
 
   for(const auto& indexes : results) {
     assert(indexes.size() == types_index.size() + 4 + lengths_index.size());
@@ -132,6 +137,8 @@ void SearchIndex::build_indexes(const Database& db) {
     ind.runOptimize();
     ind.shrinkToFit();
   }
+
+  last_computed = db.nb_values();
 }
 
 roaring::Roaring64Map SearchIndex::search_length(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_length) const {

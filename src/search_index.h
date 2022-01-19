@@ -96,6 +96,8 @@ private:
   bool index_generated = false;
   bool new_elements = false;
 
+  uint64_t last_computed = 0;
+
   friend class Database;
 
   static roaring::Roaring64Map read_index(const fs::path& path) {
