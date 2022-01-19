@@ -82,6 +82,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     lock_file << std::chrono::system_clock::now().time_since_epoch().count() << std::endl;
   }
 
+  if(!quiet) Rprintf("Loading tables.\n");
   sexp_table.open(sexp_table_path);
   hashes.open(hashes_path);
   runtime_meta.open(runtime_meta_path);
@@ -109,7 +110,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
   if(static_meta.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the static_meta table: %lu vs %lu\n", nb_total_values, hashes.nb_values());
+               "in the static_meta table: %lu vs %lu\n", nb_total_values, static_meta.nb_values());
   }
 
   if(origins.nb_values() != nb_total_values) {

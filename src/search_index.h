@@ -206,32 +206,36 @@ public:
 
 
   void add_paths_config(std::unordered_map<std::string, std::string>& conf, const fs::path& base_path_) {
-    fs::path base_path(base_path_.parent_path());
+    fs::path base_path = "search_index";
+
+    if(!fs::exists(base_path)) {
+        fs::create_directory(base_path);
+    }
 
     if(types_index_path.empty()) {
       types_index_path = base_path / "types_index";
     }
-    conf["types_index"] = types_index_path;
+    conf["types_index"] = fs::relative(types_index_path, base_path_.parent_path());
     if(na_index_path.empty()) {
       na_index_path = base_path / "na_index.ror";
     }
-    conf["na_index"] = na_index_path;
+    conf["na_index"] = fs::relative(na_index_path, base_path_.parent_path());
     if(class_index_path.empty()) {
       class_index_path = base_path / "class_index.ror";
     }
-    conf["class_index"] = class_index_path;
+    conf["class_index"] = fs::relative(class_index_path, base_path_.parent_path());
     if(vector_index_path.empty()) {
       vector_index_path = base_path / "vector_index.ror";
     }
-    conf["vector_index"] = vector_index_path;
+    conf["vector_index"] = fs::relative(vector_index_path, base_path_.parent_path());
     if(attributes_index_path.empty()) {
       attributes_index_path = base_path / "attributes_index.ror";
     }
-    conf["attributes_index"] = attributes_index_path;
+    conf["attributes_index"] = fs::relative(attributes_index_path, base_path_.parent_path());
     if(lengths_index_path.empty()) {
       lengths_index_path = base_path / "lengths_index";
     }
-    conf["lengths_index"] = lengths_index_path;
+    conf["lengths_index"] = fs::relative(lengths_index_path, base_path_.parent_path());
   }
 
   roaring::Roaring64Map search_length(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_length) const;

@@ -452,8 +452,6 @@ public:
         Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
       }
 
-      file.exceptions(std::fstream::failbit);
-
       // Populate the vector with all the lines. We assume that all lines are unique
       std::copy(std::istream_iterator<std::string>(file),
                 std::istream_iterator<std::string>(),

@@ -82,9 +82,9 @@ public:
     base_path = fs::absolute(base_path_);
 
     VSizeTable<std::vector<location_t>> location_table(base_path / "origins.bin");
-    package_names.open(base_path / "packages.txt");
-    function_names.open(base_path/ "functions.txt");
-    param_names.open(base_path/ "params.txt");
+    package_names.open(base_path / "packages.bin");
+    function_names.open(base_path/ "functions.bin");
+    param_names.open(base_path/ "params.bin");
 
     package_names.load_all();
     function_names.load_all();

@@ -8,10 +8,10 @@
 
 #define EMPTY_ORIGIN_PART ""
 
-SEXP open_db(SEXP filename, SEXP quiet) {
+SEXP open_db(SEXP filename, SEXP write_mode, SEXP quiet) {
   Database* db = nullptr;
   try{
-    db = new Database(CHAR(STRING_ELT(filename, 0)), Rf_asLogical(quiet));
+    db = new Database(CHAR(STRING_ELT(filename, 0)), Rf_asLogical(write_mode), Rf_asLogical(quiet));
   }
   catch(std::exception& e) {
     Rf_error("Error opening the database %s : %s\n", CHAR(STRING_ELT(filename, 0)), e.what());

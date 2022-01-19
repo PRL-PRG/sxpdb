@@ -17,10 +17,11 @@ extern "C" {
  * This function must be called first.
  * @method open_db
  * @param filename
- * @param quiet print helpful messages or not
+ * @param write_mode boolean open the database in write mode or read mode. Read mode does not load into memory as much
+ * @param quiet boolean print helpful messages or not
  * @return R_NilValue on error, a external pointer to the database on success
  */
-SEXP open_db(SEXP filename, SEXP quiet);
+SEXP open_db(SEXP filename, SEXP write_mode, SEXP quiet);
 
 /**
  * This function closes the database, materializes totally on disk.
