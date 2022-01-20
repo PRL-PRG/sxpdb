@@ -75,9 +75,9 @@ private:
 
   fs::path base_path = "";
 public:
-  Origins() : pid(getpid()), empty_loc({location_t(0, 0, 0)}) {}
+  Origins() : pid(getpid()), dummy_loc({location_t(0, 0, 0)}) {}
 
-  Origins(const fs::path& base_path_) : pid(getpid()), empty_loc({location_t(0, 0, 0)}) {
+  Origins(const fs::path& base_path_) : pid(getpid()), dummy_loc({location_t(0, 0, 0)}) {
     open(base_path);
   }
 
@@ -117,6 +117,12 @@ public:
   }
 
   void add_origin(uint64_t index, const std::string& package_name, const std::string& function_name, const std::string& param_name) {
+      if(index > locations.size()) {
+        Rf_error("Cannot add an origin for a value that was not recorded in the main table."
+                   " Last index is %lu, but the index of that new origin is %lu.\n",
+                   locations.size(), index);
+      }
+
       location_t loc(package_names.append_index(package_name),
                      function_names.append_index(function_name),
                      param_names.append_index(param_name));
@@ -133,11 +139,6 @@ public:
           robin_hood::unordered_set<location_t> locs{loc};
           locations.push_back(locs);
           new_origins = true;
-      }
-      else {
-        Rf_error("Cannot add an origin for a value that was not recorded in the main table."
-                   " Last index is %lu, but the index of that new origin is %lu.\n",
-                   locations.size(), index);
       }
   }
 

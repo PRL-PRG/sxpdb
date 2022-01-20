@@ -427,6 +427,17 @@ private:
   uint64_t last_written = 0;
 
 public:
+  class line {
+    std::string data;
+  public:
+    friend std::istream &operator>>(std::istream &is, line &l) {
+      std::getline(is, l.data);
+      return is;
+    }
+    operator std::string() const { return data; }
+  };
+
+
   UniqTextTable() {}
   UniqTextTable(const fs::path& path) {
     open(path);
@@ -448,8 +459,8 @@ public:
       }
 
       // Populate the vector with all the lines. We assume that all lines are unique
-      std::copy(std::istream_iterator<std::string>(file),
-                std::istream_iterator<std::string>(),
+      std::copy(std::istream_iterator<line>(file),
+                std::istream_iterator<line>(),
                 std::back_inserter(store));
 
       file.close();
@@ -515,8 +526,8 @@ public:
     int nb_new_elements = n_values - last_written;
     if(pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
-      for(const auto& line : store) {
-        file << line << "\n";
+      for(auto line = store.begin() + last_written; line != store.end() ; line++) {
+        file << *line << "\n";
       }
       file << std::flush;
     }
@@ -530,8 +541,8 @@ public:
     int nb_new_elements = n_values - last_written;
     if(pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
-      for(const auto& line : store) {
-        file << line << "\n";
+      for(auto line = store.begin() + last_written; line != store.end() ; line++) {
+        file << *line << "\n";
       }
       file << std::flush;
     }
