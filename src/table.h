@@ -605,8 +605,8 @@ public:
     auto it = unique_lines.find(value);
 
     if(it == unique_lines.end()) {
-      unique_lines.insert({value, store.size()});
-      store.push_back(&value);
+      auto res = unique_lines.insert({value, store.size()});
+      store.push_back(&res.first->first);
 
       n_values++;
       return store.size() - 1;
