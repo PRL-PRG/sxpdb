@@ -422,20 +422,11 @@ private:
 
   mutable std::string val;
 
-  std::vector<std::string> store;
-  robin_hood::unordered_map<const std::string*, uint64_t, string_pointer_hasher, string_pointer_equal> unique_lines;
+  std::vector<const std::string*> store;
+  robin_hood::unordered_map<std::string, uint64_t> unique_lines;
   uint64_t last_written = 0;
 
 public:
-  class line {
-    std::string data;
-  public:
-    friend std::istream &operator>>(std::istream &is, line &l) {
-      std::getline(is, l.data);
-      return is;
-    }
-    operator std::string() const { return data; }
-  };
 
 
   UniqTextTable() {}
@@ -458,22 +449,21 @@ public:
         Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
       }
 
-      // Populate the vector with all the lines. We assume that all lines are unique
-      std::copy(std::istream_iterator<line>(file),
-                std::istream_iterator<line>(),
-                std::back_inserter(store));
+      std::string line;
+      // Populate the hash table with all the lines. We assume that all lines are unique
+      // we need the hash table to own the lines, as the store could resize and reallocate and move around
+      uint32_t i = 0;
+      while(std::getline(file, line)) {
+        auto res = unique_lines.insert({line, i});
+        store.push_back(&res.first->first);
+        i++;
+      }
 
       file.close();
 
       last_written = store.size();
     }
 
-
-    // Populate the hash table
-    unique_lines.reserve(store.size());
-    for(uint64_t i = 0; i < store.size() ; i++) {
-      unique_lines.insert({&store[i], i});
-    }
 
     assert(n_values == store.size());
 
@@ -482,11 +472,12 @@ public:
   }
 
   uint64_t append_index(const std::string& value) {
-    auto it = unique_lines.find(&value);
+    auto it = unique_lines.find(value);
 
     if(it == unique_lines.end()) {
-      store.push_back(value);
-      unique_lines.insert({&store.back(), store.size() - 1});
+      unique_lines.insert({value, store.size()});
+      store.push_back(&value);
+
       n_values++;
       return store.size() - 1;
     }
@@ -507,7 +498,7 @@ public:
   }
 
   void read_in(uint64_t index, std::string& value) const override {
-    value = store[index];
+    value = *store[index];
   }
 
   const std::string& read(uint64_t index) const override {
@@ -527,7 +518,7 @@ public:
     if(pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
       for(auto line = store.begin() + last_written; line != store.end() ; line++) {
-        file << *line << "\n";
+        file << **line << "\n";
       }
       file << std::flush;
     }
@@ -542,7 +533,7 @@ public:
     if(pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
       for(auto line = store.begin() + last_written; line != store.end() ; line++) {
-        file << *line << "\n";
+        file << **line << "\n";
       }
       file << std::flush;
     }
@@ -559,7 +550,7 @@ public:
     SEXP s = PROTECT(Rf_allocVector(STRSXP, nb_values()));
     int i = 0;
     for(auto& name : store) {
-      SET_STRING_ELT(s, i, Rf_mkChar(name.c_str()));
+      SET_STRING_ELT(s, i, Rf_mkChar(name->c_str()));
       i++;
     }
 

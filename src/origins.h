@@ -117,6 +117,7 @@ public:
   }
 
   void add_origin(uint64_t index, const std::string& package_name, const std::string& function_name, const std::string& param_name) {
+      assert(pid != getpid());
       if(index > locations.size()) {
         Rf_error("Cannot add an origin for a value that was not recorded in the main table."
                    " Last index is %lu, but the index of that new origin is %lu.\n",
