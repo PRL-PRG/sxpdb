@@ -101,6 +101,16 @@ public:
       locations[i].reserve(locs.size());
       if(locs.size() > 1 || (locs.size() == 1 && !(locs[0] == location_t(0, 0, 0)))) {
         locations[i].insert(locs.begin(), locs.end());
+#ifndef NDEBUG
+      for(const auto& loc : locs) {
+        assert(loc.package < package_names.nb_values());
+        assert(loc.function < function_names.nb_values());
+        assert(loc.param< param_names.nb_values());
+      }
+#endif
+      }
+      else {
+        assert(locations[i].empty());
       }
     }
     // inject empty strings in each table, at positions 0
@@ -117,7 +127,7 @@ public:
   }
 
   void add_origin(uint64_t index, const std::string& package_name, const std::string& function_name, const std::string& param_name) {
-      assert(pid != getpid());
+      assert(pid == getpid());
       if(index > locations.size()) {
         Rf_error("Cannot add an origin for a value that was not recorded in the main table."
                    " Last index is %lu, but the index of that new origin is %lu.\n",
@@ -163,13 +173,14 @@ public:
   const std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> source_locations(uint64_t index) const {
     auto locs = get_locs(index);
 
-    assert(loc.package < package_names.nb_values());
-    assert(loc.function < function_names.nb_values());
-    assert(loc.param < param_names.nb_values());
+
 
     std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> str_locs;
     str_locs.reserve(locs.size());
     for(const auto& loc : locs) {
+      assert(loc.package < package_names.nb_values());
+      assert(loc.function < function_names.nb_values());
+      assert(loc.param < param_names.nb_values());
       str_locs.emplace_back(package_names.read(loc.package),
                             function_names.read(loc.function),
                             param_names.read(loc.param));

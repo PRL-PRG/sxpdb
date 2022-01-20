@@ -102,7 +102,7 @@ void SearchIndex::build_indexes(const Database& db) {
     assert(indexes[i].first == "vector_index");
     vector_index |= indexes[i].second;
     i++;
-    assert(indexes[i].first == "na_index");
+    assert(indexes[i].first == "attributes_index");
     attributes_index |= indexes[i].second;
     i++;
     int start = i;

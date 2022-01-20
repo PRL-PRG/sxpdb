@@ -74,7 +74,7 @@ have_seen <- function(db, val) {
 
 #' @export
 get_value_idx <- function(db, idx) {
-  stopifnote(is.numeric(idx), i >= 0, i < size_db(db))
+  stopifnot(is.numeric(idx), i >= 0, i < size_db(db))
   .Call(SXPDB_get_val, db, idx)
 }
 

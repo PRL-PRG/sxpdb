@@ -1,18 +1,18 @@
 #include "database.h"
 
 Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
-  config_path(config_),  write_mode(write_mode_),   quiet(quiet_),
+  config_path(config_), base_path(fs::absolute(config_path.parent_path())), write_mode(write_mode_),   quiet(quiet_),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
   pid(getpid()),
   ser(32768)
 {
-  fs::path sexp_table_path = config_path.parent_path() / "sexp_table.conf";
-  fs::path hashes_path = config_path.parent_path() / "hashes_table.conf";
-  fs::path runtime_meta_path = config_path.parent_path() / "runtime_meta.conf";
-  fs::path static_meta_path = config_path.parent_path() / "static_meta.conf";
-  fs::path debug_counters_path = config_path.parent_path() / "debug_counters.conf";
+  fs::path sexp_table_path = base_path / "sexp_table.conf";
+  fs::path hashes_path = base_path / "hashes_table.conf";
+  fs::path runtime_meta_path = base_path / "runtime_meta.conf";
+  fs::path static_meta_path = base_path / "static_meta.conf";
+  fs::path debug_counters_path = base_path / "debug_counters.conf";
 
-  fs::path lock_path = config_path.parent_path() / ".LOCK";
+  fs::path lock_path = base_path / ".LOCK";
 
   bool to_check = false;
 
@@ -58,12 +58,12 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
     // The search indexes
     if(!quiet) Rprintf("Loading search indexes.\n");
-    search_index.open_from_config(config_path.parent_path(), config);
+    search_index.open_from_config(base_path, config);
 
     nb_total_values = std::stoul(config["nb_values"]);
   }
   else {
-    if(!quiet) Rprintf("Creating new database at %s.\n", config_path.parent_path().c_str());
+    if(!quiet) Rprintf("Creating new database at %s.\n", base_path.c_str());
 
     //This will also set-up the paths for the search index
     write_configuration();
@@ -83,7 +83,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   debug_counters.open(debug_counters_path);
 
   if(!quiet) Rprintf("Loading origins.\n");
-  origins.open(config_path.parent_path());
+  origins.open(base_path);
 
   // Check if the number of values in tables are coherent
   if(sexp_table.nb_values() != nb_total_values) {
@@ -151,7 +151,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
   if(!quiet) {
     Rprintf("Loaded database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters.\n",
-            config_path.parent_path().c_str(), nb_total_values,
+            base_path.c_str(), nb_total_values,
             origins.nb_packages(),
             origins.nb_functions(),
             origins.nb_parameters());
@@ -163,7 +163,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 Database::~Database() {
   if(!quiet) {
     Rprintf("Closing database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters.\n",
-            config_path.parent_path().c_str(), nb_total_values,
+            base_path.c_str(), nb_total_values,
             origins.nb_packages(),
             origins.nb_functions(),
             origins.nb_parameters());
@@ -176,7 +176,7 @@ Database::~Database() {
 
     // Remove the LOCK to witness that the database left without problems
     if(write_mode) {
-      fs::path lock_path = config_path.parent_path() / ".LOCK";
+      fs::path lock_path = base_path / ".LOCK";
       fs::remove(lock_path);
     }
   }
@@ -201,7 +201,7 @@ void Database::write_configuration() {
   conf["compilation_time"] = std::string(__DATE__) + ":" + __TIME__;
 
   // The search indexes
-  search_index.add_paths_config(conf, config_path.parent_path());
+  search_index.add_paths_config(conf, base_path);
 
 
   Config config(std::move(conf));
@@ -1112,7 +1112,7 @@ uint64_t Database::merge_in(Database& other) {
 
       // Debug counters
 #ifndef NDEBUG
-      debug_counters.read(db_idx, cnts);
+      debug_counters.read_in(db_idx, cnts);
       debug_counters_t other_cnts = other.debug_counters.read(other_idx);
       cnts.n_maybe_shared += other_cnts.n_maybe_shared;
       cnts.n_sexp_address_opt += other_cnts.n_sexp_address_opt;
@@ -1130,7 +1130,7 @@ uint64_t Database::merge_in(Database& other) {
 
   assert(nb_total_values >= old_total_values);
 
-  assert(sexp_table.nb_values() == nb_total_values());
+  assert(sexp_table.nb_values() == nb_total_values);
 
   return nb_total_values - old_total_values;
 }

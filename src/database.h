@@ -67,6 +67,7 @@ private:
   pid_t pid;
   std::default_random_engine rand_engine;
   fs::path config_path;
+  fs::path base_path;
 
   // Tables:
   // values, metadata, debug counters,

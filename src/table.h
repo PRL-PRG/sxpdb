@@ -144,7 +144,6 @@ private:
   mutable std::fstream file;
   std::vector<T> store;
   uint64_t last_written = 0;
-  bool only_append = true;
   mutable T data;
 public:
   FSizeTable(const fs::path& path) : Table<T>(path) {
@@ -234,7 +233,7 @@ public:
       // seek back to the end
       file.seekp(0, std::ios_base::end);
     }
-    only_append = false;
+    last_written = std::min(last_written, index + 1);// Invalidate from that index
   }
 
   void load_all() override {
@@ -259,9 +258,10 @@ public:
 
   void flush() override {
     uint64_t nb_new_values = n_values - last_written;
-    if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
+    if(in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
-      file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
+      file.open(file_path, std::fstream::out | std::fstream::binary);
+      file.seekp(last_written * sizeof(T));
       file.write(reinterpret_cast<char*>(store.data() + last_written - 1), nb_new_values * sizeof(T));
       file.close();
     }
@@ -273,9 +273,10 @@ public:
 
   virtual ~FSizeTable() {
     uint64_t nb_new_values = n_values - last_written;
-    if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
+    if(in_memory  && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
+      file.seekp(last_written * sizeof(T));
       file.write(reinterpret_cast<char*>(store.data() + last_written), nb_new_values * sizeof(T));
       file.close();
     }
@@ -297,7 +298,6 @@ private:
   mutable std::fstream file;
   std::deque<T> store;
   uint64_t last_written = 0;
-  bool only_append = true;
   mutable T data;
 public:
   FSizeMemoryViewTable(const fs::path& path) : Table<T>(path) {
@@ -314,7 +314,7 @@ public:
       file.close();
     }
 
-    file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
+    file.open(file_path, std::fstream::in  | std::fstream::binary);
 
     if(!file) {
       Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
@@ -358,7 +358,7 @@ public:
 
   void write(uint64_t index, const T& value) override {
     store[index] = value;
-    only_append = false;
+    last_written = std::min(last_written, index + 1);
   }
 
   void load_all() override {
@@ -384,10 +384,11 @@ public:
 
   void flush() override {
     uint64_t nb_new_values = n_values - last_written;
-    if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
+    if(in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
-      file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
-      for(uint64_t i = last_written; i < nb_new_values; i++) {
+      file.open(file_path, std::fstream::out | std::fstream::binary);
+      file.seekp(last_written * sizeof(T));
+      for(uint64_t i = last_written; i < n_values; i++) {
         file.write(reinterpret_cast<char*>(&store[i]), sizeof(T));
       }
       file.close();
@@ -400,10 +401,11 @@ public:
 
   virtual ~FSizeMemoryViewTable() {
     uint64_t nb_new_values = n_values - last_written;
-    if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
+    if(in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
-      file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
-      for(uint64_t i = last_written; i < nb_new_values; i++) {
+      file.open(file_path, std::fstream::out  | std::fstream::binary);
+      file.seekp(last_written * sizeof(T));
+      for(uint64_t i = last_written; i < n_values; i++) {
         file.write(reinterpret_cast<char*>(&store[i]), sizeof(T));
       }
       file.close();
@@ -552,12 +554,20 @@ private:
 
   mutable std::string val;
 
-  std::vector<const std::string*> store;
-  robin_hood::unordered_map<std::string, uint64_t> unique_lines;
+  std::deque<std::string> store;//to not get invalidated pointers in the hash table
+  robin_hood::unordered_map<const std::string*, uint64_t, string_pointer_hasher, string_pointer_equal> unique_lines;
   uint64_t last_written = 0;
 
 public:
-
+  class line {
+    std::string data;
+  public:
+    friend std::istream &operator>>(std::istream &is, line &l) {
+      std::getline(is, l.data);
+      return is;
+    }
+    operator std::string() const { return data; }
+  };
 
   UniqTextTable() {}
   UniqTextTable(const fs::path& path) {
@@ -579,19 +589,19 @@ public:
         Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
       }
 
-      std::string line;
-      // Populate the hash table with all the lines. We assume that all lines are unique
-      // we need the hash table to own the lines, as the store could resize and reallocate and move around
-      uint32_t i = 0;
-      while(std::getline(file, line)) {
-        auto res = unique_lines.insert({line, i});
-        store.push_back(&res.first->first);
-        i++;
-      }
+      std::copy(std::istream_iterator<line>(file),
+                std::istream_iterator<line>(),
+                std::back_inserter(store));
 
       file.close();
 
       last_written = store.size();
+    }
+
+    // Populate the hash table
+    unique_lines.reserve(store.size());
+    for(uint64_t i = 0; i < store.size() ; i++) {
+      unique_lines.insert({&store[i], i});
     }
 
 
@@ -602,13 +612,15 @@ public:
   }
 
   uint64_t append_index(const std::string& value) {
-    auto it = unique_lines.find(value);
+    auto it = unique_lines.find(&value);
 
     if(it == unique_lines.end()) {
-      auto res = unique_lines.insert({value, store.size()});
-      store.push_back(&res.first->first);
+      store.push_back(value);
+      auto res = unique_lines.insert({&store.back(), store.size() - 1});
 
       n_values++;
+      assert(store.size() == n_values);
+      assert(res.second);//insertion actually happened
       return store.size() - 1;
     }
     else {
@@ -621,14 +633,13 @@ public:
   }
 
   void append(const std::vector<std::string>& values) override {
-    store.reserve(store.size() + values.size());
     for(const auto& value : values) {
      append(value);
     }
   }
 
   void read_in(uint64_t index, std::string& value) const override {
-    value = *store[index];
+    value = store[index];
   }
 
   const std::string& read(uint64_t index) const override {
@@ -648,7 +659,7 @@ public:
     if(pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
       for(auto line = store.begin() + last_written; line != store.end() ; line++) {
-        file << **line << "\n";
+        file << *line << "\n";
       }
       file << std::flush;
     }
@@ -663,7 +674,7 @@ public:
     if(pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
       for(auto line = store.begin() + last_written; line != store.end() ; line++) {
-        file << **line << "\n";
+        file << *line << "\n";
       }
       file << std::flush;
     }
@@ -679,8 +690,9 @@ public:
   const SEXP to_sexp() const {
     SEXP s = PROTECT(Rf_allocVector(STRSXP, nb_values()));
     int i = 0;
+    assert(nb_values() == store.size());
     for(auto& name : store) {
-      SET_STRING_ELT(s, i, Rf_mkChar(name->c_str()));
+      SET_STRING_ELT(s, i, Rf_mkChar(name.c_str()));
       i++;
     }
 
