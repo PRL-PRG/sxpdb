@@ -71,7 +71,7 @@ private:
   // values, metadata, debug counters,
   // search indexes and origin tables
   // **********************************
-  FSizeTable<sexp_hash> hashes;
+  FSizeMemoryViewTable<sexp_hash> hashes;
   robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher, xxh128_pointer_equal> sexp_index;
 
   VSizeTable<std::vector<std::byte>> sexp_table;

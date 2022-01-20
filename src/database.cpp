@@ -140,7 +140,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
   if(!quiet) Rprintf("Loading hashes into memory.\n");
   // Load the hashes and build the hash map
-  const std::vector<sexp_hash>& hash_vec = hashes.memory_view();
+  const std::deque<sexp_hash>& hash_vec = hashes.memory_view();
 
   if(!quiet) Rprintf("Allocating memory for the hash table.\n");
   sexp_index.reserve(hashes.nb_values());

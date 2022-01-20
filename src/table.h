@@ -7,6 +7,7 @@
 #include <Rversion.h>
 
 #include <vector>
+#include <deque>
 #include <cstdint>
 #include <iostream>
 #include <fstream>
@@ -276,6 +277,135 @@ public:
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
       file.write(reinterpret_cast<char*>(store.data() + last_written), nb_new_values * sizeof(T));
+      file.close();
+    }
+    new_elements = true;// Always force writing of the config file
+  }
+
+};
+
+//Table for fixed size elements and
+// that does not invalidate pointers in its memory view
+template<typename T>
+class FSizeMemoryViewTable : public Table<T> {
+private:
+  using Table<T>::file_path;
+  using Table<T>::n_values;
+  using Table<T>::in_memory;
+  using Table<T>::new_elements;
+  using Table<T>::pid;
+  mutable std::fstream file;
+  std::deque<T> store;
+  uint64_t last_written = 0;
+  bool only_append = true;
+  mutable T data;
+public:
+  FSizeMemoryViewTable(const fs::path& path) : Table<T>(path) {
+    open(path);
+  }
+
+  FSizeMemoryViewTable() :Table<T>() {}
+
+  void open(const fs::path& path) override {
+    Table<T>::open(path);
+    // We have to create the file if it does not exists; it requires other flags than the next ones
+    if(!fs::exists(file_path)) {
+      file.open(file_path, std::fstream::out | std::fstream::app);
+      file.close();
+    }
+
+    file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
+
+    if(!file) {
+      Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
+    }
+
+
+    // check if the size is coherent
+    uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
+    if(n_values != n_values_file) {
+      Rf_warning("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.c_str(), n_values, n_values_file);
+    }
+
+    file.exceptions(std::fstream::failbit);
+
+    load_all();
+
+    in_memory = true;
+
+    last_written = n_values;
+  }
+
+
+  void append(const T& value) override {
+    store.push_back(value);
+
+    n_values++;
+  }
+
+  void append(const std::vector<T>& values) override {
+    store.insert(store.end(), values.begin(), values.end());
+    n_values += values.size();
+  }
+
+  const T& read(uint64_t index) const override {
+    return store[index];
+  }
+
+  void read_in(uint64_t index, T& value) const override {
+    value = store[index];
+  }
+
+  void write(uint64_t index, const T& value) override {
+    store[index] = value;
+    only_append = false;
+  }
+
+  void load_all() override {
+    store.resize(n_values);
+    file.seekg(0);
+    for(uint64_t i = 0 ; i < n_values ; i++) {
+      file.read(reinterpret_cast<char*>(&store[i]), sizeof(T));
+    }
+    in_memory = true;
+    // all the values up to that index are already in the file
+
+    // Now we can close the backing file a
+    // and open it only when when materializing the data back on disk
+    file.close();
+  }
+
+  const std::deque<T>& memory_view() {
+    if(!in_memory) {
+      load_all();
+    }
+    return store;
+  }
+
+  void flush() override {
+    uint64_t nb_new_values = n_values - last_written;
+    if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
+      //only materialize new values
+      file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
+      for(uint64_t i = last_written; i < nb_new_values; i++) {
+        file.write(reinterpret_cast<char*>(&store[i]), sizeof(T));
+      }
+      file.close();
+    }
+    // Always rewrite the configuration file
+    new_elements = true;
+    Table<T>::flush();
+    new_elements = false;
+  }
+
+  virtual ~FSizeMemoryViewTable() {
+    uint64_t nb_new_values = n_values - last_written;
+    if(in_memory && only_append && nb_new_values > 0 && pid == getpid()) {
+      //only materialize new values
+      file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
+      for(uint64_t i = last_written; i < nb_new_values; i++) {
+        file.write(reinterpret_cast<char*>(&store[i]), sizeof(T));
+      }
       file.close();
     }
     new_elements = true;// Always force writing of the config file
