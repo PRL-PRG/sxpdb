@@ -57,6 +57,7 @@ public:
   static const int version_development = stoi(PKG_V_DEVEL);
 
   friend class SearchIndex;
+  friend class Query;
 
 private:
   uint64_t nb_total_values = 0;

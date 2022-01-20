@@ -379,7 +379,7 @@ const SEXP Database::sample_value() {
 
 const SEXP Database::sample_value(Query& query, uint64_t n) {
   if(new_elements || !query.is_initialized()) {
-    query.update(*this, search_index);
+    query.update(*this);
   }
 
   auto index = query.sample(rand_engine);
@@ -526,7 +526,7 @@ const SEXP Database::view_metadata() const {
 
 const SEXP Database::view_metadata(Query& query) const  {
   if(new_elements || !query.is_initialized()) {
-    query.update(*this, search_index);
+    query.update(*this);
   }
 
   auto index = query.view();
@@ -712,7 +712,7 @@ const SEXP Database::view_values() const {
 
 const SEXP Database::view_values(Query& query) const {
   if(new_elements || !query.is_initialized()) {
-    query.update(*this, search_index);
+    query.update(*this);
   }
 
   auto index = query.view();
@@ -781,7 +781,7 @@ const SEXP Database::view_origins() const {
 
 const SEXP Database::view_origins(Query& query) const {
   if(new_elements || !query.is_initialized()) {
-    query.update(*this, search_index);
+    query.update(*this);
   }
 
   auto index = query.view();
@@ -874,7 +874,7 @@ const SEXP Database::map(const SEXP function) {
 
 const SEXP Database::map(Query& query, const SEXP function) {
   if(new_elements || !query.is_initialized()) {
-    query.update(*this, search_index);
+    query.update(*this);
   }
 
   auto index = query.view();

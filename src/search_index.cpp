@@ -138,6 +138,7 @@ void SearchIndex::build_indexes(const Database& db) {
     ind.shrinkToFit();
   }
 
+  index_generated = true;
   last_computed = db.nb_values();
 }
 
