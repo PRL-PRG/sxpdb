@@ -119,6 +119,7 @@ public:
   const SEXP get_value(uint64_t index) const;
   const SEXP get_metadata(uint64_t index) const;
   const std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> source_locations(uint64_t index) const;
+  const SEXP explain_value_header(uint64_t index) const;
 
   //Accessors for sampling
   const SEXP sample_value();

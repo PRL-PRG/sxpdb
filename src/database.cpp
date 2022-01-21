@@ -258,6 +258,18 @@ const SEXP Database::get_value(uint64_t index) const {
   return res;
 }
 
+const SEXP Database::explain_value_header(uint64_t index) const {
+  if(index >= sexp_table.nb_values()) {
+    return R_NilValue;
+  }
+
+  std::vector<std::byte> buf;
+  sexp_table.read_in(index, buf);
+
+  return Serializer::analyze_header(buf);
+}
+
+
 const SEXP Database::get_metadata(uint64_t index) const {
   if(index >= nb_total_values) {
     return R_NilValue;

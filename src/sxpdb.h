@@ -218,8 +218,15 @@ SEXP view_origins(SEXP sxpdb);
  * @param sxpdb external pointer to the target database
  * @return R_NilValue
  */
-
 SEXP build_indexes(SEXP sxpdb);
+
+/**
+ * @method explain_header
+ * @param sxpdb external pointer to the target database
+ * @param index integer index of the value for which we want to explain the header of the serialized value
+ * @return explanation of the header (version, R version, R min version, encoding, size of the header)
+ */
+SEXP explain_header(SEXP sxpdb, SEXP index);
 
 #ifdef __cplusplus
 } // extern "C"

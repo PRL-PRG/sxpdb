@@ -540,3 +540,14 @@ SEXP build_indexes(SEXP sxpdb) {
 
   return R_NilValue;
 }
+
+SEXP explain_header(SEXP sxpdb, SEXP index) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
+
+  return db->explain_value_header(Rf_asInteger(index));
+}
+

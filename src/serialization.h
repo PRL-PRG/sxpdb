@@ -40,6 +40,8 @@ private:
   static SEXP refhook_write(SEXP val, SEXP data);
   static SEXP refhook_read(SEXP val, SEXP data);
 
+
+
 public:
   Serializer(size_t size);
 
@@ -49,6 +51,9 @@ public:
 
   size_t current_buf_size() const{ return buf.size(); }
 
+
+  // Analyzes a RDS serialization header
+  static SEXP analyze_header(std::vector<std::byte>& buf);
 };
 
 #endif
