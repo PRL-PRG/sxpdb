@@ -40,7 +40,8 @@ private:
   static SEXP refhook_write(SEXP val, SEXP data);
   static SEXP refhook_read(SEXP val, SEXP data);
 
-
+  // returns a pointer to the position just after the header
+  static std::byte* jump_header(std::vector<std::byte>& buf);
 
 public:
   Serializer(size_t size);

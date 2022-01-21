@@ -13,6 +13,8 @@ Serializer::Serializer(size_t size) {
   buf.reserve(size);
 }
 
+
+
 SEXP Serializer::analyze_header(std::vector<std::byte>& buf) {
   char * buffer;
   const int r_codeset_max = 63;
@@ -89,6 +91,22 @@ SEXP Serializer::analyze_header(std::vector<std::byte>& buf) {
     return l;
   }
   return Rf_ScalarInteger(version);
+}
+
+std::byte* Serializer::jump_header(std::vector<std::byte>& buffer) {
+  // We assume binary, version 3
+  char* buf = reinterpret_cast<char*>(buffer.data());
+
+  buf += 2;//go past "B\n"
+  buf += sizeof(int) * 3; //version, R version, R min version
+
+  int nelen = 0;
+  std::memcpy(&nelen, buf, sizeof(int));
+  buf += sizeof(int); // the length
+
+  buf += nelen;
+
+  return reinterpret_cast<std::byte*>(buf);
 }
 
 void Serializer::append_byte(R_outpstream_t stream, int c)  { //add ints, not chars??
