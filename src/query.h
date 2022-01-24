@@ -12,8 +12,11 @@
 #include <cstdint>
 #include <string>
 #include <algorithm>
-#include <execution>
 #include <random>
+
+#ifdef SXPDB_PARALLEL_STD
+#include <execution>
+#endif
 
 #include "roaring.hh"
 

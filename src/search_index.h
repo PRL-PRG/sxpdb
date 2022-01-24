@@ -11,7 +11,10 @@
 #include <unistd.h>
 #include <vector>
 #include <string>
+
+#ifdef SXPDB_PARALLEL_STD
 #include <execution>
+#endif
 
 #include "roaring.hh"
 #include "config.h"
@@ -46,25 +49,39 @@ inline bool find_na(SEXP val) {
   case CPLXSXP: {
     Rcomplex* v = COMPLEX(val);
     int length = Rf_length(val);
+#ifdef SXPDB_PARALLEL_STD
     return std::find_if(std::execution::par_unseq, v, v + length, [](const Rcomplex& c) -> bool {return ISNAN(c.r) || ISNAN(c.i);}) != v + length;
+#else
+    return std::find_if(v, v + length, [](const Rcomplex& c) -> bool {return ISNAN(c.r) || ISNAN(c.i);}) != v + length;
+#endif
   }
   case REALSXP: {
     double* v = REAL(val);
     int length = Rf_length(val);
+#ifdef SXPDB_PARALLEL_STD
     return std::find_if(std::execution::par_unseq, v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
+#else
+    return std::find_if( v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
+#endif
   }
   case LGLSXP:{
     int* v = LOGICAL(val);
     int length = Rf_length(val);
-
+#ifdef SXPDB_PARALLEL_STD
     return std::find(std::execution::par_unseq, v, v + length, NA_LOGICAL) != v + length;
+#else
+    return std::find(v, v + length, NA_LOGICAL) != v + length;
+#endif
   }
   case INTSXP: {
     int* v = INTEGER(val);
     int length = Rf_length(val);
-
+#ifdef SXPDB_PARALLEL_STD
     return std::find(std::execution::par_unseq, v, v + length, NA_INTEGER) != v + length;
-  }
+#else
+    return std::find(v, v + length, NA_INTEGER) != v + length;
+#endif
+    }
   }
   return false;
 }
