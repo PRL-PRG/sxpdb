@@ -11,6 +11,9 @@
 
 Serializer::Serializer(size_t size) {
   buf.reserve(size);
+
+  int r_version = R_VERSION;
+  std::memcpy(Serializer::header.data() + 6, &r_version, sizeof(int));
 }
 
 
@@ -110,39 +113,69 @@ std::byte* Serializer::jump_header(std::vector<std::byte>& buffer) {
 }
 
 void Serializer::append_byte(R_outpstream_t stream, int c)  { //add ints, not chars??
-  std::vector<std::byte>* buf = static_cast<std::vector<std::byte>*>(stream->data);
-  buf->push_back(static_cast<std::byte>(c));
+  WriteBuffer* wbf = static_cast<WriteBuffer*>(stream->data);
+
+  if(wbf->out_of_header) {
+    wbf->b.push_back(static_cast<std::byte>(c));
+  }
+  else {
+    wbf->header_index++;
+  }
 }
 
 void Serializer::append_buf(R_outpstream_t stream, void *buffer, int length) {
-  std::vector<std::byte>* buf = static_cast<std::vector<std::byte>*>(stream->data);
-
-  /*buf->reserve(buf->size() + length);
-
- std::byte* cbuf = static_cast<std::byte*>(buffer);
-
-  for(int i = 0; i < length; i++) {
-    buf->push_back(cbuf[i]);
-  }*/
+  WriteBuffer* wbf = static_cast<WriteBuffer*>(stream->data);
 
   std::byte* cbuf = static_cast<std::byte*>(buffer);
 
-  buf->insert(buf->end(), cbuf, cbuf+length);
+  if(wbf->out_of_header) {
+    wbf->b.insert(wbf->b.end(), cbuf, cbuf+length);
+  }
+  else if(wbf->header_index == 2 + 3 * sizeof(int) ) {// decode the encoding length
+    assert(length == sizeof(int));
+    std::memcpy(&wbf->encoding_length, buffer, sizeof(int));
+    wbf->header_index += length;
+  }
+  else if(wbf->header_index > 2 + 3 * sizeof(int)) { // we are reading the encoding now
+    wbf->encoding_length -= length;
+    wbf->header_index += length;// not actually needed...
+    if(wbf->encoding_length == 0) {// that should happen in just one go
+      wbf->out_of_header = true;
+    }
+  }
+  else {
+    wbf->header_index += length;
+  }
 }
 
 int Serializer::get_byte(R_inpstream_t stream) {
   ReadBuffer* rbf = static_cast<ReadBuffer*>(stream->data);
 
-  return static_cast<int>(rbf->b.at(rbf->read_index++));
+  if(rbf->header_index < header.size()) {
+    return static_cast<int>(header[rbf->header_index++]);
+  }
+  else {
+    return static_cast<int>(rbf->b[rbf->read_index++]);
+  }
 }
 
 
 void Serializer::get_buf(R_inpstream_t stream, void *buffer, int length) {
   ReadBuffer* rbf = static_cast<ReadBuffer*>(stream->data);
+
   std::byte* buf = static_cast<std::byte*>(buffer);
 
-  std::copy(rbf->b.begin() + rbf->read_index, rbf->b.begin() + rbf->read_index + length, buf);
-  rbf->read_index += length;
+  // This will be only used to read the encoding string
+  // There should never be a reading that overlaps the header and the data after
+  if(rbf->header_index < header.size()) {
+      std::copy_n(reinterpret_cast<std::byte*>(header.data()) + rbf->header_index, length, buf);
+      rbf->header_index += length;
+      assert(rbf->header_index <= header.size());
+  }
+  else {
+    std::copy_n(rbf->b.begin() + rbf->read_index, length, buf);
+    rbf->read_index += length;
+  }
 }
 
 SEXP Serializer::refhook_write(SEXP val, SEXP data) {
@@ -165,15 +198,17 @@ SEXP Serializer::refhook_read(SEXP val, SEXP data) {
 
 const std::vector<std::byte>& Serializer::serialize(SEXP val) {
   buf.clear();//hopefully, it keeps the capacity as it was
+
+  WriteBuffer write_buffer(buf);
   R_outpstream_st out;
 
 #ifndef KEEP_ENVIRONMENTS
-  R_InitOutPStream(&out, reinterpret_cast<R_pstream_data_t>(&buf),
+  R_InitOutPStream(&out, reinterpret_cast<R_pstream_data_t>(&write_buffer),
                    R_pstream_binary_format, 3,
                    append_byte, append_buf,
                    refhook_write, R_NilValue);
 #else
-  R_InitOutPStream(&out, reinterpret_cast<R_pstream_data_t>(&buf),
+  R_InitOutPStream(&out, reinterpret_cast<R_pstream_data_t>(&write_buffer),
                    R_pstream_binary_format, 3,
                    append_byte, append_buf,
                    NULL, R_NilValue);
