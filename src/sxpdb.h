@@ -2,7 +2,9 @@
 #define SXPDB_SXPDB_H
 
 #define R_NO_REMAP
+#include <R.h>
 #include <Rinternals.h>
+#include <Rversion.h>
 
 
 #ifdef __cplusplus
@@ -15,10 +17,11 @@ extern "C" {
  * This function must be called first.
  * @method open_db
  * @param filename
- * @param quiet print helpful messages or not
+ * @param write_mode boolean open the database in write mode or read mode. Read mode does not load into memory as much
+ * @param quiet boolean print helpful messages or not
  * @return R_NilValue on error, a external pointer to the database on success
  */
-SEXP open_db(SEXP filename, SEXP quiet);
+SEXP open_db(SEXP filename, SEXP write_mode, SEXP quiet);
 
 /**
  * This function closes the database, materializes totally on disk.
@@ -45,7 +48,7 @@ SEXP add_val(SEXP db, SEXP val);
  * @method have_seen
  * @param  db       external pointer to the database
  * @param  val       R value in form of SEXP
- * @return           R value of True or False as a SEXP
+ * @return integer  or R_NilValue index of the value in the db if is inside, NULL otherwise
  */
 SEXP have_seen(SEXP db, SEXP val);
 
@@ -159,7 +162,7 @@ SEXP get_origins_idx(SEXP sxpdb, SEXP idx);
  * @param package name
  * @param function name
  * @param argument name ; "" or NA mean that it is a return value
- * @return Boolean TRUE if its a new origin for this hash
+ * @return NULL
  */
 SEXP add_origin_(SEXP sxpdb, const void* hash, const char* package_name, const char* function_name, const char* argument_name);
 
@@ -219,14 +222,13 @@ SEXP view_origins(SEXP sxpdb);
  */
 SEXP build_indexes(SEXP sxpdb);
 
-/**
- * @method find which real numbvers are actually representable integers on 64 bit signed
+/*
+ * @method explain_header
  * @param sxpdb external pointer to the target database
- * @return vector of the representable integers 
+ * @param index integer index of the value for which we want to explain the header of the serialized value
+ * @return explanation of the header (version, R version, R min version, encoding, size of the header)
  */
-SEXP get_integer_real(SEXP sxpdb);
-
-SEXP is_integer_real(SEXP v);
+SEXP explain_header(SEXP sxpdb, SEXP index);
 
 #ifdef __cplusplus
 } // extern "C"

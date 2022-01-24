@@ -28,10 +28,10 @@ inline void trim(std::string &s) {
   rtrim(s);
 }
 
-Config::Config(const std::string& filename) {
-  std::ifstream description_file(filename);
+Config::Config(const fs::path& path) {
+  std::ifstream description_file(path);
   if(!description_file) {
-   Rf_error("No configuration file %s\n", filename.c_str());
+   Rf_error("No configuration file %s\n", path.c_str());
   }
 
   std::string line;
@@ -53,7 +53,7 @@ Config::Config(const std::string& filename) {
   }
 }
 
-void Config::write(const std::string& filename) {
+void Config::write(const fs::path& filename) {
   std::ofstream file(filename,std::ofstream::out | std::ofstream::trunc);
 
   if(!file) {

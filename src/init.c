@@ -11,7 +11,7 @@
 static const R_CallMethodDef callMethods[] = {
 	/* name						casted ptr to function			# of args */
 	// Generic record related
-	{"open_db",					(DL_FUNC) &open_db,					2},
+	{"open_db",					(DL_FUNC) &open_db,					3},
 	{"close_db",				(DL_FUNC) &close_db,				1},
 	{"add_val",					(DL_FUNC) &add_val,					2},
 	{"add_val_origin",  (DL_FUNC) &add_val_origin,	5},
@@ -33,8 +33,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"view_metadata",   (DL_FUNC) &view_metadata,   1},
 	{"view_origins",    (DL_FUNC) &view_origins,    1},
 	{"build_indexes",  (DL_FUNC) &build_indexes,    1},
-	{"get_integer_real",  (DL_FUNC) &get_integer_real,    1},
-	{"is_integer_real", (DL_FUNC) &is_integer_real, 1},
+	{"explain_header", (DL_FUNC) &explain_header,   2},
 
 	// Must have at the end
 	{NULL,						NULL,								0}

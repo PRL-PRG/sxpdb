@@ -3,6 +3,11 @@
 
 #include <string>
 #include <unordered_map>
+#include <filesystem>
+
+
+namespace fs = std::filesystem;
+
 
 inline void ltrim(std::string &s);
 inline void rtrim(std::string &s);
@@ -14,12 +19,14 @@ class Config {
 private:
   std::unordered_map<std::string, std::string> config;
 public:
-  Config(const std::string& filename);
+  Config(const fs::path& path);
   Config(std::unordered_map<std::string, std::string>&& config);
 
   const std::string& get(const std::string& key) const;
 
-  void write(const std::string& filename);
+  void write(const fs::path& filename);
+
+  bool has_key(const std::string& key) const { return config.count(key) > 0; }
 
   const std::string& operator[](const std::string& key) const { return config.at(key);}
 

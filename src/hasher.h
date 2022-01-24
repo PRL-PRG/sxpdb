@@ -3,8 +3,10 @@
 
 #include <iostream>
 #include <memory>
-#include "store.h"
 
+#include "xxhash.h"
+
+typedef XXH128_hash_t sexp_hash;
 
 // from boost::hash_combine
 inline void hash_combine(std::size_t& seed, std::size_t value) {
@@ -37,10 +39,41 @@ struct xxh128_hasher {
   }
 };
 
+struct xxh128_pointer_hasher {
+  std::size_t operator()(const sexp_hash* c) const
+  {
+    std::size_t result = 0;
+    hash_combine(result, c->low64);
+    hash_combine(result, c->high64);
+    return result;
+  }
+};
+
+struct xxh128_pointer_equal{
+  std::size_t operator()(const sexp_hash* h1, const sexp_hash* h2) const {
+    return XXH128_isEqual(*h1, *h2);;
+  }
+};
+
+
+struct string_pointer_hasher {
+  std::size_t operator()(const std::string*  s) const {
+    return std::hash<std::string>()(*s);
+  }
+};
+
+struct string_pointer_equal{
+  std::size_t operator()(const std::string*   s1, const std::string* s2) const {
+    return *s1 == *s2;
+  }
+};
+
 inline bool operator==(const sexp_hash& h1, const sexp_hash& h2)
 {
   return XXH128_isEqual(h1, h2);
 }
+
+
 
 
 struct unique_string_hasher {

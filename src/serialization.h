@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <array>
 
 #include <R.h>
 #include <Rinternals.h>
@@ -17,7 +18,16 @@ private:
     ReadBuffer(std::vector<std::byte>& v) : b(v) {}
     std::vector<std::byte>& b;
     size_t read_index  = 0;
-  } ;
+    size_t header_index = 0;
+  };
+
+  struct WriteBuffer {
+    WriteBuffer(std::vector<std::byte>& v) : b(v) {}
+    std::vector<std::byte>& b;
+    bool out_of_header = false;
+    size_t header_index = 0;
+    size_t encoding_length = 0;
+  };
 
   size_t bytes_serialized = 0;
   size_t bytes_unserialized = 0;
@@ -40,6 +50,12 @@ private:
   static SEXP refhook_write(SEXP val, SEXP data);
   static SEXP refhook_read(SEXP val, SEXP data);
 
+  // returns a pointer to the position just after the header
+  static std::byte* jump_header(std::vector<std::byte>& buf);
+
+
+  inline static std::array<char, 23> header = {'B', '\n', 3, 0, 0, 0, 0, 0, 0, 0, 0, 5, 3, 0, 5, 0, 0, 0, 'U', 'T', 'F', '-', '8'};
+
 public:
   Serializer(size_t size);
 
@@ -49,6 +65,9 @@ public:
 
   size_t current_buf_size() const{ return buf.size(); }
 
+
+  // Analyzes a RDS serialization header
+  static SEXP analyze_header(std::vector<std::byte>& buf);
 };
 
 #endif
