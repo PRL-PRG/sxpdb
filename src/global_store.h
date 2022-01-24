@@ -53,7 +53,7 @@ class GlobalStore : Store {
     roaring::Roaring64Map vector_index;//vector (but not scalar)
     roaring::Roaring64Map attributes_index;
     std::vector<roaring::Roaring64Map> lengths_index;
-
+    roaring::Roaring64Map integer_real;
 
   public:
     GlobalStore(const std::string& description_name, bool _quiet);
@@ -89,6 +89,8 @@ class GlobalStore : Store {
     virtual SEXP sample_value(const Description& description);
 
     virtual void build_indexes();
+    
+    virtual const SEXP get_integer_real();
 
     virtual bool add_origins(const sexp_hash& hash, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
 

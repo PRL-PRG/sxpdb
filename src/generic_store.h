@@ -49,7 +49,12 @@ public:
                              roaring::Roaring64Map& na_index,
                              roaring::Roaring64Map& class_index,
                              roaring::Roaring64Map& vector_index,
-                             roaring::Roaring64Map attributes_index);
+                             roaring::Roaring64Map& attributes_index,
+                             roaring::Roaring64Map& integer_real);
+  
+  virtual SEXP get_integer_real(roaring::Roaring64Map& integer_real);
+  
+  //virtual SEXP compute_sharing();
 
   virtual roaring::Roaring64Map search_length(roaring::Roaring64Map idx, uint64_t length);
 

@@ -525,7 +525,7 @@ void GlobalStore::build_indexes() {
   //TODO: use a build index function from the generic store...
 
   assert(stores.size() == 1);
-  stores[0]->build_indexes(types_index, lengths_index, na_index, class_index, vector_index, attributes_index);
+  stores[0]->build_indexes(types_index, lengths_index, na_index, class_index, vector_index, attributes_index, integer_real);
 
   // we should have ANYSXP which should be an index of all the database
 
@@ -534,6 +534,10 @@ void GlobalStore::build_indexes() {
   index_generated = true;
 }
 
+
+const SEXP GlobalStore::get_integer_real() {
+  return stores[0]->get_integer_real(integer_real);
+}
 
 void GlobalStore::write_configuration() {
   CSVFile file;

@@ -33,6 +33,8 @@ static const R_CallMethodDef callMethods[] = {
 	{"view_metadata",   (DL_FUNC) &view_metadata,   1},
 	{"view_origins",    (DL_FUNC) &view_origins,    1},
 	{"build_indexes",  (DL_FUNC) &build_indexes,    1},
+	{"get_integer_real",  (DL_FUNC) &get_integer_real,    1},
+	{"is_integer_real", (DL_FUNC) &is_integer_real, 1},
 
 	// Must have at the end
 	{NULL,						NULL,								0}

@@ -48,15 +48,9 @@ sample_val <- function(db) {
 }
 
 #' @export
-sample_similar <- function(db, ...) {
-  vals <- list(...)
-
-  if(length(vals) == 1) {
-    .Call(SXPDB_sample_similar, db, vals[[1]], FALSE)
-  }
-  else {
-    .Call(SXPDB_sample_similar, db, vals, TRUE)
-  }
+sample_similar <- function(db, val, relax) {
+  stopifnot(is.character(relax))
+  .Call(SXPDB_sample_similar, db, val, FALSE, relax)
 }
 
 
@@ -160,6 +154,11 @@ build_indexes <- function(db) {
   .Call(SXPDB_build_indexes, db)
 }
 
+#' @export
+get_integer_real <- function(db) {
+  .Call(SXPDB_get_integer_real, db)
+}
+
 ## Utilities
 
 types_map <- c("NULL", "symbol", "pairlist", "closure", "environment", "promise",
@@ -177,4 +176,9 @@ string_sexp_type <- function(int_type) {
   }
 }
 
+#' @export
+is_integer_real <- function(v) {
+  stopifnot(is.double(v))
+  .Call(SXPDB_is_integer_real, v)
+}
 

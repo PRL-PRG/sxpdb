@@ -64,9 +64,11 @@ SEXP sample_val(SEXP db);
  * @param  db       external pointer to the database
  * @param val  a SEXP
  * @param multiple boolean, whether val is actual value or a list of values we will do the union of
+ * @param relax character vector none or several of "na", "length", "attributes", "type", "vector", "ndims", "class". 
+ * It will relax the given constraints inferred from the example value.
  * @return R value in form of SEXP from the database, R_NilValue if no similar value was found
  */
-SEXP sample_similar(SEXP db, SEXP val, SEXP multiple);
+SEXP sample_similar(SEXP db, SEXP val, SEXP multiple, SEXP relax);
 
 
 /**
@@ -215,8 +217,16 @@ SEXP view_origins(SEXP sxpdb);
  * @param sxpdb external pointer to the target database
  * @return R_NilValue
  */
-
 SEXP build_indexes(SEXP sxpdb);
+
+/**
+ * @method find which real numbvers are actually representable integers on 64 bit signed
+ * @param sxpdb external pointer to the target database
+ * @return vector of the representable integers 
+ */
+SEXP get_integer_real(SEXP sxpdb);
+
+SEXP is_integer_real(SEXP v);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -692,13 +692,16 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
                            roaring::Roaring64Map& na_index,
                            roaring::Roaring64Map& class_index,
                            roaring::Roaring64Map& vector_index,
-                           roaring::Roaring64Map attributes_index) {
+                           roaring::Roaring64Map& attributes_index,
+                           roaring::Roaring64Map& integer_real) {
     // clear everything
     type_indexes.clear();
     na_index.clear();
     class_index.clear();
     vector_index.clear();
     attributes_index.clear();
+    integer_real.clear();
+    lengths_indexes.clear();
 
     type_indexes.resize(26); // SEXPTYPE is up to 25
 
@@ -752,6 +755,19 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
       if(find_na(val)) {
         na_index.add(i);
       }
+      
+      // Are the real actually integers?
+      // Additionally, that could be stored on 64 bits...
+      if(meta.sexptype == REALSXP) {
+        double* d = REAL(val);
+        bool is_integer = std::all_of(d, d + Rf_xlength(val), [](double d) -> bool {
+          double iptr = 0;
+          return std::isfinite(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
+        });
+        if(is_integer) {
+          integer_real.add(i);
+        }
+      }
 
       SEXP klass = Rf_getAttrib(val, R_ClassSymbol);
       if(klass != R_NilValue) {
@@ -779,6 +795,8 @@ void GenericStore::build_indexes(std::vector<roaring::Roaring64Map>& type_indexe
     vector_index.shrinkToFit();
     attributes_index.runOptimize();
     attributes_index.shrinkToFit();
+    integer_real.runOptimize();
+    integer_real.shrinkToFit();
   }
 
 roaring::Roaring64Map GenericStore::search_length(roaring::Roaring64Map idx, uint64_t length) {
@@ -793,9 +811,113 @@ roaring::Roaring64Map GenericStore::search_length(roaring::Roaring64Map idx, uin
       precise_index.add(i);
     }
   }
-
-  return precise_index;
+  
+ return precise_index; 
 }
+
+SEXP GenericStore::get_integer_real(roaring::Roaring64Map& integer_real) {
+  if(integer_real.isEmpty()) {
+    uint64_t i = 0;
+    for(auto it : index) { // we iterate on the index to get the same order
+      auto meta_it = metadata.find(it.first);
+      if(meta_it == metadata.end()) {
+        Rf_error("Value %lu not in the metadata table!\n", i);
+      }
+      
+      metadata_t meta = meta_it->second;
+      
+      if(meta.sexptype != REALSXP) {
+        continue;
+      }
+      uint64_t offset = it.second;
+      store_file.seekg(offset);
+      uint64_t size = 0;
+      store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+      assert(size> 0);
+      
+      std::vector<std::byte> buf(size);
+      store_file.read(reinterpret_cast<char*>(buf.data()), size);
+      
+      SEXP val = PROTECT(ser.unserialize(buf));
+      double* d = REAL(val);
+      bool is_integer = std::all_of(d, d + Rf_xlength(val), [](double d) -> bool {
+        double iptr = 0;
+        return std::isfinite(d) && std::modf(d, &iptr) == 0 && d < static_cast<double>(std::numeric_limits<int64_t>::max());
+      });
+      
+      if(is_integer) {
+        integer_real.add(i);
+      }
+      
+      UNPROTECT(1);
+      i++;
+    }
+  }
+  
+  // Convert to SEXP now
+  SEXP res = PROTECT(Rf_allocVector(LGLSXP, nb_values()));
+  int* v = LOGICAL(res);
+  std::fill_n(v, nb_values(), FALSE);
+  for(uint64_t i : integer_real) {
+    v[i] = TRUE;
+  }
+  
+  UNPROTECT(1);
+  
+  return res;
+  
+}
+
+/*SEXP GenericStore::compute_sharing() {
+  // Find out how much sharing there is, across lists, and across reals
+  // Which metrics?
+  // - how many components per value are shared (along all the SEXP tree)
+  // Should return a data frame with the index of the value, and its number of shared components
+  
+  
+  // We add the hashes of the internal components of the sexp here if they are not in the main hash table.
+  robin_hood::unordered_set<sexp_hash> additional_hashes;
+  
+  uint64_t i = 0;
+  for(auto it : index) {
+    uint64_t offset = it.second;
+    
+    store_file.seekg(offset);
+    uint64_t size = 0;
+    store_file.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+    assert(size> 0);
+    
+    std::vector<std::byte> buf(size);
+    store_file.read(reinterpret_cast<char*>(buf.data()), size);
+    
+    SEXP val = PROTECT(ser.unserialize(buf));
+    
+    if(TYPEOF(val)) {
+      // Check the attributes
+      SEXP attr = ATTRIB(val);
+      
+      auto buf = ser.serialize(attr);
+      //TODO: hash
+      
+      // strip the vector out of its attributes
+      SET_ATTRIB(val, R_NilValue);
+      auto buf = ser.serialize(val);
+      //TODO: hash
+      
+    }
+    else if(TYPEOF(val) == VECSXP) {
+      
+    }
+    else if(TYPEOF(val) == STRSXP) {
+      
+    }
+      
+    UNPROTECT(1);
+    i++;
+  }
+  
+  return;
+}*/
 
 bool GenericStore::merge_in(Store& store) {
   GenericStore* st = dynamic_cast<GenericStore*>(&store);
@@ -806,6 +928,8 @@ bool GenericStore::merge_in(Store& store) {
 
   return merge_in(*st);
 }
+
+
 
 GenericStore::~GenericStore() {
   if((new_elements || n_values == 0) && pid == getpid()) {
