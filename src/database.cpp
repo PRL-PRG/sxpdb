@@ -34,7 +34,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     // Breaking change for the db are major version numbers
     // Or if we are still in development mode, any change in development number
     if(vmajor != version_major || (vmajor == 0 && version_major == 0 && vminor == 0 &&
-       version_minor == 0 && vpatch == 0 && version_patch && vdevelopment != version_development)) {
+       version_minor == 0 && vpatch == 0 && version_patch == 0 && vdevelopment != version_development)) {
         Rf_error("The database was created with version %d.%d.%d.%d of the library, which is not compatible with the loaded version %d.%d.%d.%d\n",
                  vmajor, vminor, vpatch, vdevelopment,
                  version_major, version_minor, version_patch, version_development);
@@ -133,20 +133,20 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
     if(!quiet) Rprintf("Loading debug counters into memory.\n");
     debug_counters.load_all();
-  }
 
-  // TODO: Maybe if we have a strict read mode, we do not have to load them into memory
-  // nor to build the hash table
 
-  if(!quiet) Rprintf("Loading hashes into memory.\n");
-  // Load the hashes and build the hash map
-  const std::deque<sexp_hash>& hash_vec = hashes.memory_view();
+    if(!quiet) Rprintf("Loading hashes into memory.\n");
+    // Load the hashes and build the hash map
+    hashes.load_all();
+    const std::deque<sexp_hash>& hash_vec = hashes.memory_view();
 
-  if(!quiet) Rprintf("Allocating memory for the hash table.\n");
-  sexp_index.reserve(hashes.nb_values());
-  if(!quiet) Rprintf("Building the hash table.\n");
-  for(uint64_t i = 0; i < hash_vec.size() ; i++) {
-    sexp_index.insert({&hash_vec[i], i});
+    if(!quiet) Rprintf("Allocating memory for the hash table.\n");
+    sexp_index.reserve(hashes.nb_values());
+    if(!quiet) Rprintf("Building the hash table.\n");
+    for(uint64_t i = 0; i < hash_vec.size() ; i++) {
+      sexp_index.insert({&hash_vec[i], i});
+    }
+
   }
 
   if(!quiet) {
@@ -170,7 +170,7 @@ Database::~Database() {
   }
 
   if(pid == getpid()) {
-    if(new_elements || nb_total_values == 0) {
+    if(write_mode && (new_elements || nb_total_values == 0)) {
       write_configuration();
     }
 

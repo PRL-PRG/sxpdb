@@ -329,10 +329,6 @@ public:
 
     file.exceptions(std::fstream::failbit);
 
-    load_all();
-
-    in_memory = true;
-
     last_written = n_values;
   }
 
