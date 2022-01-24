@@ -1056,8 +1056,8 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
 
 std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& param_name) {
   auto res = add_value(val);
-  assert(nb_total_values > 0);
   if(res.first != nullptr) {// if it is null, it means we ignored it because it was an environment or a closure, or the db was forked
+    assert(nb_total_values > 0);
     origins.add_origin(nb_total_values - 1, pkg_name, func_name, param_name);
   }
 
