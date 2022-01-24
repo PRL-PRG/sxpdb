@@ -74,13 +74,13 @@ have_seen <- function(db, val) {
 
 #' @export
 get_value_idx <- function(db, idx) {
-  stopifnot(is.numeric(idx), i >= 0, i < size_db(db))
+  stopifnot(is.numeric(idx), idx >= 0, idx < size_db(db))
   .Call(SXPDB_get_val, db, idx)
 }
 
 #' @export
 explain_header <- function(db, idx) {
-  stopifnot(is.numeric(idx), i >= 0, i < size_db(db))
+  stopifnot(is.numeric(idx), idx >= 0, idx < size_db(db))
   .Call(SXPDB_explain_header, db, idx)
 }
 
@@ -91,7 +91,7 @@ get_meta <- function(db, val) {
 
 #' @export
 get_meta_idx <- function(db, idx) {
-  stopifnot(is.numeric(idx), i >= 0, i < size_db(db))
+  stopifnot(is.numeric(idx), idx >= 0, idx < size_db(db))
   .Call(SXPDB_get_meta_idx, db, idx)
 }
 
@@ -105,16 +105,6 @@ report <- function() {
 	.Call(SXPDB_print_report) #TODO
 }
 
-#' @export
-print_vals <- function (db) {
-	if (size_db(db)) {
-		for(i in 0:(size_db(db) - 1)) {
-			print(.Call(SXPDB_get_val, db, i))
-		}
-	} else {
-		stop("There are no values in the database.")
-	}
-}
 
 #' @export
 view_db <- function(db) {

@@ -139,7 +139,7 @@ void Serializer::append_buf(R_outpstream_t stream, void *buffer, int length) {
   else if(wbf->header_index > 2 + 3 * sizeof(int)) { // we are reading the encoding now
     wbf->encoding_length -= length;
     wbf->header_index += length;// not actually needed...
-    if(wbf->encoding_length == 0) {// that should happen in just one go
+    if(wbf->encoding_length <= 0) {// that should happen in just one go
       wbf->out_of_header = true;
     }
   }
