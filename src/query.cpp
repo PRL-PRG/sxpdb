@@ -92,5 +92,20 @@ void Query::update(const Database& db) {
       index_cache &= search_index.lengths_index[length_idx];
     }
   }
+
+  for(const std::string& class_name : class_names) {
+    std::optional<uint32_t> class_id = db.classes.get_class_id(class_name);
+
+    if(class_id.has_value()) {
+      auto res = search_index.classnames_index.get_index(*class_id);
+      if(res.second) {
+        index_cache &= res.first;
+      }
+      else {// we need to refine and search inside the bin
+        auto precise_classname_index = search_index.search_classname(db, res.first, *class_id);
+        index_cache &= precise_classname_index;
+      }
+    }
+  }
   //index_cache.runOptimize(); // Maybe not worth it...
 }

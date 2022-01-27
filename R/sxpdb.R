@@ -49,7 +49,7 @@ sample_val <- function(db) {
 }
 
 #' @export
-sample_similar <- function(db, val, relax) {
+sample_similar <- function(db, val, relax = "") {
   stopifnot(is.character(relax))
   .Call(SXPDB_sample_similar, db, val, FALSE, relax)
 }

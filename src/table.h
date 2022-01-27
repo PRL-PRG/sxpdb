@@ -17,7 +17,7 @@
 #include <cassert>
 #include <unistd.h>
 #include <iterator>
-#include <unordered_set>
+#include <optional>
 
 #include "config.h"
 #include "robin_hood.h"
@@ -655,6 +655,16 @@ public:
   const std::string& read(uint64_t index) const override {
     read_in(index, val);
     return val;
+  }
+
+  std::optional<uint64_t> get_index(const std::string& value) const {
+    auto it = unique_lines.find(&value);
+    if(it != unique_lines.end()) {
+      return it->second;
+    }
+    else {
+      return {};
+    }
   }
 
   void write(uint64_t index, const std::string& value) override {

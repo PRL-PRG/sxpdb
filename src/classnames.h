@@ -34,7 +34,7 @@ public:
     base_path = fs::absolute(base_path_);
 
     VSizeTable<std::vector<uint32_t>> class_table(base_path / "classes.bin", write_mode);
-    class_names.open(base_path / "classnames.bin", write_mode);
+    class_names.open(base_path / "classnames.bin", true);// we always want the reverse index to be built
 
     class_names.load_all();
 
@@ -102,6 +102,8 @@ public:
 
   SEXP class_name_cache() const { return class_names.to_sexp();}
 
+  std::optional<uint32_t> get_class_id(const std::string& class_name) const {return class_names.get_index(class_name); }
+
   virtual ~ClassNames() {
     //TODO: open in write mode a VSizeTable and dump the class ids there
     if(write_mode && pid == getpid() && last_written < classes.size()) {
@@ -125,7 +127,7 @@ public:
 
       fs::remove(base_path / "classes-old.bin");
       fs::remove(base_path / "classes-old.conf");
-      fs::remove(base_path / "classes_offets-old.bin");
+      fs::remove(base_path / "classes_offsets-old.bin");
       fs::remove(base_path / "classes_offsets-old.conf");
     }
   }

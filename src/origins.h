@@ -72,7 +72,7 @@ private:
   UniqTextTable param_names;
 
   bool new_origins;
-  bool write_mode = true;
+  bool write_mode = false;
 
   fs::path base_path = "";
 public:

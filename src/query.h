@@ -60,8 +60,8 @@ public:
   std::vector<std::string> class_names;
   std::vector<Query> queries;// For union types, lists...
 public:
-  Query(bool quiet_ = true) : quiet(quiet_) {}
-  Query(SEXPTYPE type_, bool quiet_ = true) : type(type_), quiet(quiet_) {}
+  Query(bool quiet_ = true) : quiet(quiet_), dist_cache(0, 0) {}
+  Query(SEXPTYPE type_, bool quiet_ = true) : type(type_), quiet(quiet_), dist_cache(0, 0) {}
 
   // Just pass the db, we can then access the search index from it
   void update(const Database& db);

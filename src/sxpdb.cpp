@@ -398,6 +398,14 @@ SEXP sample_similar(SEXP sxpdb, SEXP vals, SEXP multiple, SEXP relax) {
       else if(relax_param == "type") {
         d.relax_type();
       }
+      else if(relax_param == "keep_type") {
+        d.relax_attributes();
+        d.relax_class();
+        d.relax_na();
+        d.relax_ndims();
+        d.relax_vector();
+        d.relax_length();
+      }
     }
   }
 
