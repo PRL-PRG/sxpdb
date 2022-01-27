@@ -4,7 +4,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   config_path(config_), base_path(fs::absolute(config_path.parent_path())), write_mode(write_mode_),   quiet(quiet_),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
   pid(getpid()),
-  ser(32768)
+  ser(32768) // does it fit in the processor caches?
 {
   fs::path sexp_table_path = base_path / "sexp_table.conf";
   fs::path hashes_path = base_path / "hashes_table.conf";
@@ -85,6 +85,9 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   if(!quiet) Rprintf("Loading origins.\n");
   origins.open(base_path, write_mode);
 
+  if(!quiet) Rprintf("Loading class names.\n");
+  classes.open(base_path, write_mode);
+
   // Check if the number of values in tables are coherent
   if(sexp_table.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
@@ -109,6 +112,11 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   if(origins.nb_values() > nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
                "in the origin tables: %lu vs %lu.\n", nb_total_values, origins.nb_values());
+  }
+
+  if(classes.nb_values() != nb_total_values) {
+    Rf_error("Inconsistent number of values in the global configuration file and "
+               "in the class tables: %lu vs %lu.\n", nb_total_values, classes.nb_values());
   }
 
   if(debug_counters.nb_values() != 0 && debug_counters.nb_values() != nb_total_values) {
@@ -441,6 +449,9 @@ const SEXP Database::view_metadata() const {
     n_to_protect++;
   }
 
+  SEXP l_classes = PROTECT(Rf_allocVector(VECSXP, nb_total_values));
+  n_to_protect++;
+
   //Static metadata
 
   int* s_type_it = INTEGER(s_type);
@@ -502,6 +513,30 @@ const SEXP Database::view_metadata() const {
     }
   }
 
+  // Class names
+  SEXP class_cache = PROTECT(classes.class_name_cache());
+  SEXP as_is = PROTECT(Rf_mkString("AsIs"));
+  for(uint64_t i = 0; i < nb_total_values ; i++) {
+      auto class_ids = classes.get_classnames(i);
+
+      if(class_ids.size() == 0)  {
+        SET_VECTOR_ELT(l_classes, i, R_BlankScalarString);
+      }
+      else {
+        SEXP l = PROTECT(Rf_allocVector(STRSXP, class_ids.size()));
+        for(int j = 0; j < class_ids.size(); j++) {
+          SET_STRING_ELT(l, j, STRING_ELT(class_cache, class_ids[j]));
+        }
+        // It is a list so we have to add a class to it for it to be stored in the
+        // data.frame
+        Rf_setAttrib(l, R_ClassSymbol, as_is);
+        SET_VECTOR_ELT(l_classes, i, l);
+
+        UNPROTECT(1);
+      }
+
+  }
+  UNPROTECT(2);
 
   // Build the result dataframe
 
@@ -528,6 +563,7 @@ const SEXP Database::view_metadata() const {
   if(b_has_class != R_NilValue) {
     columns.push_back({"has_class", b_has_class});
   }
+  columns.push_back({"classnames", l_classes});
 
   SEXP df = PROTECT(create_data_frame(columns));
 
@@ -1034,6 +1070,10 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
     debug_cnts.n_maybe_shared = maybe_shared(val);
     debug_counters.append(debug_cnts);
 #endif
+
+    // Class names
+    SEXP klass = Rf_getAttrib(val, R_ClassSymbol);
+    classes.add_classnames(*idx, klass);
 
     // origins
     origins.append_empty_origin();

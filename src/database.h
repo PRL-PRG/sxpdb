@@ -21,6 +21,7 @@
 #include "utils.h"
 #include "hasher.h"
 #include "origins.h"
+#include "classnames.h"
 #include "serialization.h"
 
 #include "robin_hood.h"
@@ -82,6 +83,7 @@ private:
   FSizeTable<debug_counters_t> debug_counters;// will be loaded into in debug mode only
   SearchIndex search_index;
   Origins origins;
+  ClassNames classes;
 
   // Handling of SEXP serialization,
   // SEXP caching and so on
@@ -138,6 +140,7 @@ public:
 
   const SEXP view_origins() const;
   const SEXP view_origins(Query& query) const;
+
 
   // Map on all the elements and return an R value
   const SEXP map(const SEXP function);

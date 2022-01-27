@@ -99,7 +99,7 @@ public:
     locations.clear();
     locations.resize(location_table.nb_values());
     for(uint64_t i = 0; i < location_table.nb_values() ; i++) {
-      std::vector<location_t> locs = location_table.read(i);
+      const std::vector<location_t>& locs = location_table.read(i);
       locations[i].reserve(locs.size());
       if(locs.size() > 1 || (locs.size() == 1 && !(locs[0] == location_t(0, 0, 0)))) {
         locations[i].insert(locs.begin(), locs.end());
@@ -203,7 +203,7 @@ public:
   const SEXP parameter_cache() const {return param_names.to_sexp();}
 
   virtual ~Origins() {
-    if(pid == getpid() && new_origins) {
+    if(write_mode && pid == getpid() && new_origins) {
       {
         fs::rename(base_path / "origins.bin", base_path / "origins-old.bin");
         fs::rename(base_path / "origins.conf", base_path / "origins-old.conf");
