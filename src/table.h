@@ -51,16 +51,19 @@ protected:
 
   bool new_elements = false;
 
+  bool write_mode = true;
+
   fs::path file_path;
   pid_t pid;
 public:
-  Table(const fs::path& path) : pid(getpid()) {
+  Table(const fs::path& path, bool write=true) : pid(getpid()), write_mode(write) {
     open(path);
   }
 
   Table() : pid(getpid()) {}
 
-  virtual void open(const fs::path& path_) {
+  virtual void open(const fs::path& path_, bool write=true) {
+    write_mode = write;
     //Check if there is already a config file
     fs::path path = fs::path(path_).replace_extension("conf");
     if(fs::exists(path)) {
@@ -82,7 +85,7 @@ public:
   }
 
   ~Table() {
-    if(new_elements && pid == getpid()) {
+    if(write_mode && new_elements && pid == getpid()) {
       std::unordered_map<std::string, std::string> conf;
 
       conf["path"] = file_path.filename().string();
@@ -98,7 +101,7 @@ public:
   }
 
   virtual void flush() {
-    if(new_elements && pid == getpid()) {
+    if(write_mode && new_elements && pid == getpid()) {
       std::unordered_map<std::string, std::string> conf;
 
       conf["path"] = file_path.filename().string();
@@ -141,19 +144,21 @@ private:
   using Table<T>::in_memory;
   using Table<T>::new_elements;
   using Table<T>::pid;
+  using Table<T>::write_mode;
+
   mutable std::fstream file;
   std::vector<T> store;
   uint64_t last_written = 0;
   mutable T data;
 public:
-  FSizeTable(const fs::path& path) : Table<T>(path) {
-    open(path);
+  FSizeTable(const fs::path& path, bool write) : Table<T>(path, write) {
+    open(path, write);
   }
 
   FSizeTable() :Table<T>() {}
 
-  void open(const fs::path& path) override {
-    Table<T>::open(path);
+  void open(const fs::path& path, bool write = true) override {
+    Table<T>::open(path, write);
     // We have to create the file if it does not exists; it requires other flags than the next ones
     if(!fs::exists(file_path)) {
       file.open(file_path, std::fstream::out | std::fstream::app);
@@ -258,7 +263,7 @@ public:
 
   void flush() override {
     uint64_t nb_new_values = n_values - last_written;
-    if(in_memory && nb_new_values > 0 && pid == getpid()) {
+    if(write_mode && in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::binary);
       file.seekp(last_written * sizeof(T));
@@ -273,7 +278,7 @@ public:
 
   virtual ~FSizeTable() {
     uint64_t nb_new_values = n_values - last_written;
-    if(in_memory  && nb_new_values > 0 && pid == getpid()) {
+    if(write_mode && in_memory  && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::app | std::fstream::binary);
       file.seekp(last_written * sizeof(T));
@@ -295,19 +300,21 @@ private:
   using Table<T>::in_memory;
   using Table<T>::new_elements;
   using Table<T>::pid;
+  using Table<T>::write_mode;
+
   mutable std::fstream file;
   std::deque<T> store;
   uint64_t last_written = 0;
   mutable T data;
 public:
-  FSizeMemoryViewTable(const fs::path& path) : Table<T>(path) {
-    open(path);
+  FSizeMemoryViewTable(const fs::path& path, bool write) : Table<T>(path, write) {
+    open(path, write);
   }
 
-  FSizeMemoryViewTable() :Table<T>() {}
+  FSizeMemoryViewTable() {}
 
-  void open(const fs::path& path) override {
-    Table<T>::open(path);
+  void open(const fs::path& path, bool write = true) override {
+    Table<T>::open(path, write);
     // We have to create the file if it does not exists; it requires other flags than the next ones
     if(!fs::exists(file_path)) {
       file.open(file_path, std::fstream::out | std::fstream::app);
@@ -380,7 +387,7 @@ public:
 
   void flush() override {
     uint64_t nb_new_values = n_values - last_written;
-    if(in_memory && nb_new_values > 0 && pid == getpid()) {
+    if(write_mode && in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::binary);
       file.seekp(last_written * sizeof(T));
@@ -397,7 +404,7 @@ public:
 
   virtual ~FSizeMemoryViewTable() {
     uint64_t nb_new_values = n_values - last_written;
-    if(in_memory && nb_new_values > 0 && pid == getpid()) {
+    if(write_mode && in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
       file.open(file_path, std::fstream::out  | std::fstream::binary);
       file.seekp(last_written * sizeof(T));
@@ -420,6 +427,8 @@ private:
   using Table<T>::n_values;
   using Table<T>::in_memory;
   using Table<T>::new_elements;
+  using Table<T>::write_mode;
+
   mutable FSizeTable<uint64_t> offset_table;
   mutable std::fstream file;// for the actual values
   // Layout:
@@ -427,16 +436,16 @@ private:
   // Size, actual value
   mutable T value;
 public:
-  VSizeTable(const fs::path& path) {
-    open(path);
+  VSizeTable(const fs::path& path, bool write=true) : Table<T>(path, write) {
+    open(path, write);
   }
 
-  VSizeTable() {}
+  VSizeTable()  {}
 
-  void open(const fs::path& path) override {
-    Table<T>::open(path);
+  void open(const fs::path& path, bool write = true) override {
+    Table<T>::open(path, write);
 
-    offset_table.open(file_path.parent_path() / (file_path.stem().string() + "_offsets.bin"));
+    offset_table.open(file_path.parent_path() / (file_path.stem().string() + "_offsets.bin"), write_mode);
 
     // We have to create the file if it does not exists; it requires other flags than the next ones
     if(!fs::exists(file_path)) {
@@ -545,6 +554,7 @@ private:
   using Table<std::string>::in_memory;
   using Table<std::string>::new_elements;
   using Table<std::string>::pid;
+  using Table<std::string>::write_mode;
 
   mutable std::fstream file;
 
@@ -566,12 +576,12 @@ public:
   };
 
   UniqTextTable() {}
-  UniqTextTable(const fs::path& path) {
-    open(path);
+  UniqTextTable(const fs::path& path, bool write = true) {
+    open(path, write);
   }
 
-  void open(const fs::path& path) override {
-    Table<std::string>::open(path);
+  void open(const fs::path& path, bool write = true) override {
+    Table<std::string>::open(path, write);
 
     // Create the file if it does not exist
     if(!fs::exists(file_path)) {
@@ -594,12 +604,16 @@ public:
       last_written = store.size();
     }
 
-    // Populate the hash table
-    unique_lines.reserve(store.size());
-    for(uint64_t i = 0; i < store.size() ; i++) {
-      unique_lines.insert({&store[i], i});
-    }
+    // Only populate the hash table in write mode
+    if(write_mode) {
+      // Populate the hash table
+      unique_lines.reserve(store.size());
+      for(uint64_t i = 0; i < store.size() ; i++) {
+        unique_lines.insert({&store[i], i});
+      }
 
+      assert(unique_lines.size() == n_values);// the file should contain unique names
+    }
 
     assert(n_values == store.size());
 
@@ -652,7 +666,7 @@ public:
 
   virtual ~UniqTextTable() {
     int nb_new_elements = n_values - last_written;
-    if(pid== getpid() && nb_new_elements > 0 ) {
+    if(write_mode && pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
       for(auto line = store.begin() + last_written; line != store.end() ; line++) {
         file << *line << "\n";
@@ -667,7 +681,7 @@ public:
 
   void flush() override {
     int nb_new_elements = n_values - last_written;
-    if(pid== getpid() && nb_new_elements > 0 ) {
+    if(write_mode && pid== getpid() && nb_new_elements > 0 ) {
       file.open(file_path, std::fstream::out | std::fstream::app);
       for(auto line = store.begin() + last_written; line != store.end() ; line++) {
         file << *line << "\n";

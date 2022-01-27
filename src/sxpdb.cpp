@@ -578,3 +578,12 @@ SEXP explain_header(SEXP sxpdb, SEXP index) {
   return db->explain_value_header(Rf_asInteger(index));
 }
 
+SEXP write_mode(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
+
+  return Rf_ScalarLogical(db->rw_mode());
+}

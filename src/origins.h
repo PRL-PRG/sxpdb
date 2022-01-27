@@ -72,22 +72,24 @@ private:
   UniqTextTable param_names;
 
   bool new_origins;
+  bool write_mode = true;
 
   fs::path base_path = "";
 public:
   Origins() : pid(getpid()), dummy_loc({location_t(0, 0, 0)}) {}
 
-  Origins(const fs::path& base_path_) : pid(getpid()), dummy_loc({location_t(0, 0, 0)}) {
+  Origins(const fs::path& base_path_, bool write = true) : pid(getpid()), dummy_loc({location_t(0, 0, 0)}), write_mode(write) {
     open(base_path);
   }
 
-  void open(const fs::path& base_path_) {
+  void open(const fs::path& base_path_, bool write = true) {
+    write_mode = write;
     base_path = fs::absolute(base_path_);
 
-    VSizeTable<std::vector<location_t>> location_table(base_path / "origins.bin");
-    package_names.open(base_path / "packages.bin");
-    function_names.open(base_path/ "functions.bin");
-    param_names.open(base_path/ "params.bin");
+    VSizeTable<std::vector<location_t>> location_table(base_path / "origins.bin", write_mode);
+    package_names.open(base_path / "packages.bin", write_mode);
+    function_names.open(base_path/ "functions.bin", write_mode);
+    param_names.open(base_path/ "params.bin", write_mode);
 
     package_names.load_all();
     function_names.load_all();

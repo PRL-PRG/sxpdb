@@ -76,14 +76,14 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   }
 
   if(!quiet) Rprintf("Loading tables.\n");
-  sexp_table.open(sexp_table_path);
-  hashes.open(hashes_path);
-  runtime_meta.open(runtime_meta_path);
-  static_meta.open(static_meta_path);
-  debug_counters.open(debug_counters_path);
+  sexp_table.open(sexp_table_path, write_mode);
+  hashes.open(hashes_path, write_mode);
+  runtime_meta.open(runtime_meta_path, write_mode);
+  static_meta.open(static_meta_path, write_mode);
+  debug_counters.open(debug_counters_path, write_mode);
 
   if(!quiet) Rprintf("Loading origins.\n");
-  origins.open(base_path);
+  origins.open(base_path, write_mode);
 
   // Check if the number of values in tables are coherent
   if(sexp_table.nb_values() != nb_total_values) {

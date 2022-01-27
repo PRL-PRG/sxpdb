@@ -27,18 +27,19 @@ close_db <- function(db) {
 
 #' @export
 add_val <- function(db, val) {
+  stopifnot(write_mode(db))
   .Call(SXPDB_add_val, db, val)
 }
 
 #' @export
 add_val_origin <- function(db, val, package, func, argument) {
-  stopifnot(is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
+  stopifnot(write_mode(db), is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
   .Call(SXPDB_add_val_origin, db, val, package, func, if(is.na(argument)) NA_character_ else argument)
 }
 
 #' export
 add_origin <- function(db, hash, package, func, argument) {
-  stopifnot(is.raw(hash) && length(hash) == 20, is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
+  stopifnot(write_mode(db), is.raw(hash) && length(hash) == 20, is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
   .Call(SXPDB_add_origin, db, hash, package, func, if(is.na(argument)) NA_character_ else argument)
 }
 
@@ -56,6 +57,7 @@ sample_similar <- function(db, val, relax) {
 
 #' @export
 merge_db <- function(db1, db2) {
+  stopifnot(write_mode(db1))
   .Call(SXPDB_merge_db, db1, db2)
 }
 
@@ -151,9 +153,11 @@ build_indexes <- function(db) {
 }
 
 #' @export
-get_integer_real <- function(db) {
-  .Call(SXPDB_get_integer_real, db)
+write_mode <- function(db) {
+  .Call(SXPDB_write_mode, db)
 }
+
+
 
 ## Utilities
 

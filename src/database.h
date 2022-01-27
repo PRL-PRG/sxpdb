@@ -151,6 +151,8 @@ public:
   const fs::path& configuration_path() const {return config_path; }
   uint64_t nb_values() const { return nb_total_values; }
 
+  bool rw_mode() const { return write_mode; }
+
   virtual ~Database();
 
 };

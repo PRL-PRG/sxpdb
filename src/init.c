@@ -34,6 +34,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"view_origins",    (DL_FUNC) &view_origins,    1},
 	{"build_indexes",  (DL_FUNC) &build_indexes,    1},
 	{"explain_header", (DL_FUNC) &explain_header,   2},
+	{"write_mode",     (DL_FUNC) &write_mode,       1},
 
 	// Must have at the end
 	{NULL,						NULL,								0}
