@@ -132,16 +132,21 @@ inline bool find_na(const sexp_view_t& sexp_view) {
     case STRSXP: {
       // This one is more complex has it stores CHARSXP which do not have the same length
       const char* data = static_cast<const char*>(sexp_view.data);
+      SEXPTYPE type = ANYSXP;
       int size = 0;
-      for(size_t i = 0; i < sexp_view.length; i++) {
+      for(size_t i = 0; i < length; i++) {
+        std::memcpy(&type, data, sizeof(int));
+        type &= 255;// this would also store the encoding...
+        assert(type == CHARSXP);
+        data += sizeof(int);
         std::memcpy(&size, data, sizeof(int));
         data += sizeof(int);
         if(size == -1) {// this is NA_STRING
           return true;
         }
-        assert(size > 0);
+        assert(size >= 0);
         //else we jump to the next CHARSXP
-        data += length;
+        data += size;
       }
       return false;
     }
