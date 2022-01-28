@@ -2,6 +2,9 @@
 
 #include "database.h"
 
+#include <future>
+#include <thread>
+
 void SearchIndex::open_from_config(const fs::path& base_path, const Config& config) {
   types_index_path = base_path / config["types_index"];
   na_index_path = base_path / config["na_index"];
@@ -10,6 +13,10 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
   attributes_index_path = base_path / config["vector_index"];
   lengths_index_path = base_path / config["lengths_index"];
   classnames_index_path = base_path / config["classnames_index"];
+
+  last_computed = std::stoul(config["index_last_computed"]);
+  index_generated = std::stoi(config["index_generated"]) != 0;
+
 
   if(!types_index_path.empty()) {
     for(int i = 0; i < 25; i++) {
@@ -52,16 +59,12 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
 }
 
 
-const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::build_index(const Database& db, uint64_t start, uint64_t end) {
-  std::vector<std::pair<std::string,  roaring::Roaring64Map>> results(SearchIndex::nb_sexptypes + 4 + SearchIndex::nb_intervals);
+const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::build_indexes_static_meta(const Database& db, uint64_t start, uint64_t end) {
+  std::vector<std::pair<std::string,  roaring::Roaring64Map>> results(SearchIndex::nb_sexptypes + 2 + SearchIndex::nb_intervals);
   int k = 0;
   for(k =0 ; k < SearchIndex::nb_sexptypes ; k++) {
     results[k].first = "type_index";
   }
-  results[k].first = "na_index";
-  k++;
-  results[k].first = "class_index";
-  k++;
   results[k].first = "vector_index";
   k++;
   results[k].first = "attributes_index";
@@ -71,46 +74,83 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
     results[k].first = "length_index";
   }
 
-  //TODO:
-  // start at max(start, index.maximum())
-  // Indeed, we cannot remove values from the database
-  // And values are appended...
-
-  // Static meta
   for(uint64_t i = start; i < end; i++) {
     auto meta = db.static_meta.read(i);
     results[meta.sexptype].second.add(i);
 
     if(meta.length == 1) {
-      results[SearchIndex::nb_sexptypes + 2].second.add(i);
-    }
-
-    if(meta.n_attributes > 0) {
-      results[SearchIndex::nb_sexptypes + 3].second.add(i);
-    }
-
-
-    int length_idx = std::lower_bound(SearchIndex::length_intervals.begin(), SearchIndex::length_intervals.end(), meta.length) - SearchIndex::length_intervals.begin();
-    results[SearchIndex::nb_sexptypes + 4  + length_idx].second.add(i);
-  }
-
-  // from the values
-  for(uint64_t i = start; i < end ; i++) {
-    // TODO
-    // We should add a mutex here, or create a specialized mutex enabled read
-    std::vector<std::byte> buf = db.sexp_table.read(i);
-    SEXP val = PROTECT(db.ser.unserialize(buf));// That might not be thread-safe either...
-
-    if(find_na(val)) {
       results[SearchIndex::nb_sexptypes].second.add(i);
     }
 
-    SEXP klass = Rf_getAttrib(val, R_ClassSymbol);
-    if(klass != R_NilValue) {
+    if(meta.n_attributes > 0) {
       results[SearchIndex::nb_sexptypes + 1].second.add(i);
     }
 
+    auto it = std::lower_bound(SearchIndex::length_intervals.begin(), SearchIndex::length_intervals.end(), meta.length);
+    int length_idx = SearchIndex::length_intervals.size() - 1;
+    if(it != SearchIndex::length_intervals.end()) {
+      length_idx = it - SearchIndex::length_intervals.begin();
+    }
+
+    results[SearchIndex::nb_sexptypes + 2  + length_idx].second.add(i);
+  }
+
+  for(auto& result : results) {
+    result.second.runOptimize();
+    result.second.shrinkToFit();
+  }
+
+  return results;
+}
+
+
+const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::build_indexes_values(const Database& db, uint64_t start, uint64_t end) {
+  std::vector<std::pair<std::string, roaring::Roaring64Map>> results;
+  results.push_back({"na_index",roaring::Roaring64Map()});
+
+
+  for(uint64_t i = start; i < end ; i++) {
+    std::vector<std::byte> buf = db.sexp_table.read(i);
+    SEXP val = PROTECT(db.ser.unserialize(buf));// That might not be thread-safe
+
+    if(find_na(val)) {
+      results[0].second.add(i);
+    }
+
     UNPROTECT(1);
+  }
+
+  for(auto& result : results) {
+    result.second.runOptimize();
+    result.second.shrinkToFit();
+  }
+
+  return results;
+}
+
+const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::build_indexes_classnames(const Database& db, ReverseIndex& classnames_index, uint64_t start, uint64_t end) {
+  std::vector<std::pair<std::string, roaring::Roaring64Map>> results;
+  results.push_back({"class_index",roaring::Roaring64Map()});
+
+
+  // Class names
+ classnames_index.prepare_indexes(db.classes.nb_classnames() + 1);
+  for(uint64_t i = start; i < end; i++) {
+    const std::vector<uint32_t>& class_ids =  db.classes.get_classnames(i);
+
+    for(uint32_t class_id : class_ids) {
+      classnames_index.add_property(i, class_id);
+    }
+
+    if(class_ids.size() > 0) {
+      results[0].second.add(i);
+    }
+  }
+  classnames_index.finalize_indexes();
+
+  for(auto& result : results) {
+    result.second.runOptimize();
+    result.second.shrinkToFit();
   }
 
   return results;
@@ -118,86 +158,53 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
 
 
 
+
+
 void SearchIndex::build_indexes(const Database& db) {
   // We dot no clear the indexes: indeed, we cannot remove values from the database
 
-  //TODO: only do it for the ones that are actually reading from the value store, because ifstream is not thread-safe.
-  // So we also need to add a mutex... for the value store
-  // And load the metadata into memory to build the index?
-  // Then we can do concurrent accesses of it without problems...
+  //Parallelize on the 3 independent files
+  // without std::cref, would actually copy!
+  std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_value_fut = std::async( std::launch::async, build_indexes_values, std::cref(db), last_computed, db.nb_values());
 
-  // Would be better if we could use the new execution policies of C++17, so we could do it at the level
-  // of individual value and use work stealing
+  std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_meta_fut = std::async( std::launch::async, build_indexes_static_meta, std::cref(db), last_computed, db.nb_values());
 
+  // Class names
 
+  // Class names
+  // classnames_index should be passed with std::ref if used with std::async
+  auto results_classnames = build_indexes_classnames(db, classnames_index, last_computed, db.nb_values());
+  class_index = results_classnames[0].second;
 
-  std::vector<std::vector<std::pair<std::string, roaring::Roaring64Map>>> results;
+  auto results_meta = results_meta_fut.get();
 
-  results.push_back(build_index(db, last_computed, db.nb_values()));
-
-  for(const auto& indexes : results) {
-    assert(indexes.size() == types_index.size() + 4 + lengths_index.size());
-    int i = 0;
-    for(; i < types_index.size() ; i ++) {
-      assert(indexes[i].first == "type_index");
-      types_index[i] |= indexes[i].second;
-    }
-    assert(indexes[i].first == "na_index");
-    na_index |= indexes[i].second;
-    i++;
-    assert(indexes[i].first == "class_index");
-    class_index |= indexes[i].second;
-    i++;
-    assert(indexes[i].first == "vector_index");
-    vector_index |= indexes[i].second;
-    i++;
-    assert(indexes[i].first == "attributes_index");
-    attributes_index |= indexes[i].second;
-    i++;
-    int start = i;
-    for(; i < start + lengths_index.size() ; i++) {
-      assert(indexes[i].first == "length_index");
-      lengths_index[i] |= indexes[i].second;
-    }
+  assert(results_meta.size() == types_index.size() + 2 + lengths_index.size());
+  int i = 0;
+  for(; i < types_index.size() ; i ++) {
+    assert(results_meta[i].first == "type_index");
+    types_index[i] |= results_meta[i].second;
+  }
+  assert(results_meta[i].first == "vector_index");
+  vector_index |= results_meta[i].second;
+  i++;
+  assert(results_meta[i].first == "attributes_index");
+  attributes_index |= results_meta[i].second;
+  i++;
+  int start = i;
+  for(; i < start + lengths_index.size() ; i++) {
+    assert(results_meta[i].first == "length_index");
+    lengths_index[i] |= results_meta[i].second;
   }
 
-  // Optimize all the indexes
+  auto results_values = results_value_fut.get();
+  na_index = results_values[0].second;
+
+
 
 
   //type_indexes[ANYSXP].addRange(0, n_values - 1);//addRange does not exist for RoaringBitmap64!!
   // But we can use flip!!
   types_index[ANYSXP].flip(0, db.nb_values()); // [a, b[
-
-  for(auto& ind : types_index) {
-    ind.runOptimize();
-    ind.shrinkToFit();
-  }
-
-  na_index.runOptimize();
-  na_index.shrinkToFit();
-  class_index.runOptimize();
-  class_index.shrinkToFit();
-  vector_index.runOptimize();
-  vector_index.shrinkToFit();
-  attributes_index.runOptimize();
-  attributes_index.shrinkToFit();
-
-  for(auto& ind : lengths_index) {
-    ind.runOptimize();
-    ind.shrinkToFit();
-  }
-
-  // Class names
-  // from the classnames
-  for(uint64_t i = 0; i < db.nb_values(); i++) {
-    const std::vector<uint32_t>& class_ids =  db.classes.get_classnames(i);
-
-    for(uint32_t class_id : class_ids) {
-      classnames_index.add_property(i, class_id);
-    }
-  }
-  classnames_index.finalize_indexes();
-
 
   index_generated = true;
   last_computed = db.nb_values();

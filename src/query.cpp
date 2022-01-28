@@ -6,7 +6,7 @@
 void Query::update(const Database& db) {
   const SearchIndex& search_index = db.search_index;
   if(!search_index.is_initialized() && search_index.last_computed < db.nb_values()) {
-    Rf_error("Please build/update the search indexes to be able to sample with a complex query.\n");
+    Rf_warning("Please build/update the search indexes to be able to sample with a complex query.\n");
   }
 
   if(!init&& !quiet) {
@@ -15,6 +15,7 @@ void Query::update(const Database& db) {
   else if(init && search_index.new_elements && !quiet) {
     Rprintf("Updating the search index for the query.\n");
   }
+
   if(type != UNIONTYPE) {
     index_cache |= search_index.types_index[type];
   }
@@ -76,8 +77,8 @@ void Query::update(const Database& db) {
   if(length) {
     auto low_bound = std::lower_bound(search_index.length_intervals.begin(), search_index.length_intervals.end(), length.value());
     if(low_bound == search_index.length_intervals.end()) {
-      // That should never happen
-      Rf_error("Cannot find the search index for the provided length %lu.\n", length);
+     // Then it is in the last bin
+     low_bound = &SearchIndex::length_intervals.back();
     }
     int length_idx = std::distance(SearchIndex::length_intervals.begin(), low_bound);
     // Check if the index_cache in that slot represents one length or several ones

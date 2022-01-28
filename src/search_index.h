@@ -17,6 +17,7 @@
 #endif
 
 #include "roaring.hh"
+#include "robin_hood.h"
 #include "config.h"
 
 #include "reverse_index.h"
@@ -126,7 +127,9 @@ private:
   friend class Database;
 
 
-  static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_index(const Database& db, uint64_t start, uint64_t end);
+  static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_indexes_static_meta(const Database& db, uint64_t start, uint64_t end);
+  static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_indexes_values(const Database& db, uint64_t start, uint64_t end);
+  static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_indexes_classnames(const Database& db, ReverseIndex& index, uint64_t start, uint64_t end);
 
 public:
    SearchIndex() : pid(getpid()), classnames_index(200) {
@@ -188,6 +191,9 @@ public:
       classnames_index_path = base_path / "classnames_index.conf";
     }
     conf["classnames_index"] = fs::relative(classnames_index_path, base_path_);
+
+    conf["index_last_computed"] = std::to_string(last_computed);
+    conf["index_generated"] = std::to_string(index_generated);
   }
 
   roaring::Roaring64Map search_length(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_length) const;

@@ -30,7 +30,8 @@ private:
   uint64_t threshold = 100;
 
   //we are interested in the order
-  std::map<uint64_t, std::vector<uint64_t>> reverse;
+  // we actually could merge in place, and only use on array of bitmaps
+  std::vector<roaring::Roaring64Map> reverse;
 public:
   ReverseIndex(uint64_t thr) : threshold(thr) {
 
@@ -64,15 +65,16 @@ public:
     file.write(config_path);
   }
 
+  void prepare_indexes(size_t nb_properties) {
+    reverse.resize(nb_properties);
+  }
+
 
   void add_property(uint64_t index, uint64_t property) {
-    auto it = reverse.find(property);
-
-    if(it != reverse.end()) {
-      it->second.push_back(index);
-    }else {
-      reverse[property] = {0};
+    if(property >= reverse.size() ) {
+      reverse.resize(property + 1);
     }
+    reverse[property].add(index);
   }
 
   void finalize_indexes() {
@@ -87,7 +89,7 @@ public:
         cur_index.clear();
       }
 
-      cur_index.addMany(prop.second.size(), prop.second.data());
+      cur_index |= prop;
     }
     //add the last one if it has not just been added (i.e. is not empty)
     if(!cur_index.isEmpty()) {
@@ -96,6 +98,11 @@ public:
     }
 
     reverse.clear();// or keep it in case we need to add things in it?
+
+    for(auto& index : indexes) {
+      index.runOptimize();
+      index.shrinkToFit();
+    }
   }
 
   // Returns the set of indexes corresponding to the property
