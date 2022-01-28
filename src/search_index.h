@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "reverse_index.h"
+#include "serialization.h"
 
 class Database;
 
@@ -89,6 +90,65 @@ inline bool find_na(SEXP val) {
     }
   }
   return false;
+}
+
+// This version works on the array of bytes directly
+inline bool find_na(const sexp_view_t& sexp_view) {
+    size_t length = sexp_view.length;
+
+    switch(sexp_view.type) {
+    case LGLSXP: {
+      const int* v = static_cast<const int*>(sexp_view.data);
+#ifdef SXPDB_PARALLEL_STD
+      return std::find(std::execution::par_unseq, v, v + length, NA_LOGICAL) != v +length;
+#else
+      return std::find(v, v + length, NA_LOGICAL) != v + length;
+#endif
+    }
+      case INTSXP: {
+      const int* v = static_cast<const int*>(sexp_view.data);
+#ifdef SXPDB_PARALLEL_STD
+      return std::find(std::execution::par_unseq, v, v + length, NA_INTEGER) != v + length;
+#else
+      return std::find(v, v + length, NA_INTEGER) != v + length;
+#endif
+      }
+    case REALSXP: {
+        const double* v = static_cast<const double*>(sexp_view.data);
+#ifdef SXPDB_PARALLEL_STD
+      return std::find_if(std::execution::par_unseq, v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
+#else
+      return std::find_if( v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
+#endif
+      }
+    case CPLXSXP: {
+      const Rcomplex* v = static_cast<const Rcomplex*>(sexp_view.data);
+#ifdef SXPDB_PARALLEL_STD
+      return std::find_if(std::execution::par_unseq, v, v + length, [](const Rcomplex& c) -> bool {return ISNAN(c.r) || ISNAN(c.i);}) != v + length;
+#else
+      return std::find_if(v, v + length, [](const Rcomplex& c) -> bool {return ISNAN(c.r) || ISNAN(c.i);}) != v + length;
+#endif
+    }
+    case STRSXP: {
+      // This one is more complex has it stores CHARSXP which do not have the same length
+      const char* data = static_cast<const char*>(sexp_view.data);
+      int size = 0;
+      for(size_t i = 0; i < sexp_view.length; i++) {
+        std::memcpy(&size, data, sizeof(int));
+        data += sizeof(int);
+        if(size == -1) {// this is NA_STRING
+          return true;
+        }
+        assert(size > 0);
+        //else we jump to the next CHARSXP
+        data += length;
+      }
+      return false;
+    }
+
+    }
+
+    return false;
 }
 
 class SearchIndex {

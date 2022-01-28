@@ -406,6 +406,14 @@ SEXP sample_similar(SEXP sxpdb, SEXP vals, SEXP multiple, SEXP relax) {
         d.relax_vector();
         d.relax_length();
       }
+      else if(relax_param == "keep_class") {
+        d.relax_attributes();
+        d.relax_na();
+        d.relax_ndims();
+        d.relax_vector();
+        d.relax_length();
+        d.relax_type();
+      }
     }
   }
 

@@ -109,15 +109,16 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
   results.push_back({"na_index",roaring::Roaring64Map()});
 
 
-  for(uint64_t i = start; i < end ; i++) {
-    std::vector<std::byte> buf = db.sexp_table.read(i);
-    SEXP val = PROTECT(db.ser.unserialize(buf));// That might not be thread-safe
 
-    if(find_na(val)) {
+  for(uint64_t i = start; i < end ; i++) {
+    const std::vector<std::byte>& buf = db.sexp_table.read(i);
+
+    const sexp_view_t sexp_view = Serializer::unserialize_view(buf);
+
+    if(find_na(sexp_view)) {
       results[0].second.add(i);
     }
 
-    UNPROTECT(1);
   }
 
   for(auto& result : results) {
@@ -165,7 +166,9 @@ void SearchIndex::build_indexes(const Database& db) {
 
   //Parallelize on the 3 independent files
   // without std::cref, would actually copy!
-  std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_value_fut = std::async( std::launch::async, build_indexes_values, std::cref(db), last_computed, db.nb_values());
+  // In another thread, does not work!
+  // unserialize tries to allocate, probably
+  std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_value_fut = std::async( std::launch::deferred, build_indexes_values, std::cref(db), last_computed, db.nb_values());
 
   std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_meta_fut = std::async( std::launch::async, build_indexes_static_meta, std::cref(db), last_computed, db.nb_values());
 

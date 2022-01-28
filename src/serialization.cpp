@@ -112,6 +112,79 @@ std::byte* Serializer::jump_header(std::vector<std::byte>& buffer) {
   return reinterpret_cast<std::byte*>(buf);
 }
 
+const char* read_length(const char* buf, size_t& size) {
+  int len = 0;
+  std::memcpy(&len, buf, sizeof(int));
+  buf += sizeof(int);
+  if(len == -1) {
+    unsigned int len1, len2;
+    std::memcpy(&len1, buf, sizeof(int));
+    buf += sizeof(int);
+    std::memcpy(&len2, buf, sizeof(int));
+    buf += sizeof(int);
+    size = (((size_t) len1) << 32) + len2;
+  }
+  else {
+    size = len;
+  }
+
+  return buf;
+}
+
+const sexp_view_t Serializer::unserialize_view(const std::vector<std::byte>& buf) {
+  const char* data = reinterpret_cast<const char*>(buf.data());
+
+  sexp_view_t sexp_view;
+
+  // the header is already not there anymore
+
+  int flags = 0;
+  std::memcpy(&flags, data, sizeof(int));
+  sexp_view.type = flags & 255;
+  bool has_attr = flags & (1 << 9);
+
+  data += sizeof(int);
+
+  // We handle only vector types
+  switch(sexp_view.type) {
+    case LGLSXP:
+    case INTSXP:
+    case REALSXP:
+    case CPLXSXP:
+    case STRSXP:
+      data = read_length(data, sexp_view.length);
+      break;
+    default:
+      return sexp_view;
+  }
+
+
+  switch(sexp_view.type) {
+    case LGLSXP:
+    case INTSXP:
+      sexp_view.data = data;
+      sexp_view.element_size = sizeof(int);
+      break;
+    case REALSXP:
+      sexp_view.data = data;
+      sexp_view.element_size = sizeof(double);
+      break;
+    case CPLXSXP:
+      sexp_view.data = data;
+      sexp_view.element_size = sizeof(Rcomplex);
+      break;
+    case STRSXP:
+      sexp_view.data = data;
+      // the elements are CHARSXP and have variable size
+      //it is easy to find NA though:
+      // read the length, if is -1, it is NA< otherwise, jump length to the next item
+      break;
+  }
+
+
+  return sexp_view;
+}
+
 void Serializer::append_byte(R_outpstream_t stream, int c)  { //add ints, not chars??
   WriteBuffer* wbf = static_cast<WriteBuffer*>(stream->data);
 

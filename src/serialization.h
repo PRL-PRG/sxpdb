@@ -9,6 +9,13 @@
 #include <Rinternals.h>
 #include <Rdefines.h>
 
+struct sexp_view_t {
+  SEXPTYPE type = ANYSXP;
+  const void* data = nullptr;
+  size_t length = 0;
+  size_t element_size = 0;
+};
+
 // Not static
 // Will make it easier to parallelize (one serializer per thread)
 class Serializer {
@@ -54,6 +61,9 @@ private:
   static std::byte* jump_header(std::vector<std::byte>& buf);
 
 
+
+
+
   inline static std::array<char, 23> header = {'B', '\n', 3, 0, 0, 0, 0, 0, 0, 0, 0, 5, 3, 0, 5, 0, 0, 0, 'U', 'T', 'F', '-', '8'};
 
 public:
@@ -68,6 +78,8 @@ public:
 
   // Analyzes a RDS serialization header
   static SEXP analyze_header(std::vector<std::byte>& buf);
+  // Get a view of the data, that does not require allocating
+  static const sexp_view_t unserialize_view(const std::vector<std::byte>& buf);
 };
 
 #endif
