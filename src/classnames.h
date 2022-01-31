@@ -102,7 +102,12 @@ public:
 
   SEXP class_name_cache() const { return class_names.to_sexp();}
 
-  std::optional<uint32_t> get_class_id(const std::string& class_name) const {return class_names.get_index(class_name); }
+  std::optional<uint32_t> get_class_id(const std::string& class_name) const {
+    auto res = class_names.get_index(class_name);
+    // we have to explicitly convert from std::optional<uint64_t> to optional<uint32_t>
+    // otherwise it just gives garbage
+    return res ? std::optional<uint32_t>(res) : std::nullopt;
+  }
 
   virtual ~ClassNames() {
     //TODO: open in write mode a VSizeTable and dump the class ids there

@@ -915,6 +915,38 @@ class Roaring64Map {
         return result;
     }
 
+    void addRange(const uint32_t x, const uint32_t y)  {
+      roarings[0].addRange(x, y);
+      roarings[0].setCopyOnWrite(copyOnWrite);
+    }
+
+    void addRange(const uint64_t range_start, const uint64_t range_end)  {
+      uint32_t start_high = highBytes(range_start);
+      uint32_t start_low = lowBytes(range_start);
+      uint32_t end_high = highBytes(range_end);
+      uint32_t end_low = lowBytes(range_end);
+
+      if (start_high == end_high) {
+        roarings[start_high].addRange(start_low, end_low);
+        return;
+      }
+      // we put std::numeric_limits<>::max/min in parenthesis
+      // to avoid a clash with the Windows.h header under Windows
+      roarings[start_high].addRange(start_low,
+                                (std::numeric_limits<uint32_t>::max)());
+      roarings[start_high++].setCopyOnWrite(copyOnWrite);
+
+      for (; start_high <= highBytes(range_end) - 1; ++start_high) {
+        roarings[start_high].addRange((std::numeric_limits<uint32_t>::min)(),
+                                  (std::numeric_limits<uint32_t>::max)());
+        roarings[start_high].setCopyOnWrite(copyOnWrite);
+      }
+
+      roarings[start_high].addRange((std::numeric_limits<uint32_t>::min)(),
+                                end_low);
+      roarings[start_high].setCopyOnWrite(copyOnWrite);
+    }
+
     /**
      * Add value n_args from pointer vals
      *

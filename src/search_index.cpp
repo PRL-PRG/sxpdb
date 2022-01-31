@@ -225,7 +225,7 @@ void SearchIndex::build_indexes(const Database& db) {
   // Class names
   // classnames_index should be passed with std::ref if used with std::async
   auto results_classnames = results_classnames_fut.get();
-  class_index = results_classnames[0].second;
+  class_index |= results_classnames[0].second;
 
   auto results_meta = results_meta_fut.get();
 
@@ -248,11 +248,7 @@ void SearchIndex::build_indexes(const Database& db) {
   }
 
 
-
-
-  //type_indexes[ANYSXP].addRange(0, n_values - 1);//addRange does not exist for RoaringBitmap64!!
-  // But we can use flip!!
-  types_index[ANYSXP].flip(0, db.nb_values()); // [a, b[
+  types_index[ANYSXP].addRange(0, db.nb_values()); // [a, b[
 
   index_generated = true;
   last_computed = db.nb_values();

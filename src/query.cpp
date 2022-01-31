@@ -17,6 +17,7 @@ void Query::update(const Database& db) {
   }
 
   if(type != UNIONTYPE) {
+    // type == ANYSXP, it should give an index that is the full database
     index_cache |= search_index.types_index[type];
   }
   else if(type == UNIONTYPE) {
@@ -25,6 +26,7 @@ void Query::update(const Database& db) {
       index_cache |= search_index.types_index[desc.type];
     }
   }
+
 
   if(has_class && has_class.value()) {
     index_cache &= search_index.class_index;

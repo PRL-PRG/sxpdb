@@ -65,6 +65,7 @@ public:
     file.write(config_path);
   }
 
+
   void prepare_indexes(size_t nb_properties) {
     reverse.resize(nb_properties);
   }
@@ -123,6 +124,7 @@ public:
     else {
       idx = indexes.size() - 1;
     }
+    assert(indexes.size() > 0);
     return {indexes[idx], idx < intervals.size() &&  intervals[idx + 1] - intervals[idx] <= 1} ;
   }
 };
