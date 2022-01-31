@@ -6,6 +6,8 @@
 
 #include <future>
 #include <thread>
+#include <chrono>
+using namespace std::chrono_literals;
 
 void SearchIndex::open_from_config(const fs::path& base_path, const Config& config) {
   types_index_path = base_path / config["types_index"];
@@ -214,13 +216,45 @@ void SearchIndex::build_indexes(const Database& db) {
     size += buf.size();
     bufs.push_back(buf);
   }
+
+
+#ifndef NDEBUG
+  Rprintf("Building indexes in parallel.\n");
+  std::future_status meta_status;
+  std::future_status value_status;
+  std::future_status classname_status;
+  auto start_time = std::chrono::steady_clock::now();
+  do {
+    if(meta_status != std::future_status::ready) {
+      meta_status = results_meta_fut.wait_for(333ms);
+      if(meta_status == std::future_status::ready) {
+        auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
+        Rprintf("Computations on metadata have finished in %ld ms.\n", dur.count());
+      }
+    }
+    if(classname_status != std::future_status::ready) {
+      classname_status= results_classnames_fut.wait_for(333ms);
+      if(classname_status == std::future_status::ready) {
+        auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
+        Rprintf("Computations on classnames have finished in %ld ms.\n", dur.count());
+      }
+    }
+    if(value_status != std::future_status::ready) {
+      // that last task could actually finish before another one in the vector....
+      value_status = results_values_fut[results_values_fut.size() - 1].wait_for(333ms);
+      if(value_status == std::future_status::ready) {
+        auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
+        Rprintf("Computations on values have finished in %ld ms.\n", dur.count());
+      }
+    }
+  } while (meta_status != std::future_status::ready && value_status != std::future_status::ready && classname_status!= std::future_status::ready);
+#endif
+
   for(auto& fut : results_values_fut) {
     auto results = fut.get();
     assert(results[0].first == "na_index");
     na_index |= results[0].second;
   }
-
-  // Class names
 
   // Class names
   // classnames_index should be passed with std::ref if used with std::async
