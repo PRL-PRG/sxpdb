@@ -195,6 +195,7 @@ private:
   static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_indexes_static_meta(const Database& db, uint64_t start, uint64_t end);
   static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_indexes_values(const Database& db, uint64_t start, uint64_t end);
   static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_indexes_classnames(const Database& db, ReverseIndex& index, uint64_t start, uint64_t end);
+  static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_values(const std::vector<std::vector<std::byte>>& bufs, uint64_t start);
 
 public:
    SearchIndex() : pid(getpid()), classnames_index(200) {

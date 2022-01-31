@@ -2,6 +2,8 @@
 
 #include "database.h"
 
+#include "thread_pool.hpp"
+
 #include <future>
 #include <thread>
 
@@ -129,6 +131,29 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
   return results;
 }
 
+const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::build_values(const std::vector<std::vector<std::byte>>& bufs, uint64_t start) {
+  std::vector<std::pair<std::string, roaring::Roaring64Map>> results;
+  results.push_back({"na_index",roaring::Roaring64Map()});
+
+  uint64_t i = start;
+  for(const auto& buf : bufs) {
+    const sexp_view_t sexp_view = Serializer::unserialize_view(buf);
+
+    if(find_na(sexp_view)) {
+      results[0].second.add(i);
+    }
+
+    start++;
+  }
+
+  for(auto& result : results) {
+    result.second.runOptimize();
+    result.second.shrinkToFit();
+  }
+
+  return results;
+}
+
 const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::build_indexes_classnames(const Database& db, ReverseIndex& classnames_index, uint64_t start, uint64_t end) {
   std::vector<std::pair<std::string, roaring::Roaring64Map>> results;
   results.push_back({"class_index",roaring::Roaring64Map()});
@@ -164,19 +189,42 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
 void SearchIndex::build_indexes(const Database& db) {
   // We dot no clear the indexes: indeed, we cannot remove values from the database
 
-  //Parallelize on the 3 independent files
-  // without std::cref, would actually copy!
-  // In another thread, does not work!
-  // unserialize tries to allocate, probably
+  thread_pool pool(std::thread::hardware_concurrency() - 1);
+
+  auto results_meta_fut = pool.submit(build_indexes_static_meta, std::cref(db), last_computed, db.nb_values());
+  auto results_classnames_fut = pool.submit(build_indexes_classnames, std::cref(db), std::ref(classnames_index), last_computed, db.nb_values());
   std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_value_fut = std::async( std::launch::deferred, build_indexes_values, std::cref(db), last_computed, db.nb_values());
 
-  std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_meta_fut = std::async( std::launch::async, build_indexes_static_meta, std::cref(db), last_computed, db.nb_values());
+
+  // Values
+  std::vector<std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>>> results_values_fut;
+  const uint64_t chunk_size = fs::file_size(db.sexp_table.get_path()) / (std::thread::hardware_concurrency() - 1);
+  const uint64_t elements_per_chunk = db.nb_values() / (std::thread::hardware_concurrency() - 1); // a rough estimate...
+
+
+  std::vector<std::vector<std::byte>> bufs;
+  bufs.reserve(elements_per_chunk);
+  uint64_t size = 0;
+  for(uint64_t i = 0; i < db.nb_values() ; i++) {
+    if(size >= chunk_size || i == db.nb_values() - 1) {
+      results_values_fut.push_back(pool.submit(build_values, std::move(bufs), i));
+      bufs.clear();
+    }
+    const std::vector<std::byte>& buf = db.sexp_table.read(i);
+    size += buf.size();
+    bufs.push_back(buf);
+  }
+  for(auto& fut : results_values_fut) {
+    auto results = fut.get();
+    assert(results[0].first == "na_index");
+    na_index |= results[0].second;
+  }
 
   // Class names
 
   // Class names
   // classnames_index should be passed with std::ref if used with std::async
-  auto results_classnames = build_indexes_classnames(db, classnames_index, last_computed, db.nb_values());
+  auto results_classnames = results_classnames_fut.get();
   class_index = results_classnames[0].second;
 
   auto results_meta = results_meta_fut.get();
@@ -198,9 +246,6 @@ void SearchIndex::build_indexes(const Database& db) {
     assert(results_meta[i].first == "length_index");
     lengths_index[i] |= results_meta[i].second;
   }
-
-  auto results_values = results_value_fut.get();
-  na_index = results_values[0].second;
 
 
 
