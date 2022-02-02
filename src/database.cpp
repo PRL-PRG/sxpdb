@@ -158,11 +158,12 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   }
 
   if(!quiet) {
-    Rprintf("Loaded database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters.\n",
+    Rprintf("Loaded database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters, with %lu classes.\n",
             base_path.c_str(), nb_total_values,
             origins.nb_packages(),
             origins.nb_functions(),
-            origins.nb_parameters());
+            origins.nb_parameters(),
+            classes.nb_classnames());
   }
 
 }
@@ -170,11 +171,12 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
 Database::~Database() {
   if(!quiet) {
-    Rprintf("Closing database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters.\n",
+    Rprintf("Closing database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters, and %lu classes.\n",
             base_path.c_str(), nb_total_values,
             origins.nb_packages(),
             origins.nb_functions(),
-            origins.nb_parameters());
+            origins.nb_parameters(),
+            classes.nb_classnames());
   }
 
   if(pid == getpid()) {
@@ -1104,12 +1106,12 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::strin
   return res;
 }
 
-
-uint64_t Database::merge_in(Database& other) {
+uint64_t Database::merge_in(const Database& other) {
   uint64_t old_total_values = nb_total_values;
+  uint64_t old_nb_classnames = classes.nb_classnames();
 
   // Parallelize mergin:
-  // first parallelize the search for not present hashes of the otehr db into the target one
+  // first parallelize the search for not present hashes of the other db into the target one
   // then parallelize across the various tables
 
   sexp_hash key;
@@ -1129,8 +1131,16 @@ uint64_t Database::merge_in(Database& other) {
 
       runtime_meta.append(other.runtime_meta.read(other_idx));
 
+      // Class names
+      for(const auto& class_id : other.classes.get_classnames(other_idx)) {
+        classes.add_classname(nb_total_values, other.classes.class_name(class_id));
+      }
+      if(other.classes.get_classnames(other_idx).size() == 0) {
+        classes.add_emptyclass(nb_total_values);
+      }
+
       // Origins
-      for(auto& loc : other.origins.get_locs(other_idx)) {
+      for(const auto& loc : other.origins.get_locs(other_idx)) {
         origins.add_origin(nb_total_values, other.origins.package_name(loc.package),
                            other.origins.function_name(loc.function),
                            other.origins.param_name(loc.param));
@@ -1143,7 +1153,7 @@ uint64_t Database::merge_in(Database& other) {
 
     // Hashes
     hashes.append(key);
-    sexp_index.insert({&key, nb_total_values});
+    sexp_index.insert({&hashes.memory_view().back(), nb_total_values});
 
     nb_total_values++;
     new_elements = true;
@@ -1172,7 +1182,7 @@ uint64_t Database::merge_in(Database& other) {
 #endif
 
       // New origins
-      for(auto& loc : other.origins.get_locs(other_idx)) {
+      for(const auto& loc : other.origins.get_locs(other_idx)) {
         origins.add_origin(db_idx, other.origins.package_name(loc.package),
                            other.origins.function_name(loc.function),
                            other.origins.param_name(loc.param));
@@ -1181,8 +1191,8 @@ uint64_t Database::merge_in(Database& other) {
   }
 
   assert(nb_total_values >= old_total_values);
-
   assert(sexp_table.nb_values() == nb_total_values);
+  assert(classes.nb_classnames() >= old_nb_classnames);
 
   return nb_total_values - old_total_values;
 }

@@ -89,6 +89,20 @@ public:
     }
   }
 
+  void add_classname(uint64_t index, const std::string& classname) {
+    uint32_t idx = class_names.append_index(classname);
+    if(classes.size() == index) {
+      classes.push_back({idx});
+    }
+    classes[index].push_back(idx);
+  }
+
+  void add_emptyclass(uint64_t index) {
+    if(classes.size() == index) {
+      classes.push_back(empty_class);
+    }
+  }
+
   const std::vector<uint32_t>& get_classnames(uint64_t index) const {
     assert(index < classes.size());
     return classes[index];

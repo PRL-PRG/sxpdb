@@ -23,6 +23,8 @@
 #include "robin_hood.h"
 #include "hasher.h"
 
+#include "stable_vector.h"
+
 namespace fs = std::filesystem;
 
 
@@ -560,7 +562,7 @@ private:
 
   mutable std::string val;
 
-  std::deque<std::string> store;//to not get invalidated pointers in the hash table
+  StableVector<std::string> store;//to not get invalidated pointers in the hash table
   robin_hood::unordered_map<const std::string*, uint64_t, string_pointer_hasher, string_pointer_equal> unique_lines;
   uint64_t last_written = 0;
 
@@ -595,6 +597,10 @@ public:
         Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
       }
 
+      // There will be only one chunk at the begnning
+      // because the default StableVector constructor does not allocate at all.
+      store.reserve(n_values);
+
       std::copy(std::istream_iterator<line>(file),
                 std::istream_iterator<line>(),
                 std::back_inserter(store));
@@ -608,8 +614,10 @@ public:
     if(write_mode) {
       // Populate the hash table
       unique_lines.reserve(store.size());
-      for(uint64_t i = 0; i < store.size() ; i++) {
-        unique_lines.insert({&store[i], i});
+      assert(store.nb_chunks() == 1);
+      auto chunk = store.chunk(0);
+      for(uint64_t i = 0; i < chunk.size() ; i++) {
+        unique_lines.insert({&chunk[i], i});
       }
 
       assert(unique_lines.size() == n_values);// the file should contain unique names
@@ -711,7 +719,7 @@ public:
     SEXP s = PROTECT(Rf_allocVector(STRSXP, nb_values()));
     int i = 0;
     assert(nb_values() == store.size());
-    for(auto& name : store) {
+    for(const auto& name : std::as_const(store)) {
       SET_STRING_ELT(s, i, Rf_mkChar(name.c_str()));
       i++;
     }
