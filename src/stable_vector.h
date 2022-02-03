@@ -238,12 +238,12 @@ public:
   }
 
   StableVectorIterator<T> begin() { return StableVectorIterator<T>(*this); }
-  StableVectorIterator<T> end() { return StableVectorIterator<T>(*this, data.size(), 0); }
+  StableVectorIterator<T> end() { return StableVectorIterator<T>(*this, total_size > 0 ? data.size() : 0, 0); }
   ConstStableVectorIterator<T> begin() const { return ConstStableVectorIterator<T>(*this); }
-  ConstStableVectorIterator<T> end() const { return ConstStableVectorIterator<T>(*this, data.size(), 0); }
+  ConstStableVectorIterator<T> end() const { return ConstStableVectorIterator<T>(*this, total_size > 0 ? data.size() : 0, 0); }
 
   ConstStableVectorIterator<T> cbegin() const { return ConstStableVectorIterator<T>(*this); }
-  ConstStableVectorIterator<T> cend() const { return ConstStableVectorIterator<T>(*this, data.size(), 0); }
+  ConstStableVectorIterator<T> cend() const { return ConstStableVectorIterator<T>(*this, total_size > 0 ? data.size() : 0, 0); }
 
   const std::vector<T>& chunk(size_t pos) const {
     return data.at(pos);
