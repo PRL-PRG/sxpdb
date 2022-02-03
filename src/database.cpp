@@ -1,10 +1,12 @@
 #include "database.h"
 
+#include "stable_vector.h"
+
 Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   config_path(config_), base_path(fs::absolute(config_path.parent_path())), write_mode(write_mode_),   quiet(quiet_),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
   pid(getpid()),
-  ser(32768) // does it fit in the processor caches?
+  ser(4096) // does it fit in the processor caches?
 {
   fs::path sexp_table_path = base_path / "sexp_table.conf";
   fs::path hashes_path = base_path / "hashes_table.conf";
@@ -146,7 +148,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     if(!quiet) Rprintf("Loading hashes into memory.\n");
     // Load the hashes and build the hash map
     hashes.load_all();
-    const std::deque<sexp_hash>& hash_vec = hashes.memory_view();
+    const StableVector<sexp_hash>& hash_vec = hashes.memory_view();
 
     if(!quiet) Rprintf("Allocating memory for the hash table.\n");
     sexp_index.reserve(hashes.nb_values());

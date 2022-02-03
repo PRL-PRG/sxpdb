@@ -33,11 +33,34 @@ private:
   size_t nb_pages = 1; // how many multiple of the page size to allocate
   size_t page_size;
 
+  // returns true if it created a new chunk
+  bool pre_reserve(size_t new_cap) {
+    if(new_cap > elem_capacity) {
+      size_t chunk_size = new_cap - elem_capacity;
+      if(data.size() > 0 && data[last_chunk].size() == 0) {
+        // the last chunk is empty so we can directly extend it instead of
+        // allocating a new chunk
+        data[last_chunk].reserve(chunk_size + data[last_chunk].capacity());
+        elem_capacity += data.back().capacity();
+        return false;
+      }
+      else {
+        std::vector<T> chunk;
+        data.push_back(std::vector<T>());
+        data.back().reserve(chunk_size);
+        elem_capacity += data.back().capacity();
+        return true;
+      }
+    }
+    return false;
+  }
 
 public:
   using value_type = T;
 
   StableVector() : page_size(sysconf(_SC_PAGE_SIZE)) {
+    // reserve a page worht of elements
+    reserve(page_size / sizeof(T));
   }
 
   StableVector(size_t count, const T& value = T()) : total_size(count), page_size(sysconf(_SC_PAGE_SIZE)) {
@@ -62,26 +85,14 @@ public:
   size_t nb_chunks() const {return data.size(); }
 
   void reserve(size_t new_cap) {
-    //TODO: detect if a chunk is not used at all and allow
-    // moving it in that case (i.e. not allocating a new chunk but
-    // directly reserving the new size on the last chunk)
-    if(new_cap > elem_capacity) {
-      size_t chunk_size = new_cap - elem_capacity;
-      std::vector<T> chunk;
-      data.push_back(std::vector<T>());
-      data.back().reserve(chunk_size);
-      elem_capacity += data.back().capacity();
-    }
-    else if(new_cap == 0 && elem_capacity == 0) {
-      reserve(page_size / sizeof(T));
-    }
+    pre_reserve(new_cap);
   }
 
   T& at(size_t pos) {
     size_t p = pos;
     for(auto& chunk : data) {
       if(p < chunk.size()) {
-        return chunk[p - pos];
+        return chunk[p];
       }
       p -= chunk.size();
     }
@@ -92,7 +103,7 @@ public:
     size_t p = pos;
     for(auto& chunk : data) {
       if(p < chunk.size()) {
-        return chunk[p - pos];
+        return chunk[p];
       }
       p -= chunk.size();
     }
@@ -103,25 +114,25 @@ public:
     size_t p = pos;
     for(auto& chunk : data) {
       if(p < chunk.size()) {
-        return chunk[pos];
+        return chunk[p];
       }
       p -= chunk.size();
     }
     //that will access out of bound memory
-    return (data.back())[pos];
+    return (data.back())[p];
   }
 
 
   const T& operator[](size_t pos) const {
-    size_t p = 0;
+    size_t p = pos;
     for(auto& chunk : data) {
-      p += chunk.size();
-      if(pos < p) {
-        return chunk[p - pos];
+      if(p < chunk.size()) {
+        return chunk[p];
       }
+      p -= chunk.size();
     }
     //that will access out of bound memory
-    return (data.back())[p - pos];
+    return (data.back())[p];
   }
 
   T& back() {
@@ -136,14 +147,14 @@ public:
     // do we need to allocate a new chunk?
     // we need last_chunk because people could have called reserve although there was
     // still some capacity in the last chunk
-    if(data[last_chunk].capacity() - data[last_chunk].size() > 0) {
+    if(data.size() > 0 && data[last_chunk].capacity() - data[last_chunk].size() > 0) {
       data[last_chunk].push_back(value);
     }
     else {
       //allocate a new chunk with double the size of the previous one
       //
-      reserve(nb_pages * page_size / sizeof(T));
-      last_chunk++;
+      bool res = pre_reserve(nb_pages * page_size / sizeof(T));
+      if(res) {last_chunk++;}
       nb_pages *= 2;
       data[last_chunk].push_back(value);
     }
@@ -155,18 +166,70 @@ public:
       data[last_chunk].push_back(value);
     }
     else {
-      reserve(nb_pages * page_size / sizeof(T));
-      last_chunk++;
+      bool res = pre_reserve(nb_pages * page_size / sizeof(T));
+      if(res) {last_chunk++;}
       nb_pages *= 2;
       data[last_chunk].push_back(value);
     }
     total_size++;
   }
 
+  void resize(size_t count) {
+    size_t to_add = count;
+    // is there capacity in the last chunk?
+    if(data.size() > 0 && data[last_chunk].capacity() > data[last_chunk].size()) {
+      data[0].resize(std::min(count, data[0].capacity()));
+      to_add -= data[last_chunk].size();
+    }
+    if(to_add > 0) {
+      data.push_back(std::vector<T>(to_add));
+    }
+    elem_capacity = std::max(elem_capacity, count);
+    total_size = count;
+  }
+
+  template< class InputIt>
+  StableVectorIterator<T> insert(StableVectorIterator<T> pos, InputIt first, InputIt last ) {
+    size_t length = last - first;
+    bool res = pre_reserve(length);
+
+    // insert in the remaining of the last chunk
+    size_t available_size_chunk = data[last_chunk].capacity() - data[last_chunk].size();
+
+    StableVectorIterator ret(*this, last_chunk, data[last_chunk].size() - 1);
+
+    if(available_size_chunk > 0) {
+      if(length < available_size_chunk) {
+        data[last_chunk].insert(data[last_chunk].end(), first, last);
+        return ret;
+      }
+      else {
+        data[last_chunk].insert(data[last_chunk].end(), first, first + available_size_chunk);
+      }
+    }
+    else {
+      ret.chunk_pos = last_chunk + 1;
+      ret.pos = 0;
+    }
+
+    assert(!res || available_size_chunk < length);
+
+    last_chunk++;
+    data[last_chunk].insert(data[last_chunk].end(), first + available_size_chunk, last);
+
+    total_size += length;
+
+    elem_capacity = std::max(elem_capacity, total_size);
+
+    return ret;
+  }
+
   void clear() {
     for(auto& chunk : data) {
       chunk.clear();
     }
+    last_chunk = 0;
+    total_size = 0;
   }
 
   bool empty() const noexcept {
@@ -174,12 +237,12 @@ public:
   }
 
   StableVectorIterator<T> begin() { return StableVectorIterator<T>(*this); }
-  StableVectorIterator<T> end() { return StableVectorIterator<T>(*this, data.size(), data.size() == 0 ? 0 : data[0].size()); }
+  StableVectorIterator<T> end() { return StableVectorIterator<T>(*this, data.size(), 0); }
   ConstStableVectorIterator<T> begin() const { return ConstStableVectorIterator<T>(*this); }
-  ConstStableVectorIterator<T> end() const { return ConstStableVectorIterator<T>(*this, data.size(), data.size() == 0 ? 0 : data[0].size()); }
+  ConstStableVectorIterator<T> end() const { return ConstStableVectorIterator<T>(*this, data.size(), 0); }
 
   ConstStableVectorIterator<T> cbegin() const { return ConstStableVectorIterator<T>(*this); }
-  ConstStableVectorIterator<T> cend() const { return ConstStableVectorIterator<T>(*this, data.size(), data.size() == 0 ? 0 : data[0].size()); }
+  ConstStableVectorIterator<T> cend() const { return ConstStableVectorIterator<T>(*this, data.size(), 0); }
 
   const std::vector<T>& chunk(size_t pos) const {
     return data.at(pos);
@@ -205,12 +268,11 @@ public:
 
 
   StableVectorIterator& operator++() {
-    if(pos < v.data[chunk_pos].size()) {
+    if(pos < v.data[chunk_pos].size() - 1) {
       pos++;
     }
     else {
       chunk_pos++;
-      assert(chunk_pos <= v.last_chunk);
       pos = 0;
     }
     return *this;
@@ -355,12 +417,11 @@ public:
 
 
   ConstStableVectorIterator& operator++() {
-    if(pos < v.data[chunk_pos].size()) {
+    if(pos < v.data[chunk_pos].size() - 1) {
       pos++;
     }
     else {
       chunk_pos++;
-      assert(chunk_pos <= v.last_chunk);
       pos = 0;
     }
     return *this;

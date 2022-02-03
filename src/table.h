@@ -305,7 +305,7 @@ private:
   using Table<T>::write_mode;
 
   mutable std::fstream file;
-  std::deque<T> store;
+  StableVector<T> store;
   uint64_t last_written = 0;
   mutable T data;
 public:
@@ -380,7 +380,7 @@ public:
     file.close();
   }
 
-  const std::deque<T>& memory_view() {
+  const StableVector<T>& memory_view() {
     if(!in_memory) {
       load_all();
     }
@@ -597,8 +597,9 @@ public:
         Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
       }
 
-      // There will be only one chunk at the begnning
+      // There will be only one chunk at the beginning
       // because the default StableVector constructor does not allocate at all.
+      // If there are no values at all, reserve will pre-allocate a page worth of values.
       store.reserve(n_values);
 
       std::copy(std::istream_iterator<line>(file),
