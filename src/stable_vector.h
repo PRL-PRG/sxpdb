@@ -40,8 +40,9 @@ private:
       if(data.size() > 0 && data[last_chunk].size() == 0) {
         // the last chunk is empty so we can directly extend it instead of
         // allocating a new chunk
+        size_t old_chunk_capacity = data[last_chunk].capacity();
         data[last_chunk].reserve(chunk_size + data[last_chunk].capacity());
-        elem_capacity += data.back().capacity();
+        elem_capacity += data.back().capacity() - old_chunk_capacity;
         return false;
       }
       else {
@@ -59,7 +60,7 @@ public:
   using value_type = T;
 
   StableVector() : page_size(sysconf(_SC_PAGE_SIZE)) {
-    // reserve a page worht of elements
+    // reserve a page worth of elements
     reserve(page_size / sizeof(T));
   }
 
@@ -153,7 +154,7 @@ public:
     else {
       //allocate a new chunk with double the size of the previous one
       //
-      bool res = pre_reserve(nb_pages * page_size / sizeof(T));
+      bool res = pre_reserve(elem_capacity + nb_pages * page_size / sizeof(T));
       if(res) {last_chunk++;}
       nb_pages *= 2;
       data[last_chunk].push_back(value);
@@ -166,7 +167,7 @@ public:
       data[last_chunk].push_back(value);
     }
     else {
-      bool res = pre_reserve(nb_pages * page_size / sizeof(T));
+      bool res = pre_reserve(elem_capacity + nb_pages * page_size / sizeof(T));
       if(res) {last_chunk++;}
       nb_pages *= 2;
       data[last_chunk].push_back(value);
@@ -191,7 +192,7 @@ public:
   template< class InputIt>
   StableVectorIterator<T> insert(StableVectorIterator<T> pos, InputIt first, InputIt last ) {
     size_t length = last - first;
-    bool res = pre_reserve(length);
+    bool res = pre_reserve(total_size + length);
 
     // insert in the remaining of the last chunk
     size_t available_size_chunk = data[last_chunk].capacity() - data[last_chunk].size();

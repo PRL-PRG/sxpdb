@@ -369,8 +369,8 @@ public:
   void load_all() override {
     store.resize(n_values);
     file.seekg(0);
-    for(uint64_t i = 0 ; i < n_values ; i++) {
-      file.read(reinterpret_cast<char*>(&store[i]), sizeof(T));
+    for(auto& v : store) {
+      file.read(reinterpret_cast<char*>(&v), sizeof(T));
     }
     in_memory = true;
     // all the values up to that index are already in the file
@@ -393,8 +393,8 @@ public:
       //only materialize new values
       file.open(file_path, std::fstream::out | std::fstream::binary);
       file.seekp(last_written * sizeof(T));
-      for(uint64_t i = last_written; i < n_values; i++) {
-        file.write(reinterpret_cast<char*>(&store[i]), sizeof(T));
+      for(auto it = store.begin() + last_written; it != store.end(); it++) {
+        file.write(reinterpret_cast<char*>(&(*it)), sizeof(T));
       }
       file.close();
     }
@@ -410,8 +410,8 @@ public:
       //only materialize new values
       file.open(file_path, std::fstream::out  | std::fstream::binary);
       file.seekp(last_written * sizeof(T));
-      for(uint64_t i = last_written; i < n_values; i++) {
-        file.write(reinterpret_cast<char*>(&store[i]), sizeof(T));
+      for(auto it = store.begin() + last_written; it != store.end(); it++) {
+        file.write(reinterpret_cast<char*>(&(*it)), sizeof(T));
       }
       file.close();
     }
