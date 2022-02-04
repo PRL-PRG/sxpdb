@@ -246,15 +246,17 @@ public:
   }
 
   void load_all() override {
-    store.resize(n_values);
-    file.seekg(0);
-    file.read(reinterpret_cast<char*>(store.data()), n_values * sizeof(T));
-    in_memory = true;
-    // all the values up to that index are already in the file
+    if(!in_memory) {
+      store.resize(n_values);
+      file.seekg(0);
+      file.read(reinterpret_cast<char*>(store.data()), n_values * sizeof(T));
+      in_memory = true;
+      // all the values up to that index are already in the file
 
-    // Now we can close the backing file a
-    // and open it only when when materializing the data back on disk
-    file.close();
+      // Now we can close the backing file a
+      // and open it only when when materializing the data back on disk
+      file.close();
+    }
   }
 
   const std::vector<T>& memory_view() {

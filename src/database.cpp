@@ -1288,6 +1288,10 @@ uint64_t Database::parallel_merge_in(const Database& other) {
 
   nb_total_values += elems_to_add.cardinality();
 
+  if(nb_total_values > old_total_values) {
+    new_elements = true;
+  }
+
   assert(nb_total_values >= old_total_values);
   assert(sexp_table.nb_values() == nb_total_values);
   assert(classes.nb_classnames() >= old_nb_classnames);
@@ -1378,6 +1382,10 @@ uint64_t Database::merge_in(const Database& other) {
                            other.origins.param_name(loc.param));
       }
     }
+  }
+
+  if(nb_total_values > old_total_values) {
+    new_elements = true;
   }
 
   assert(nb_total_values >= old_total_values);
