@@ -1116,6 +1116,7 @@ uint64_t Database::parallel_merge_in(const Database& other) {
 
   // first parallelize the search for not present hashes of the other db into the target one
   // then parallelize across the various tables
+  static_meta.load_all();
 
   assert(static_meta.loaded());
   assert(runtime_meta.loaded());
@@ -1131,7 +1132,7 @@ uint64_t Database::parallel_merge_in(const Database& other) {
   auto& sxp_index = sexp_index;
   uint64_t chunk_size = other.nb_total_values / nb_threads;
 
-  for(size_t i = 0, j = 0 ; i < other.nb_total_values; i += chunk_size, j++) {
+  for(size_t i = 0, j = 0 ; j < nb_threads; i += chunk_size, j++) {
     elems_fut[j] = pool.submit([](uint64_t start, uint64_t end,
                                   const FSizeMemoryViewTable<sexp_hash>& other_hashes,
                                   const sexp_hash_map& sxp_index) {
