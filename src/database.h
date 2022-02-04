@@ -108,6 +108,7 @@ public:
   // Merge two databases
   // returns the number of new values
   uint64_t merge_in(const Database& db);
+  uint64_t parallel_merge_in(const Database& other);
 
   // Adding R values/origins
   std::pair<const sexp_hash*, bool> add_value(SEXP val);//TODO this should add dummy origins

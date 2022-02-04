@@ -135,6 +135,8 @@ public:
   //virtual TableIterator<T> end() = 0;
 
   virtual const fs::path& get_path() const {return file_path;}
+
+  virtual bool loaded() const { return in_memory; }
 };
 
 //Table for fixed size elements

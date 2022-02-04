@@ -2,6 +2,8 @@
 
 #include "stable_vector.h"
 
+#include "thread_pool.hpp"
+
 Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   config_path(config_), base_path(fs::absolute(config_path.parent_path())), write_mode(write_mode_),   quiet(quiet_),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
@@ -1108,13 +1110,192 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::strin
   return res;
 }
 
-uint64_t Database::merge_in(const Database& other) {
+uint64_t Database::parallel_merge_in(const Database& other) {
   uint64_t old_total_values = nb_total_values;
   uint64_t old_nb_classnames = classes.nb_classnames();
 
-  // Parallelize mergin:
   // first parallelize the search for not present hashes of the other db into the target one
   // then parallelize across the various tables
+
+  assert(static_meta.loaded());
+  assert(runtime_meta.loaded());
+  assert(hashes.loaded());
+  assert(debug_counters.loaded());
+
+  size_t nb_threads = std::thread::hardware_concurrency() - 1;
+  thread_pool pool(nb_threads);
+
+  // 1st map: indexes in the other database of the elements to add
+  // 2nd map: indexes in the current database of the elements of the other database also present in the current database
+  std::vector<std::future<std::pair<roaring::Roaring64Map, roaring::Roaring64Map>>> elems_fut(nb_threads);
+  auto& sxp_index = sexp_index;
+  uint64_t chunk_size = nb_total_values / nb_threads;
+  size_t j = 0;
+  for(size_t i = 0 ; i < nb_total_values; i += chunk_size, j++) {
+    elems_fut[j] = pool.submit([&sxp_index, &other](uint64_t start, uint64_t end) {
+          roaring::Roaring64Map elems_not_present;
+          roaring::Roaring64Map elems_present;
+          sexp_hash key;
+          for(uint64_t i = start; i < end; i++) {
+            other.hashes.read_in(i, key);
+            auto idx = sxp_index.find(&key);
+            if(idx == sxp_index.end()) {
+              elems_not_present.add(i);
+            }
+            else {
+              elems_present.add(idx->second);
+            }
+          }
+          return std::pair<roaring::Roaring64Map, roaring::Roaring64Map>(elems_not_present, elems_present);
+    }, i, std::min(i + chunk_size, nb_total_values));
+  }
+
+  roaring::Roaring64Map elems_to_add;
+  roaring::Roaring64Map elems_present;
+  for(auto& fut : elems_fut) {
+    auto elems = fut.get();
+    elems_to_add |= elems.first;
+    elems_present |= elems.second;
+  }
+
+  // Now we have all the indexes of the elements to add
+
+  // Values
+  // They are not in memory so we cannot really parallelize better
+  pool.push_task([](const roaring::Roaring64Map& index, VSizeTable<std::vector<std::byte>>& table, const VSizeTable<std::vector<std::byte>>& other_table) {
+    for(uint64_t idx : index) {
+      table.append(other_table.read(idx));
+    }
+  }, std::cref(elems_to_add), std::ref(sexp_table), std::cref(other.sexp_table));
+
+  // We could use a parallel loop here as it is already in memory...
+
+  //// Runtime meta data
+  // Add the new ones
+  pool.push_task([](const roaring::Roaring64Map& index,FSizeTable<runtime_meta_t>& table, const FSizeTable<runtime_meta_t>& other_table) {
+    for(uint64_t idx : index) {
+      table.append(other_table.read(idx));
+    }
+  }, std::cref(elems_to_add), std::ref(runtime_meta), std::cref(other.runtime_meta));
+  // Update the already existing ones
+  pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_db, FSizeTable<runtime_meta_t>& table, const FSizeTable<runtime_meta_t>& other_table) {
+    auto other_already = to_add;
+    other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+
+    assert(other_already.cardinality() == already_db.cardinality());
+
+    runtime_meta_t meta;
+
+    for(auto db_it = already_db.begin(), other_it = other_already.begin(); db_it != already_db.end() ; db_it++, other_it++) {
+      table.read_in(*db_it, meta);
+      const runtime_meta_t& other_meta = other_table.read(*other_it);
+      meta.n_calls += other_meta.n_calls;
+      meta.n_merges++;
+      table.write(*db_it, meta);
+    }
+  }, std::cref(elems_to_add), std::cref(elems_present), std::ref(runtime_meta), std::cref(other.runtime_meta));
+
+#ifndef NDEBUG
+  //// Debug informations
+  // Add the new ones
+  pool.push_task([](const roaring::Roaring64Map& index,FSizeTable<debug_counters_t>& table, const FSizeTable<debug_counters_t>& other_table) {
+    for(uint64_t idx : index) {
+      table.append(other_table.read(idx));
+    }
+  }, std::cref(elems_to_add), std::ref(debug_counters), std::cref(other.debug_counters));
+  // Update the already existing ones
+  pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_db, FSizeTable<debug_counters_t>& table, const FSizeTable<debug_counters_t>& other_table) {
+    auto other_already = to_add;
+    other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+
+    assert(other_already.cardinality() == already_db.cardinality());
+
+    debug_counters_t dbg;
+
+    for(auto db_it = already_db.begin(), other_it = other_already.begin(); db_it != already_db.end() ; db_it++, other_it++) {
+      table.read_in(*db_it, dbg);
+      const debug_counters_t& other_dbg = other_table.read(*other_it);
+      dbg.n_maybe_shared += other_dbg.n_maybe_shared;
+      dbg.n_sexp_address_opt += other_dbg.n_sexp_address_opt;
+      table.write(*db_it, dbg);
+    }
+  }, std::cref(elems_to_add), std::cref(elems_present), std::ref(debug_counters), std::cref(other.debug_counters));
+#endif
+
+  // Hashes
+  pool.push_task([](const roaring::Roaring64Map& index, FSizeMemoryViewTable<sexp_hash>& table, const FSizeMemoryViewTable<sexp_hash>& other_table) {
+    for(uint64_t idx : index) {
+      table.append(other_table.read(idx));
+    }
+  }, std::cref(elems_to_add), std::ref(hashes), std::cref(other.hashes));
+
+  // Static meta data
+  pool.push_task([](const roaring::Roaring64Map& index,FSizeTable<static_meta_t>& table, const FSizeTable<static_meta_t>& other_table) {
+    for(uint64_t idx : index) {
+      table.append(other_table.read(idx));
+    }
+  }, std::cref(elems_to_add), std::ref(static_meta), std::cref(other.static_meta));
+
+
+  // Class names
+  pool.push_task([](const roaring::Roaring64Map& index, ClassNames& table, const ClassNames& other_table) {
+    for(uint64_t idx : index) {
+      for(const auto& class_id : other_table.get_classnames(idx)) {
+        table.add_classname(table.nb_values(), other_table.class_name(class_id));
+      }
+      if(other_table.get_classnames(idx).size() == 0) {
+        table.add_emptyclass(table.nb_values());
+      }
+    }
+  }, std::cref(elems_to_add), std::ref(classes), std::cref(other.classes));
+
+  //// Origins
+  // We have to do new values and old values together...
+  // As it is not everything in memory...
+  pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_here, Origins& origins, const Origins& other_origins) {
+    auto other_already = to_add;
+    other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+
+    assert(other_already.cardinality() == already_here.cardinality());
+
+    // new ones
+    uint64_t n_values = origins.nb_values();
+    for(uint64_t idx : to_add) {
+      for(const auto& loc : other_origins.get_locs(idx)) {
+        origins.add_origin(n_values, other_origins.package_name(loc.package),
+                           other_origins.function_name(loc.function),
+                           other_origins.param_name(loc.param));
+      }
+
+      n_values++;
+    }
+
+    // already present ones
+    for(auto it = already_here.begin(), other_it = other_already.begin() ; it != already_here.end(); it++, other_it ++) {
+      for(const auto& loc : other_origins.get_locs(*other_it)) {
+        origins.add_origin(*it, other_origins.package_name(loc.package),
+                           other_origins.function_name(loc.function),
+                           other_origins.param_name(loc.param));
+      }
+    }
+
+  }, std::cref(elems_to_add), std::cref(elems_present), std::ref(origins), std::cref(other.origins));
+
+  pool.wait_for_tasks();
+
+  nb_total_values += elems_to_add.cardinality();
+
+  assert(nb_total_values >= old_total_values);
+  assert(sexp_table.nb_values() == nb_total_values);
+  assert(classes.nb_classnames() >= old_nb_classnames);
+
+
+  return nb_total_values - old_total_values;
+}
+
+uint64_t Database::merge_in(const Database& other) {
+  uint64_t old_total_values = nb_total_values;
+  uint64_t old_nb_classnames = classes.nb_classnames();
 
   sexp_hash key;
   runtime_meta_t meta;
@@ -1123,6 +1304,10 @@ uint64_t Database::merge_in(const Database& other) {
      other.hashes.read_in(other_idx, key);
 
    // This will take time
+   // Lookup of data from the small db into the large db
+   // Assuming the lookup is O(1)
+   // It should be quicker than iterating the large db each time and
+   // looking up in the small db
     auto has_hash = sexp_index.find(&key);
 
     // It is not present in the target db
