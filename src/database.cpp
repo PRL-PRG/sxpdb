@@ -1128,12 +1128,12 @@ uint64_t Database::parallel_merge_in(const Database& other) {
 
   // 1st map: indexes in the other database of the elements to add
   // 2nd map: indexes in the current database of the elements of the other database also present in the current database
-  std::vector<std::future<std::pair<roaring::Roaring64Map, roaring::Roaring64Map>>> elems_fut(nb_threads);
-  auto& sxp_index = sexp_index;
+  std::vector<std::future<std::pair<roaring::Roaring64Map, roaring::Roaring64Map>>> elems_fut;
+
   uint64_t chunk_size = other.nb_total_values / nb_threads;
 
-  for(size_t i = 0, j = 0 ; j < nb_threads; i += chunk_size, j++) {
-    elems_fut[j] = pool.submit([](uint64_t start, uint64_t end,
+  for(size_t i = 0; i < other.nb_total_values; i += chunk_size) {
+    elems_fut.push_back(pool.submit([](uint64_t start, uint64_t end,
                                   const FSizeMemoryViewTable<sexp_hash>& other_hashes,
                                   const sexp_hash_map& sxp_index) {
           roaring::Roaring64Map elems_not_present;
@@ -1150,7 +1150,7 @@ uint64_t Database::parallel_merge_in(const Database& other) {
             }
           }
           return std::pair<roaring::Roaring64Map, roaring::Roaring64Map>(elems_not_present, elems_present);
-    }, i, std::min(i + chunk_size, other.nb_total_values), std::cref(other.hashes), std::cref(sexp_index));
+    }, i, std::min(i + chunk_size, other.nb_total_values), std::cref(other.hashes), std::cref(sexp_index)));
   }
 
   roaring::Roaring64Map elems_to_add;
