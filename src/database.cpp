@@ -1244,11 +1244,13 @@ uint64_t Database::parallel_merge_in(const Database& other) {
   pool.push_task([](const roaring::Roaring64Map& index, ClassNames& table, const ClassNames& other_table) {
     uint64_t n_values = table.nb_values();
     for(uint64_t idx : index) {
-      for(const auto& class_id : other_table.get_classnames(idx)) {
-        table.add_classname(n_values, other_table.class_name(class_id));
-      }
       if(other_table.get_classnames(idx).size() == 0) {
         table.add_emptyclass(n_values);
+      }
+      else {
+        for(const auto& class_id : other_table.get_classnames(idx)) {
+          table.add_classname(n_values, other_table.class_name(class_id));
+        }
       }
       n_values++;
     }
@@ -1296,6 +1298,10 @@ uint64_t Database::parallel_merge_in(const Database& other) {
 
   assert(nb_total_values >= old_total_values);
   assert(sexp_table.nb_values() == nb_total_values);
+  assert(classes.nb_values() == nb_total_values);
+  assert(hashes.nb_values() == nb_total_values);
+  assert(static_meta.nb_values() == nb_total_values);
+  assert(runtime_meta.nb_values() == nb_total_values);
   assert(classes.nb_classnames() >= old_nb_classnames);
 
 
