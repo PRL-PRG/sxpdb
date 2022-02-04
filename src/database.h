@@ -60,6 +60,8 @@ public:
   friend class SearchIndex;
   friend class Query;
 
+  typedef robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher, xxh128_pointer_equal> sexp_hash_map;
+
 private:
   uint64_t nb_total_values = 0;
   bool new_elements = false;
@@ -75,7 +77,7 @@ private:
   // search indexes and origin tables
   // **********************************
   FSizeMemoryViewTable<sexp_hash> hashes;
-  robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher, xxh128_pointer_equal> sexp_index;
+  sexp_hash_map sexp_index;
 
   VSizeTable<std::vector<std::byte>> sexp_table;
   FSizeTable<runtime_meta_t> runtime_meta;//Data that change at runtime

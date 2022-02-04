@@ -1129,15 +1129,17 @@ uint64_t Database::parallel_merge_in(const Database& other) {
   // 2nd map: indexes in the current database of the elements of the other database also present in the current database
   std::vector<std::future<std::pair<roaring::Roaring64Map, roaring::Roaring64Map>>> elems_fut(nb_threads);
   auto& sxp_index = sexp_index;
-  uint64_t chunk_size = nb_total_values / nb_threads;
-  size_t j = 0;
-  for(size_t i = 0 ; i < nb_total_values; i += chunk_size, j++) {
-    elems_fut[j] = pool.submit([&sxp_index, &other](uint64_t start, uint64_t end) {
+  uint64_t chunk_size = other.nb_total_values / nb_threads;
+
+  for(size_t i = 0, j = 0 ; i < other.nb_total_values; i += chunk_size, j++) {
+    elems_fut[j] = pool.submit([](uint64_t start, uint64_t end,
+                                  const FSizeMemoryViewTable<sexp_hash>& other_hashes,
+                                  const sexp_hash_map& sxp_index) {
           roaring::Roaring64Map elems_not_present;
           roaring::Roaring64Map elems_present;
           sexp_hash key;
           for(uint64_t i = start; i < end; i++) {
-            other.hashes.read_in(i, key);
+            other_hashes.read_in(i, key);
             auto idx = sxp_index.find(&key);
             if(idx == sxp_index.end()) {
               elems_not_present.add(i);
@@ -1147,7 +1149,7 @@ uint64_t Database::parallel_merge_in(const Database& other) {
             }
           }
           return std::pair<roaring::Roaring64Map, roaring::Roaring64Map>(elems_not_present, elems_present);
-    }, i, std::min(i + chunk_size, nb_total_values));
+    }, i, std::min(i + chunk_size, other.nb_total_values), std::cref(other.hashes), std::cref(sexp_index));
   }
 
   roaring::Roaring64Map elems_to_add;
