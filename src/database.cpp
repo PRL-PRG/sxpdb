@@ -1242,13 +1242,15 @@ uint64_t Database::parallel_merge_in(const Database& other) {
 
   // Class names
   pool.push_task([](const roaring::Roaring64Map& index, ClassNames& table, const ClassNames& other_table) {
+    uint64_t n_values = table.nb_values();
     for(uint64_t idx : index) {
       for(const auto& class_id : other_table.get_classnames(idx)) {
-        table.add_classname(table.nb_values(), other_table.class_name(class_id));
+        table.add_classname(n_values, other_table.class_name(class_id));
       }
       if(other_table.get_classnames(idx).size() == 0) {
-        table.add_emptyclass(table.nb_values());
+        table.add_emptyclass(n_values);
       }
+      n_values++;
     }
   }, std::cref(elems_to_add), std::ref(classes), std::cref(other.classes));
 
