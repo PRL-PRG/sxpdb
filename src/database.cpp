@@ -1152,6 +1152,7 @@ uint64_t Database::parallel_merge_in(const Database& other) {
           return std::pair<roaring::Roaring64Map, roaring::Roaring64Map>(elems_not_present, elems_present);
     }, i, std::min(i + chunk_size, other.nb_total_values), std::cref(other.hashes), std::cref(sexp_index)));
   }
+  pool.wait_for_tasks();// get should also wait anyway
 
   roaring::Roaring64Map elems_to_add;
   roaring::Roaring64Map elems_present;
@@ -1183,7 +1184,12 @@ uint64_t Database::parallel_merge_in(const Database& other) {
   // Update the already existing ones
   pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_db, FSizeTable<runtime_meta_t>& table, const FSizeTable<runtime_meta_t>& other_table) {
     auto other_already = to_add;
-    other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+    if(!to_add.isEmpty()) {
+      other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+    }
+    else {
+      other_already.addRange(0, other_table.nb_values());
+    }
 
     assert(other_already.cardinality() == already_db.cardinality());
 
@@ -1209,7 +1215,16 @@ uint64_t Database::parallel_merge_in(const Database& other) {
   // Update the already existing ones
   pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_db, FSizeTable<debug_counters_t>& table, const FSizeTable<debug_counters_t>& other_table) {
     auto other_already = to_add;
-    other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+
+
+    // the indexes in the other db which need to be used to be modified are the negation of the ones that have to be added
+    // mimimum returns garbage if to_add is empty
+    if(!to_add.isEmpty()) {
+      other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+    }
+    else {
+      other_already.addRange(0, other_table.nb_values());
+    }
 
     assert(other_already.cardinality() == already_db.cardinality());
 
@@ -1261,7 +1276,12 @@ uint64_t Database::parallel_merge_in(const Database& other) {
   // As it is not everything in memory...
   pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_here, Origins& origins, const Origins& other_origins) {
     auto other_already = to_add;
-    other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+    if(!to_add.isEmpty()) {
+      other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+    }
+    else {
+      other_already.addRange(0, other_origins.nb_values());
+    }
 
     assert(other_already.cardinality() == already_here.cardinality());
 
