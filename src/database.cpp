@@ -1110,7 +1110,7 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::strin
   return res;
 }
 
-uint64_t Database::parallel_merge_in(const Database& other) {
+uint64_t Database::parallel_merge_in(const Database& other, uint64_t min_chunk_size) {
   uint64_t old_total_values = nb_total_values;
   uint64_t old_nb_classnames = classes.nb_classnames();
 
@@ -1130,7 +1130,11 @@ uint64_t Database::parallel_merge_in(const Database& other) {
   // 2nd map: indexes in the current database of the elements of the other database also present in the current database
   std::vector<std::future<std::pair<roaring::Roaring64Map, roaring::Roaring64Map>>> elems_fut;
 
-  uint64_t chunk_size = other.nb_total_values / nb_threads;
+  // chunk_size could be 0 otherwise
+  //TODO: benchmark to see what is the best minimum size
+  // Maybe it also depends on the number of values in the the current database (and not only in the other db)
+
+  uint64_t chunk_size = std::max(other.nb_total_values / nb_threads, min_chunk_size);
 
   for(size_t i = 0; i < other.nb_total_values; i += chunk_size) {
     elems_fut.push_back(pool.submit([](uint64_t start, uint64_t end,
