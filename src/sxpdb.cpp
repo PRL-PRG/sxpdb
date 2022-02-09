@@ -445,6 +445,7 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
   }
   Database* db2 = static_cast<Database*>(ptr2);
 
+  uint64_t nb_new_values = 0;
   try{
     db1->merge_in(*db2);
   }

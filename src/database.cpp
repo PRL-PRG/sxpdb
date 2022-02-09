@@ -205,12 +205,12 @@ void Database::write_configuration() {
   conf["devel"] = std::to_string(version_development);
   conf["nb_values"] = std::to_string(nb_total_values);
 
-  conf["sexp_table"] = sexp_table.get_path().string();
-  conf["hashes_table"] = hashes.get_path().string();
-  conf["runtime_meta"] = runtime_meta.get_path().string();
-  conf["static_meta"] = static_meta.get_path().string();
+  conf["sexp_table"] = fs::relative(sexp_table.get_path(), base_path).string();
+  conf["hashes_table"] = fs::relative(hashes.get_path(), base_path).string();
+  conf["runtime_meta"] = fs::relative(runtime_meta.get_path(), base_path).string();
+  conf["static_meta"] = fs::relative(static_meta.get_path(), base_path).string();
 #ifndef NDEBUG
-  conf["debug_counters"] = debug_counters.get_path().string();
+  conf["debug_counters"] = fs::relative(debug_counters.get_path(), base_path).string();
 #endif
   conf["compilation_time"] = std::string(__DATE__) + ":" + __TIME__;
 
