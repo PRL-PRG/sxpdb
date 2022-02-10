@@ -18,6 +18,8 @@ private:
   std::vector<std::vector<uint32_t>> classes;
   UniqTextTable class_names;
 
+  std::unique_ptr<VSizeTable<std::vector<uint32_t>>> class_table;
+
   std::vector<uint32_t> empty_class;
   std::vector<uint32_t> dummy_class = {0};
 
@@ -33,25 +35,26 @@ public:
     write_mode = write;
     base_path = fs::absolute(base_path_);
 
-    VSizeTable<std::vector<uint32_t>> class_table(base_path / "classes.bin", write_mode);
+    class_table = std::make_unique<VSizeTable<std::vector<uint32_t>>>(base_path / "classes.bin", write_mode);
     class_names.open(base_path / "classnames.bin", true);// we always want the reverse index to be built
 
     class_names.load_all();
 
-    // populate classes
-
-
-    // if the class names are empty, we inject the empty class name, for values without class names
-    // (we only store class names for objects, i.e. the old class name)
-    classes.clear();
-    classes.resize(class_table.nb_values());
-    for(uint64_t i = 0 ; i < class_table.nb_values(); i++) {
-        const std::vector<uint32_t>& names = class_table.read(i);
+    // populate classes only in write_mode
+    if(write_mode) {
+      // if the class names are empty, we inject the empty class name, for values without class names
+      // (we only store class names for objects, i.e. the old class name)
+      classes.clear();
+      classes.resize(class_table->nb_values());
+      for(uint64_t i = 0 ; i < class_table->nb_values(); i++) {
+        const std::vector<uint32_t>& names = class_table->read(i);
         assert(names.size() > 0);
         if(names.size() != 1 || names[0] != 0) { // the value has a class
           classes[i].reserve(names.size());
           classes[i].insert(classes[i].end(), names.begin(), names.end());
         }
+      }
+      class_table.reset();// we will create a new one in the destructor if in write_mode
     }
 
     // inject an empty string at position 0
@@ -64,6 +67,7 @@ public:
   }
 
   void add_classnames(uint64_t index, SEXP klass) {
+    assert(write_mode);
     assert(pid == getpid());
     if(index != classes.size()) {
       Rf_error("Cannot add a classname for a value that was not recorded in the main table."
@@ -90,6 +94,7 @@ public:
   }
 
   void add_classname(uint64_t index, const std::string& classname) {
+    assert(write_mode);
     uint32_t idx = class_names.append_index(classname);
     if(classes.size() == index) {
       classes.push_back({idx});
@@ -98,21 +103,34 @@ public:
   }
 
   void add_emptyclass(uint64_t index) {
+    assert(write_mode);
     if(classes.size() == index) {
       classes.push_back(empty_class);
     }
   }
 
   const std::vector<uint32_t>& get_classnames(uint64_t index) const {
-    assert(index < classes.size());
-    return classes[index];
-  }
+    assert(index < nb_values());
+    if(write_mode) {
+      return classes[index];
+    }
+    else {
+      return class_table->read(index);
+    }
+ }
 
   uint32_t nb_classnames() const {return class_names.nb_values() - 1; }
 
   const std::string& class_name(uint32_t i) const { return class_names.read(i); }
 
-  uint64_t nb_values() const { return classes.size() ; }
+  uint64_t nb_values() const {
+    if(write_mode) {
+      return classes.size();
+    }
+    else {
+      return class_table->nb_values();
+    }
+  }
 
   SEXP class_name_cache() const { return class_names.to_sexp();}
 
