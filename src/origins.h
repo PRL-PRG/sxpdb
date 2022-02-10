@@ -66,10 +66,13 @@ private:
 
   robin_hood::unordered_set<location_t> dummy_loc;
   robin_hood::unordered_set<location_t> empty_loc;
+  mutable std::vector<location_t> current_loc;
 
   UniqTextTable package_names;
   UniqTextTable function_names;
   UniqTextTable param_names;
+
+  std::unique_ptr<VSizeTable<std::vector<location_t>>> location_table;
 
   bool new_origins;
   bool write_mode = false;
@@ -86,7 +89,7 @@ public:
     write_mode = write;
     base_path = fs::absolute(base_path_);
 
-    VSizeTable<std::vector<location_t>> location_table(base_path / "origins.bin", write_mode);
+    location_table = std::make_unique<VSizeTable<std::vector<location_t>>>(base_path / "origins.bin", write_mode);
     package_names.open(base_path / "packages.bin", write_mode);
     function_names.open(base_path/ "functions.bin", write_mode);
     param_names.open(base_path/ "params.bin", write_mode);
@@ -95,25 +98,30 @@ public:
     function_names.load_all();
     param_names.load_all();
 
-    // Now populate the locations
-    locations.clear();
-    locations.resize(location_table.nb_values());
-    for(uint64_t i = 0; i < location_table.nb_values() ; i++) {
-      const std::vector<location_t>& locs = location_table.read(i);
-      locations[i].reserve(locs.size());
-      if(locs.size() > 1 || (locs.size() == 1 && !(locs[0] == location_t(0, 0, 0)))) {
-        locations[i].insert(locs.begin(), locs.end());
+    if(write_mode) {
+      // Now populate the locations
+      locations.clear();
+      locations.resize(location_table->nb_values());
+      for(uint64_t i = 0; i < location_table->nb_values() ; i++) {
+        const std::vector<location_t>& locs = location_table->read(i);
+        locations[i].reserve(locs.size());
+        if(locs.size() > 1 || (locs.size() == 1 && !(locs[0] == location_t(0, 0, 0)))) {
+          locations[i].insert(locs.begin(), locs.end());
 #ifndef NDEBUG
-      for(const auto& loc : locs) {
-        assert(loc.package < package_names.nb_values());
-        assert(loc.function < function_names.nb_values());
-        assert(loc.param< param_names.nb_values());
-      }
+          for(const auto& loc : locs) {
+            assert(loc.package < package_names.nb_values());
+            assert(loc.function < function_names.nb_values());
+            assert(loc.param< param_names.nb_values());
+          }
 #endif
+        }
+        else {
+          assert(locations[i].empty());
+        }
       }
-      else {
-        assert(locations[i].empty());
-      }
+      // destroy the location table
+      // We will build it again in the destructor
+      location_table.reset();
     }
     // inject empty strings in each table, at positions 0
     // it will be used for the empty origins
@@ -129,6 +137,7 @@ public:
   }
 
   void add_origin(uint64_t index, const std::string& package_name, const std::string& function_name, const std::string& param_name) {
+      assert(write_mode);
       assert(pid == getpid());
       if(index > locations.size()) {
         Rf_error("Cannot add an origin for a value that was not recorded in the main table."
@@ -156,15 +165,33 @@ public:
   }
 
   void append_empty_origin() {
+    assert(write_mode);
     locations.push_back(empty_loc);
   }
 
-  const robin_hood::unordered_set<location_t>& get_locs(uint64_t index) const {
-    if(index < locations.size()) {
-      return locations[index];
+  const std::vector<location_t>& get_locs(uint64_t index) const {
+    if(write_mode) { // we read from memory
+      if(index < locations.size()) {
+        current_loc.clear();
+        auto locs_set = locations[index];
+        current_loc.insert(current_loc.end(), locs_set.begin(), locs_set.end());
+
+        return current_loc;
+      }
+      else {
+        current_loc.clear();
+        return current_loc;
+      }
     }
     else {
-      return empty_loc;
+      auto& locs = location_table->read(index);
+
+      if(locs.size() > 1 || (locs.size() == 1 && !(locs[0] == location_t(0, 0, 0)))) {
+        return locs;
+      }
+      else {
+        return current_loc;// it should be empty by default as we are in read mode
+      }
     }
   }
 
@@ -174,8 +201,6 @@ public:
 
   const std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> source_locations(uint64_t index) const {
     auto locs = get_locs(index);
-
-
 
     std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> str_locs;
     str_locs.reserve(locs.size());
@@ -232,7 +257,14 @@ public:
     }
   }
 
-  uint64_t nb_values() const { return locations.size(); }
+  uint64_t nb_values() const {
+    if(write_mode) {
+      return locations.size();
+    }
+    else {
+      return location_table->nb_values();
+    }
+  }
 };
 
 #endif
