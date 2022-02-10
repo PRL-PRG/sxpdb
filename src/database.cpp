@@ -44,13 +44,13 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
                  version_major, version_minor, version_patch, version_development);
     }
 
-    sexp_table_path = config["sexp_table"];
-    hashes_path = config["hashes_table"];
-    runtime_meta_path = config["runtime_meta"];
-    static_meta_path = config["static_meta"];
+    sexp_table_path = base_path / config["sexp_table"];
+    hashes_path = base_path / config["hashes_table"];
+    runtime_meta_path = base_path / config["runtime_meta"];
+    static_meta_path = base_path / config["static_meta"];
 
     if(config.has_key("debug_counters")) {
-      debug_counters_path = config["debug_counters"];
+      debug_counters_path = base_path / config["debug_counters"];
     }
     else {
 #ifndef NDEBUG
