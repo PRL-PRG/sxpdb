@@ -570,6 +570,8 @@ private:
   robin_hood::unordered_map<const std::string*, uint64_t, string_pointer_hasher, string_pointer_equal> unique_lines;
   uint64_t last_written = 0;
 
+  bool unique_loaded = false;
+
 public:
   class line {
     std::string data;
@@ -617,21 +619,27 @@ public:
 
     // Only populate the hash table in write mode
     if(write_mode) {
-      // Populate the hash table
-      unique_lines.reserve(store.size());
-      assert(store.nb_chunks() == 1);
-      auto chunk = store.chunk(0);
-      for(uint64_t i = 0; i < chunk.size() ; i++) {
-        unique_lines.insert({&chunk[i], i});
-      }
-
-      assert(unique_lines.size() == n_values);// the file should contain unique names
+      load_unique();
     }
 
     assert(n_values == store.size());
 
     in_memory = true;
 
+  }
+
+  void load_unique() {
+    // Populate the hash table
+    unique_lines.reserve(store.size());
+    assert(store.nb_chunks() == 1);
+    auto chunk = store.chunk(0);
+    for(uint64_t i = 0; i < chunk.size() ; i++) {
+      unique_lines.insert({&chunk[i], i});
+    }
+
+    assert(unique_lines.size() == n_values);// the file should contain unique names
+
+    unique_loaded = true;
   }
 
   uint64_t append_index(const std::string& value) {
@@ -671,6 +679,7 @@ public:
   }
 
   std::optional<uint64_t> get_index(const std::string& value) const {
+    assert(unique_loaded);
     auto it = unique_lines.find(&value);
     if(it != unique_lines.end()) {
       return it->second;
@@ -685,7 +694,11 @@ public:
   }
 
   // Nothing to do as it is already in memory
-  void load_all() override { }
+  void load_all() override {
+    if(!unique_loaded) {
+      load_unique();
+    }
+  }
 
   virtual ~UniqTextTable() {
     int nb_new_elements = n_values - last_written;

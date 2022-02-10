@@ -36,9 +36,10 @@ public:
     base_path = fs::absolute(base_path_);
 
     class_table = std::make_unique<VSizeTable<std::vector<uint32_t>>>(base_path / "classes.bin", write_mode);
-    class_names.open(base_path / "classnames.bin", true);// we always want the reverse index to be built
 
-    class_names.load_all();
+    // this will need to be loaded if we have to build the search indexes
+    // classnames provide load_all for that
+    class_names.open(base_path / "classnames.bin", write_mode);
 
     // populate classes only in write_mode
     if(write_mode) {
@@ -130,6 +131,10 @@ public:
     else {
       return class_table->nb_values();
     }
+  }
+
+  void load_all() {
+    class_names.load_all();
   }
 
   SEXP class_name_cache() const { return class_names.to_sexp();}

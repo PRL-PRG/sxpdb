@@ -94,10 +94,6 @@ public:
     function_names.open(base_path/ "functions.bin", write_mode);
     param_names.open(base_path/ "params.bin", write_mode);
 
-    package_names.load_all();
-    function_names.load_all();
-    param_names.load_all();
-
     if(write_mode) {
       // Now populate the locations
       locations.clear();

@@ -150,7 +150,12 @@ public:
   const SEXP map(Query& query, const SEXP function);
 
   //Rebuilding the indexes from scratch
-  void build_indexes() { search_index.build_indexes(*this) ; }
+  void build_indexes() {
+    //it populates a hash table
+    // required to build later the reverse index
+    classes.load_all();
+    search_index.build_indexes(*this) ;
+  }
 
   // Utilities
   const std::vector<size_t> check(bool slow_check);
