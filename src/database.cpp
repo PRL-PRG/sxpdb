@@ -79,6 +79,9 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     lock_file << std::chrono::system_clock::now().time_since_epoch().count() << std::endl;
   }
 
+  size_t nb_threads = std::thread::hardware_concurrency() - 1;
+  thread_pool pool(nb_threads);
+
   if(!quiet) Rprintf("Loading tables.\n");
   sexp_table.open(sexp_table_path, write_mode);
   hashes.open(hashes_path, write_mode);
@@ -87,10 +90,10 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   debug_counters.open(debug_counters_path, write_mode);
 
   if(!quiet) Rprintf("Loading origins.\n");
-  origins.open(base_path, write_mode);
+  pool.push_task([&](const fs::path& base_path, bool write_mode) {origins.open(base_path, write_mode);}, base_path, write_mode);
 
   if(!quiet) Rprintf("Loading class names.\n");
-  classes.open(base_path, write_mode);
+  pool.push_task([&](const fs::path& base_path, bool write_mode) {classes.open(base_path, write_mode);}, base_path, write_mode);
 
   // Check if the number of values in tables are coherent
   if(sexp_table.nb_values() != nb_total_values) {
@@ -113,6 +116,13 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
                "in the static_meta table: %lu vs %lu\n", nb_total_values, static_meta.nb_values());
   }
 
+  if(debug_counters.nb_values() != 0 && debug_counters.nb_values() != nb_total_values) {
+    Rf_error("Inconsistent number of values in the global configuration file and "
+               "in the debug counters tables: %lu vs %lu.\n", nb_total_values, debug_counters.nb_values());
+  }
+
+  pool.wait_for_tasks();
+
   if(origins.nb_values() > nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
                "in the origin tables: %lu vs %lu.\n", nb_total_values, origins.nb_values());
@@ -121,11 +131,6 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   if(classes.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
                "in the class tables: %lu vs %lu.\n", nb_total_values, classes.nb_values());
-  }
-
-  if(debug_counters.nb_values() != 0 && debug_counters.nb_values() != nb_total_values) {
-    Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the debug counters tables: %lu vs %lu.\n", nb_total_values, debug_counters.nb_values());
   }
 
   if(to_check) {
