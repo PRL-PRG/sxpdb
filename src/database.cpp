@@ -4,8 +4,8 @@
 
 #include "thread_pool.hpp"
 
-Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
-  config_path(config_), base_path(fs::absolute(config_path.parent_path())), write_mode(write_mode_),   quiet(quiet_),
+Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
+  config_path(config_), base_path(fs::absolute(config_path.parent_path())), mode(mode_),   quiet(quiet_),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
   pid(getpid()),
   ser(4096) // does it fit in the processor caches?
@@ -22,7 +22,7 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
   if(std::filesystem::exists(config_path)) {
     // Check the lock file
-    if(std::filesystem::exists(lock_path) && write_mode) {
+    if(std::filesystem::exists(lock_path) && mode == OpenMode::Write) {
       Rprintf("Database did not exit properly. Will perform check_db in slow mode.\n");
       Rprintf("It might also be because the database is also open in write mode from another process.\n");
       to_check = true;
@@ -66,21 +66,26 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
 
     nb_total_values = std::stoul(config["nb_values"]);
   }
-  else {
+  else if (mode == OpenMode::Write) {
     if(!quiet) Rprintf("Creating new database at %s.\n", base_path.c_str());
 
     //This will also set-up the paths for the search index
     write_configuration();
   }
+  else {
+    Rf_error("Cannot read data base at %s. Path does not exist.\n", base_path.c_str());
+  }
 
   // We can now create the lock file if we are in write mode
-  if(!to_check && write_mode) {
+  if(!to_check && mode == OpenMode::Write) {
     std::ofstream lock_file(lock_path);
     lock_file << std::chrono::system_clock::now().time_since_epoch().count() << std::endl;
   }
 
   size_t nb_threads = std::thread::hardware_concurrency() - 1;
   thread_pool pool(nb_threads);
+
+  bool write_mode = mode == OpenMode::Write;
 
   if(!quiet) Rprintf("Loading tables.\n");
   sexp_table.open(sexp_table_path, write_mode);
@@ -95,10 +100,35 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   if(!quiet) Rprintf("Loading class names.\n");
   pool.push_task([&](const fs::path& base_path, bool write_mode) {classes.open(base_path, write_mode);}, base_path, write_mode);
 
+  if(mode == OpenMode::Write || mode == OpenMode::Merge) {
+    if(!quiet) Rprintf("Loading runtime changing metadata into memory.\n");
+    pool.push_task([&]() {runtime_meta.load_all();});
+
+    if(!quiet) Rprintf("Loading debug counters into memory.\n");
+    pool.push_task([&]() {debug_counters.load_all(); } );
+
+
+    if(!quiet) Rprintf("Loading hashes into memory.\n");
+    // Load the hashes and build the hash map
+    pool.push_task([&]() {
+      hashes.load_all();
+      const StableVector<sexp_hash>& hash_vec = hashes.memory_view();
+
+      if(!quiet) Rprintf("Allocating memory for the hash table.\n");
+      sexp_index.reserve(hashes.nb_values());
+      if(!quiet) Rprintf("Building the hash table.\n");
+      for(uint64_t i = 0; i < hash_vec.size() ; i++) {
+        sexp_index.insert({&hash_vec[i], i});
+      }
+    });
+  }
+
+  pool.wait_for_tasks();
+
   // Check if the number of values in tables are coherent
   if(sexp_table.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
-                "in the sexp table: %lu vs %lu\n", nb_total_values, sexp_table.nb_values());
+               "in the sexp table: %lu vs %lu\n", nb_total_values, sexp_table.nb_values());
   }
 
   if(hashes.nb_values() != nb_total_values) {
@@ -121,8 +151,6 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
                "in the debug counters tables: %lu vs %lu.\n", nb_total_values, debug_counters.nb_values());
   }
 
-  pool.wait_for_tasks();
-
   if(origins.nb_values() > nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
                "in the origin tables: %lu vs %lu.\n", nb_total_values, origins.nb_values());
@@ -144,28 +172,6 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
     }
   }
 
-  if(write_mode) {
-    if(!quiet) Rprintf("Loading runtime changing metadata into memory.\n");
-    runtime_meta.load_all();
-
-    if(!quiet) Rprintf("Loading debug counters into memory.\n");
-    debug_counters.load_all();
-
-
-    if(!quiet) Rprintf("Loading hashes into memory.\n");
-    // Load the hashes and build the hash map
-    hashes.load_all();
-    const StableVector<sexp_hash>& hash_vec = hashes.memory_view();
-
-    if(!quiet) Rprintf("Allocating memory for the hash table.\n");
-    sexp_index.reserve(hashes.nb_values());
-    if(!quiet) Rprintf("Building the hash table.\n");
-    for(uint64_t i = 0; i < hash_vec.size() ; i++) {
-      sexp_index.insert({&hash_vec[i], i});
-    }
-
-  }
-
   if(!quiet) {
     Rprintf("Loaded database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters, with %lu classes.\n",
             base_path.c_str(), nb_total_values,
@@ -176,7 +182,6 @@ Database:: Database(const fs::path& config_, bool write_mode_, bool quiet_) :
   }
 
 }
-
 
 Database::~Database() {
   if(!quiet) {
@@ -189,12 +194,12 @@ Database::~Database() {
   }
 
   if(pid == getpid()) {
-    if(write_mode && (new_elements || nb_total_values == 0)) {
+    if(mode == OpenMode::Write && (new_elements || nb_total_values == 0)) {
       write_configuration();
     }
 
     // Remove the LOCK to witness that the database left without problems
-    if(write_mode) {
+    if(mode == OpenMode::Write) {
       fs::path lock_path = base_path / ".LOCK";
       fs::remove(lock_path);
     }
@@ -202,6 +207,7 @@ Database::~Database() {
 }
 
 void Database::write_configuration() {
+  assert(mode == OpenMode::Write);
   std::unordered_map<std::string, std::string> conf;
 
   conf["major"] = std::to_string(version_major);
@@ -231,7 +237,7 @@ std::optional<uint64_t> Database::have_seen(SEXP val) const {
   std::optional<sexp_hash> key;
   // if we are in write mode, we can bother looking into the cache of SEXP
   // if it is in, it means we already saw the value
-  if(write_mode) {
+  if(mode == OpenMode::Write) {
     auto res = cached_sexp(val);
     if(res) {
       return *res;
@@ -275,17 +281,6 @@ const SEXP Database::get_value(uint64_t index) const {
   SEXP res = ser.unserialize(buf);
 
   return res;
-}
-
-const SEXP Database::explain_value_header(uint64_t index) const {
-  if(index >= sexp_table.nb_values()) {
-    return R_NilValue;
-  }
-
-  std::vector<std::byte> buf;
-  sexp_table.read_in(index, buf);
-
-  return Serializer::analyze_header(buf);
 }
 
 

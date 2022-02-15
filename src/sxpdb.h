@@ -17,11 +17,11 @@ extern "C" {
  * This function must be called first.
  * @method open_db
  * @param filename
- * @param write_mode boolean open the database in write mode or read mode. Read mode does not load into memory as much
+ * @param mode boolean or "merge" open the database in write (T), read (F) or merge mode. Read and merge mode do not load into memory as much
  * @param quiet boolean print helpful messages or not
  * @return R_NilValue on error, a external pointer to the database on success
  */
-SEXP open_db(SEXP filename, SEXP write_mode, SEXP quiet);
+SEXP open_db(SEXP filename, SEXP mode, SEXP quiet);
 
 /**
  * This function closes the database, materializes totally on disk.
@@ -222,14 +222,6 @@ SEXP view_origins(SEXP sxpdb);
  * @return R_NilValue
  */
 SEXP build_indexes(SEXP sxpdb);
-
-/**
- * @method explain_header
- * @param sxpdb external pointer to the target database
- * @param index integer index of the value for which we want to explain the header of the serialized value
- * @return explanation of the header (version, R version, R min version, encoding, size of the header)
- */
-SEXP explain_header(SEXP sxpdb, SEXP index);
 
 /**
  * @method write_mode

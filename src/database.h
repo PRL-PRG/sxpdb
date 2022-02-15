@@ -62,10 +62,11 @@ public:
 
   typedef robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher, xxh128_pointer_equal> sexp_hash_map;
 
+  enum class OpenMode {Read, Write, Merge};
 private:
   uint64_t nb_total_values = 0;
   bool new_elements = false;
-  bool write_mode;
+  OpenMode mode;
   bool quiet;
   pid_t pid;
   std::default_random_engine rand_engine;
@@ -105,7 +106,7 @@ private:
 public:
   // write_mode entails loading more data structures in memory
   // So choosing to read only should be much quicker if the goal is just to sample from the database
-  Database(const fs::path& config_, bool write_mode = false, bool quiet_ = true);
+  Database(const fs::path& config_, OpenMode mode, bool quiet_ = true);
 
   // Merge two databases
   // returns the number of new values
@@ -124,7 +125,6 @@ public:
   const SEXP get_value(uint64_t index) const;
   const SEXP get_metadata(uint64_t index) const;
   const std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> source_locations(uint64_t index) const;
-  const SEXP explain_value_header(uint64_t index) const;
 
   //Accessors for sampling
   const SEXP sample_value();
@@ -162,7 +162,7 @@ public:
   const fs::path& configuration_path() const {return config_path; }
   uint64_t nb_values() const { return nb_total_values; }
 
-  bool rw_mode() const { return write_mode; }
+  bool rw_mode() const { return mode == OpenMode::Write; }
 
   virtual ~Database();
 

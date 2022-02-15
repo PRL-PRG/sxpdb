@@ -8,10 +8,20 @@
 
 #define EMPTY_ORIGIN_PART ""
 
-SEXP open_db(SEXP filename, SEXP write_mode, SEXP quiet) {
+SEXP open_db(SEXP filename, SEXP mode_, SEXP quiet) {
   Database* db = nullptr;
+
+  auto mode = Database::OpenMode::Read;
+
+  if(TYPEOF(mode_) == LGLSXP) {
+    mode = Rf_asLogical(mode_) ? Database::OpenMode::Write : Database::OpenMode::Read;
+  }
+  else if (TYPEOF(mode_) == STRSXP && Rf_length(mode_) > 0 && std::string(CHAR(STRING_ELT(mode_, 0))) == "merge") {
+    mode = Database::OpenMode::Merge;
+  }
+
   try{
-    db = new Database(CHAR(STRING_ELT(filename, 0)), Rf_asLogical(write_mode), Rf_asLogical(quiet));
+    db = new Database(CHAR(STRING_ELT(filename, 0)), mode, Rf_asLogical(quiet));
   }
   catch(std::exception& e) {
     Rf_error("Error opening the database %s : %s\n", CHAR(STRING_ELT(filename, 0)), e.what());
@@ -585,15 +595,6 @@ SEXP build_indexes(SEXP sxpdb) {
   return R_NilValue;
 }
 
-SEXP explain_header(SEXP sxpdb, SEXP index) {
-  void* ptr = R_ExternalPtrAddr(sxpdb);
-  if(ptr== nullptr) {
-    return R_NilValue;
-  }
-  Database* db = static_cast<Database*>(ptr);
-
-  return db->explain_value_header(Rf_asInteger(index));
-}
 
 SEXP write_mode(SEXP sxpdb) {
   void* ptr = R_ExternalPtrAddr(sxpdb);
