@@ -66,6 +66,9 @@ public:
   // Just pass the db, we can then access the search index from it
   void update(const Database& db);
 
+  // If the index cache is not initialized, it will return 0
+  uint64_t nb_values() const { return index_cache.cardinality(); }
+
   std::optional<uint64_t> sample(std::default_random_engine& rand_engine) {
     if(index_cache.cardinality() == 0) {
       return {};

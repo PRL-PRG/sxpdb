@@ -34,6 +34,12 @@ static const R_CallMethodDef callMethods[] = {
 	{"view_origins",    (DL_FUNC) &view_origins,    1},
 	{"build_indexes",  (DL_FUNC) &build_indexes,    1},
 	{"write_mode",     (DL_FUNC) &write_mode,       1},
+	{"query_from_value", (DL_FUNC) &query_from_value, 1},
+	{"close_query", (DL_FUNC) &close_query, 1},
+	{"relax_query", (DL_FUNC) &relax_query, 2},
+	{"sample_from_query", (DL_FUNC) &sample_from_query, 2},
+	{"is_query_empty", (DL_FUNC) &is_query_empty, 1},
+
 
 	// Must have at the end
 	{NULL,						NULL,								0}

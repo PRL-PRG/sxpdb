@@ -157,6 +157,31 @@ write_mode <- function(db) {
   .Call(SXPDB_write_mode, db)
 }
 
+#' @export
+query_from_value <- function(value) {
+  .Call(SXPDB_query_from_value, value)
+}
+
+#' @export
+close_query <- function(query) {
+  .Call(SXPDB_close_query, query)
+}
+
+#' @export
+relax_query <- function(query, relax) {
+  stopifnot(is.character(relax))
+  .Call(SXPDB_relax_query, query, relax)
+}
+
+#' @export
+sample_from_query <- function(db, query) {
+    .Call(SXPDB_sample_from_query, db, query)
+}
+
+#' @export
+is_query_empty <- function(query) {
+  .Call(SXPDB_is_query_empty, query)
+}
 
 
 ## Utilities

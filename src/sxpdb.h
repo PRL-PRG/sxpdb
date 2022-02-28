@@ -230,6 +230,47 @@ SEXP build_indexes(SEXP sxpdb);
  */
 SEXP write_mode(SEXP sxpdb);
 
+/**
+ * @method query_from_value
+ * @param value R value to build the query from
+ * @return external pointer to the query object
+ */
+SEXP query_from_value(SEXP value);
+
+/**
+ * @method close_query
+ * @param query external pointer to the query
+ * @return R_Nil_value
+ */
+SEXP close_query(SEXP query);
+
+/**
+ * @method relax_query
+ * It will modify the query in place
+ * @param query external pointer to the query object
+ * @param relax character vector none or several of "na", "length", "attributes", "type", "vector", "ndims", "class". You can
+ * also give "keep_type" or "keep_class" to relax on all constraints, except the type, or except the class names.
+ * It will relax the given constraints inferred from the example value.
+ * @return boolean, true if the query changed or not
+ */
+SEXP relax_query(SEXP query, SEXP relax);
+
+/**
+ * @method sample_from_query
+ * @param sxpdb external pointer to the database
+ * @param query external pointer to the query
+ * @return R value
+ */
+SEXP sample_from_query(SEXP sxpdb, SEXP query);
+
+/**
+ * @method is_query_empty
+ * @param query external pointer to the query
+ * @return true if the query will have no results, has had no results. You need to call it after at least
+ * one call to sample_from_query or the index cache will not have been initialized.
+ */
+SEXP is_query_empty(SEXP query);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

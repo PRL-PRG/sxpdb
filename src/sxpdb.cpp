@@ -605,3 +605,115 @@ SEXP write_mode(SEXP sxpdb) {
 
   return Rf_ScalarLogical(db->rw_mode());
 }
+
+SEXP query_from_value(SEXP value) {
+  Query* query = new Query();
+  *query = Query::from_value(value); // populate from the value
+
+  SEXP query_ptr = PROTECT(R_MakeExternalPtr(query, Rf_install("query"), R_NilValue));
+
+  // ASk to close the database when R session is closed.
+  R_RegisterCFinalizerEx(query_ptr, (R_CFinalizer_t) close_query, TRUE);
+
+  UNPROTECT(1);
+
+  return query_ptr;
+}
+
+SEXP close_query(SEXP query) {
+  void* ptr = R_ExternalPtrAddr(query);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+
+  Query* q = static_cast<Query*>(ptr);
+  delete q;
+
+
+  R_ClearExternalPtr(query);
+
+  return R_NilValue;
+}
+
+SEXP relax_query(SEXP query_ptr, SEXP relax) {
+  void* ptr = R_ExternalPtrAddr(query_ptr);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Query* query = static_cast<Query*>(ptr);
+
+  uint64_t n_before = query->nb_values();
+
+  std::string relax_param = "";
+  for(int i = 0 ; i < Rf_length(relax) ; i++) {
+    relax_param = CHAR(STRING_ELT(relax, i));
+    if(relax_param == "na") {
+      query->relax_na();
+    }
+    else if (relax_param == "vector") {
+      query->relax_vector();
+    }
+    else if(relax_param == "length") {
+      query->relax_length();
+    }
+    else if(relax_param == "attributes") {
+      query->relax_attributes();
+    }
+    else if(relax_param == "ndims") {
+      query->relax_ndims();
+    }
+    else if(relax_param == "class") {
+      query->relax_class();
+    }
+    else if(relax_param == "type") {
+      query->relax_type();
+    }
+    else if(relax_param == "keep_type") {
+      query->relax_attributes();
+      query->relax_class();
+      query->relax_na();
+      query->relax_ndims();
+      query->relax_vector();
+      query->relax_length();
+    }
+    else if(relax_param == "keep_class") {
+      query->relax_attributes();
+      query->relax_na();
+      query->relax_ndims();
+      query->relax_vector();
+      query->relax_length();
+      query->relax_type();
+    }
+  }
+
+  return Rf_ScalarLogical(query->nb_values() != n_before);
+}
+
+SEXP sample_from_query(SEXP sxpdb, SEXP query_ptr) {
+  void* ptr = R_ExternalPtrAddr(query_ptr);
+  if(ptr== nullptr) {
+    Rf_warning("Query does not exist.\n");
+    return R_NilValue;
+  }
+  Query* query = static_cast<Query*>(ptr);
+
+  ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    Rf_warning("Database does not exist.\n");
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
+
+  return db->sample_value(*query);
+}
+
+SEXP is_query_empty(SEXP query_ptr) {
+  void* ptr = R_ExternalPtrAddr(query_ptr);
+  if(ptr== nullptr) {
+    Rf_warning("Query does not exist.\n");
+    return R_NilValue;
+  }
+  Query* query = static_cast<Query*>(ptr);
+
+  return Rf_ScalarLogical(query->nb_values() == 0);
+}
