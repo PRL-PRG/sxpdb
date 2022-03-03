@@ -775,7 +775,7 @@ const SEXP Database::view_values(Query& query) const {
   std::vector<std::byte> buf;
   buf.reserve(128);
 
-  SEXP l = PROTECT(Rf_allocVector(VECSXP, nb_values()));
+  SEXP l = PROTECT(Rf_allocVector(VECSXP, index_size));
 
   uint64_t j = 0;
   for(uint64_t i : index) {

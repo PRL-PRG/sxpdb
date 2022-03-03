@@ -56,9 +56,10 @@ SEXP have_seen(SEXP db, SEXP val);
  * This function returns a random value from the database
  * @method sample_val
  * @param  db       external pointer to the database
+ * @param query external pointer or NULL, sample only among the values matching the query or in the whole databse if NULL
  * @return R value in form of SEXP from the database
  */
-SEXP sample_val(SEXP db);
+SEXP sample_val(SEXP db, SEXP query);
 
 /**
  * This function returns a random value from the database,
@@ -191,30 +192,34 @@ SEXP check_db(SEXP sxpdb, SEXP slow);
  * @method map_db
  * @param sxpdb external pointer to the target database
  * @param fun function to run on each value in the database
+ * @param query externalptr or NULL restrict the values to map on to the ones matching the query
  * @return list of results of applying fun to the values in the database
  */
-SEXP map_db(SEXP sxpdb, SEXP fun);
+SEXP map_db(SEXP sxpdb, SEXP fun, SEXP query);
 
 /**
  * @method view_db
  * @param sxpdb external pointer to the target database
+ * @param query external pointer or NULL restrict the values to view to the ones matching the query
  * @return a list of all the values in the database
  */
-SEXP view_db(SEXP sxpdb);
+SEXP view_db(SEXP sxpdb, SEXP query);
 
 /**
  * @method view_metadata
  * @param sxpdb external pointer to the target database
+ * 2param query external pointer or NULL restrict the metadata to the values matching the query
  * @return a data frame of the metadata for all the values, in the same order as view_db or map_db
  */
-SEXP view_metadata(SEXP sxpdb);
+SEXP view_metadata(SEXP sxpdb, SEXP query);
 
 /**
  * @method view_origins
  * @param sxpdb external pointer to the target database
+ * @param query external pointer or NULL restrict the origins to the ones of the values matching the query
  * @return a data frame of the origins for all the values, in the same order as view_db or map_db. A column id indicates the index of the value
  */
-SEXP view_origins(SEXP sxpdb);
+SEXP view_origins(SEXP sxpdb, SEXP query);
 
 /**
  * @method build_indexes
@@ -270,6 +275,13 @@ SEXP sample_from_query(SEXP sxpdb, SEXP query);
  * one call to sample_from_query or the index cache will not have been initialized.
  */
 SEXP is_query_empty(SEXP query);
+
+/**
+ * @method extptr_tag
+ * @param ptr external pointer
+ * @return tag of the external pointer
+ */
+SEXP extptr_tag(SEXP ptr);
 
 #ifdef __cplusplus
 } // extern "C"

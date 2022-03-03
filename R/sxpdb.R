@@ -44,8 +44,8 @@ add_origin <- function(db, hash, package, func, argument) {
 }
 
 #' @export
-sample_val <- function(db) {
-  .Call(SXPDB_sample_val, db)
+sample_val <- function(db, query = NULL) {
+  .Call(SXPDB_sample_val, db, query)
 }
 
 #' @export
@@ -103,13 +103,13 @@ report <- function() {
 
 
 #' @export
-view_db <- function(db) {
-  .Call(SXPDB_view_db, db)
+view_db <- function(db, query = NULL) {
+  .Call(SXPDB_view_db, db, query)
 }
 
 #' @export
-view_meta_db <- function(db) {
-  .Call(SXPDB_view_metadata, db)
+view_meta_db <- function(db, query = NULL) {
+  .Call(SXPDB_view_metadata, db, query)
 }
 
 
@@ -126,8 +126,8 @@ get_origins_idx <- function(db, i) {
 }
 
 #' @export
-view_origins_db <- function(db) {
-  .Call(SXPDB_view_origins, db)
+view_origins_db <- function(db, query = NULL) {
+  .Call(SXPDB_view_origins, db, query)
 }
 
 #' @export
@@ -142,9 +142,9 @@ check_db <- function(db, slow = FALSE) {
 }
 
 #' @export
-map_db <- function(db, fun) {
+map_db <- function(db, fun, query = NULL) {
   stopifnot(is.function(fun))
-  .Call(SXPDB_map_db, db, fun)
+  .Call(SXPDB_map_db, db, fun, query)
 }
 
 #' @export
@@ -175,6 +175,7 @@ relax_query <- function(query, relax) {
 
 #' @export
 sample_from_query <- function(db, query) {
+    stopifnot(!is.null(query))
     .Call(SXPDB_sample_from_query, db, query)
 }
 
@@ -205,5 +206,10 @@ string_sexp_type <- function(int_type) {
 is_integer_real <- function(v) {
   stopifnot(is.double(v))
   .Call(SXPDB_is_integer_real, v)
+}
+
+#' @export
+extptr_tag <- function(v) {
+  .Call(SXPDB_extptr_tag, v)
 }
 
