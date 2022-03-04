@@ -110,13 +110,15 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
 
     if(!quiet) Rprintf("Loading hashes into memory.\n");
     // Load the hashes and build the hash map
+
+    if(!quiet) Rprintf("Allocating memory for the hash table.\n");
+    if(!quiet) Rprintf("Building the hash table.\n");
+    // printf inside the thread will not place nice with R locks
     pool.push_task([&]() {
       hashes.load_all();
       const StableVector<sexp_hash>& hash_vec = hashes.memory_view();
 
-      if(!quiet) Rprintf("Allocating memory for the hash table.\n");
       sexp_index.reserve(hashes.nb_values());
-      if(!quiet) Rprintf("Building the hash table.\n");
       for(uint64_t i = 0; i < hash_vec.size() ; i++) {
         sexp_index.insert({&hash_vec[i], i});
       }
