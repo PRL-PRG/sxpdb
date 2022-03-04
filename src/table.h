@@ -19,6 +19,11 @@
 #include <iterator>
 #include <optional>
 
+
+#include <fcntl.h>
+#include <unistd.h>
+
+
 #include "config.h"
 #include "robin_hood.h"
 #include "hasher.h"
@@ -436,7 +441,7 @@ private:
   using Table<T>::write_mode;
 
   mutable FSizeTable<uint64_t> offset_table;
-  mutable std::fstream file;// for the actual values
+  int fd = -1;
   // Layout:
   // 8 bytes (64 bit unsigned integer),  n bytes
   // Size, actual value
@@ -453,29 +458,24 @@ public:
 
     offset_table.open(file_path.parent_path() / (file_path.stem().string() + "_offsets.bin"), write_mode);
 
-    // We have to create the file if it does not exists; it requires other flags than the next ones
-    if(!fs::exists(file_path)) {
-      file.open(file_path, std::fstream::out | std::fstream::app);
-      file.close();
-    }
+    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR);
 
-    file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
-
-    if(!file) {
+    if(fd == -1) {
       Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
     }
 
-    file.exceptions(std::fstream::failbit);
+    // Now seek to the end for write to be able to append to the file
+    lseek(fd, 0, SEEK_END);
   }
 
   void append(const T& value) override {
     uint64_t size = value.size();
 
-    auto pos = file.tellp();
+    auto pos = lseek(fd, 0, SEEK_CUR);// Get current position
 
-    file.write(reinterpret_cast<char*>(&size), sizeof(size));
+    ::write(fd, reinterpret_cast<char*>(&size), sizeof(size));
     // TODO: have a variant for non-contiguous types that would use begin and end
-    file.write(reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size);
+    ::write(fd, reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size);
 
     offset_table.append(pos);
 
@@ -496,16 +496,16 @@ public:
     return value;
   }
 
+  // Can read in parallel because of pread
   void read_in(uint64_t idx, T& val) const override {
     uint64_t offset = offset_table.read(idx);
 
-    file.seekg(offset);
     uint64_t size = 0;
-    file.read(reinterpret_cast<char*>(&size), sizeof(size));
+    pread(fd, reinterpret_cast<char*>(&size), sizeof(size), offset);
     assert(size > 0);
 
     val.resize(size);// Ensure the target element is big enough
-    file.read(reinterpret_cast<char*>(val.data()), sizeof(typename T::value_type) * size);
+    pread(fd, reinterpret_cast<char*>(val.data()), sizeof(typename T::value_type) * size, offset + sizeof(size));
   }
 
   void load_all() override {
@@ -526,9 +526,8 @@ public:
   void write(uint64_t idx, const T& value) override {
     uint64_t offset = offset_table.read(idx);
 
-    file.seekg(offset);
     uint64_t size = 0;
-    file.read(reinterpret_cast<char*>(&size), sizeof(size));
+    pread(fd, reinterpret_cast<char*>(&size), sizeof(size), offset);
     assert(size > 0 );
 
     if(value.size() != size) {
@@ -536,10 +535,9 @@ public:
       return;
     }
 
-    file.seekp(offset);
-    file.write(reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size);
+    pwrite(fd, reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size, offset);
     // seek back to the end
-    file.seekp(0, std::ios_base::end);
+    lseek(fd, 0, SEEK_END);
   }
 
 
@@ -547,8 +545,12 @@ public:
       offset_table.flush();
       Table<T>::flush();
       new_elements = false;
+      close(fd);
   }
 
+  virtual ~VSizeTable() {
+    close(fd);
+  }
 };
 
 
