@@ -458,7 +458,7 @@ public:
 
     offset_table.open(file_path.parent_path() / (file_path.stem().string() + "_offsets.bin"), write_mode);
 
-    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR);
+    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
 
     if(fd == -1) {
       Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
