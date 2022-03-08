@@ -4,6 +4,10 @@
 
 #include "thread_pool.hpp"
 
+#include "readerwritercircularbuffer.h"
+
+using namespace moodycamel;
+
 Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
   config_path(config_), base_path(fs::absolute(config_path.parent_path())), mode(mode_),   quiet(quiet_),
   rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
@@ -1112,7 +1116,7 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::strin
   return res;
 }
 
-uint64_t Database::parallel_merge_in(const Database& other, uint64_t min_chunk_size) {
+uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
   uint64_t old_total_values = nb_total_values;
   uint64_t old_nb_classnames = classes.nb_classnames();
 
@@ -1124,6 +1128,9 @@ uint64_t Database::parallel_merge_in(const Database& other, uint64_t min_chunk_s
   assert(runtime_meta.loaded());
   assert(hashes.loaded());
   assert(debug_counters.loaded());
+
+  // Make sure the offsets are loaded into memory so that we can parallelize
+  other.sexp_table.load_all();
 
   size_t nb_threads = std::thread::hardware_concurrency() - 1;
   thread_pool pool(nb_threads);
@@ -1171,14 +1178,28 @@ uint64_t Database::parallel_merge_in(const Database& other, uint64_t min_chunk_s
   // Now we have all the indexes of the elements to add
 
   // Values
-  // They are not in memory so we cannot really parallelize better
-  pool.push_task([](const roaring::Roaring64Map& index, VSizeTable<std::vector<std::byte>>& table, const VSizeTable<std::vector<std::byte>>& other_table) {
-    for(uint64_t idx : index) {
-      table.append(other_table.read(idx));
-    }
-  }, std::cref(elems_to_add), std::ref(sexp_table), std::cref(other.sexp_table));
+  // We are using a blocking queue to pipeline the reads and writes
+  BlockingReaderWriterCircularBuffer<std::vector<std::byte>> q(1024);
 
-  // We could use a parallel loop here as it is already in memory...
+  // Read task
+  pool.push_task([](const roaring::Roaring64Map& index, BlockingReaderWriterCircularBuffer<std::vector<std::byte>>& queue, const VSizeTable<std::vector<std::byte>>& other_table) {
+    std::vector<std::byte> buf;
+    for(uint64_t idx : index) {
+     other_table.read_in(idx, buf);
+      queue.wait_enqueue(buf);
+    }
+  }, std::cref(elems_to_add), std::ref(q), std::cref(other.sexp_table));
+
+  // Write task
+  pool.push_task([](const roaring::Roaring64Map& index, VSizeTable<std::vector<std::byte>>& table, BlockingReaderWriterCircularBuffer<std::vector<std::byte>>& queue) {
+    std::vector<std::byte> buf;
+    uint64_t nb_values = index.cardinality();
+    for(uint64_t i = 0; i < nb_values ; i++) {
+      queue.wait_dequeue(buf);
+      table.append(buf);
+    }
+  }, std::cref(elems_to_add), std::ref(sexp_table), std::ref(q));
+
 
   //// Runtime meta data
   // Add the new ones
@@ -1334,9 +1355,11 @@ uint64_t Database::parallel_merge_in(const Database& other, uint64_t min_chunk_s
   return nb_total_values - old_total_values;
 }
 
-uint64_t Database::merge_in(const Database& other) {
+uint64_t Database::merge_in(Database& other) {
   uint64_t old_total_values = nb_total_values;
   uint64_t old_nb_classnames = classes.nb_classnames();
+
+  other.sexp_table.load_all();
 
   sexp_hash key;
   runtime_meta_t meta;

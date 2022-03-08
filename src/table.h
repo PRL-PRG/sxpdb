@@ -465,7 +465,10 @@ public:
     }
 
     // Now seek to the end for write to be able to append to the file
-    lseek(fd, 0, SEEK_END);
+    uint64_t end_pos = lseek(fd, 0, SEEK_END);
+    // This is for the merge case
+    // for the sampling case, we should use POSIX_FADV_RANDOM here
+    posix_fadvise(fd, 0, end_pos, POSIX_FADV_SEQUENTIAL);
   }
 
   void append(const T& value) override {
@@ -547,6 +550,8 @@ public:
       new_elements = false;
       close(fd);
   }
+
+  int get_fd() const { return fd; }
 
   virtual ~VSizeTable() {
     close(fd);
