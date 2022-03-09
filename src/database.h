@@ -131,6 +131,8 @@ public:
   // Sample n elements without replacement
   // TODO: support n > 1 ; what should we return? Simply a list of SEXP?
   const SEXP sample_value(Query& query, uint64_t n = 1);
+  const std::optional<uint64_t> sample_index(Query& query);
+  const std::optional<uint64_t> sample_index();
 
   // TODO: see if it is possible to implement the version without Query in terms of
   // the other version, in an efficient way.

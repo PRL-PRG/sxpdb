@@ -62,6 +62,15 @@ SEXP have_seen(SEXP db, SEXP val);
 SEXP sample_val(SEXP db, SEXP query);
 
 /**
+ * This function returns an index to a random value from the database
+ * @method sample_val
+ * @param  db       external pointer to the database
+ * @param query external pointer or NULL, sample only among the values matching the query or in the whole databse if NULL
+ * @return integer or NULL
+ */
+SEXP sample_index(SEXP db, SEXP query);
+
+/**
  * This function returns a random value from the database,
  * but similar to the provided value
  * @method sample_val
@@ -260,13 +269,6 @@ SEXP close_query(SEXP query);
  */
 SEXP relax_query(SEXP query, SEXP relax);
 
-/**
- * @method sample_from_query
- * @param sxpdb external pointer to the database
- * @param query external pointer to the query
- * @return R value
- */
-SEXP sample_from_query(SEXP sxpdb, SEXP query);
 
 /**
  * @method is_query_empty

@@ -19,6 +19,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"have_seen",				(DL_FUNC) &have_seen,				2},
 	{"sample_val",				(DL_FUNC) &sample_val,		2},
 	{"sample_similar",   (DL_FUNC) &sample_similar, 4},
+	{"sample_index",    (DL_FUNC) &sample_index,    2},
 	{"get_val",					(DL_FUNC) &get_val,					2},
 	{"merge_db",					(DL_FUNC) &merge_db,			2},
 	{"size_db",           (DL_FUNC) &size_db,			  1},
@@ -37,7 +38,6 @@ static const R_CallMethodDef callMethods[] = {
 	{"query_from_value", (DL_FUNC) &query_from_value, 1},
 	{"close_query", (DL_FUNC) &close_query,         1},
 	{"relax_query", (DL_FUNC) &relax_query,         2},
-	{"sample_from_query", (DL_FUNC) &sample_from_query, 2},
 	{"is_query_empty", (DL_FUNC) &is_query_empty,   1},
 	{"extptr_tag",   (DL_FUNC) &extptr_tag,         1},
 

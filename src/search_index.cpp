@@ -203,7 +203,7 @@ void SearchIndex::build_indexes(const Database& db) {
   const uint64_t chunk_size = fs::file_size(db.sexp_table.get_path()) / (std::thread::hardware_concurrency() - 1);
   const uint64_t elements_per_chunk = db.nb_values() / (std::thread::hardware_concurrency() - 1); // a rough estimate...
 
-
+  // TODO: we can now parallelize the read operation!
   std::vector<std::vector<std::byte>> bufs;
   bufs.reserve(elements_per_chunk);
   uint64_t size = 0;
@@ -216,6 +216,7 @@ void SearchIndex::build_indexes(const Database& db) {
     size += buf.size();
     bufs.push_back(buf);
   }
+
 
 
 #ifndef NDEBUG

@@ -424,6 +424,24 @@ const SEXP Database::sample_value(Query& query, uint64_t n) {
   }
 }
 
+const std::optional<uint64_t> Database::sample_index(Query& query) {
+  if(new_elements || !query.is_initialized()) {
+    query.update(*this);
+  }
+
+  return query.sample(rand_engine);
+}
+
+const std::optional<uint64_t> Database::sample_index() {
+  if(nb_total_values > 0) {
+    std::uniform_int_distribution<uint64_t> dist(0, nb_total_values - 1);
+
+    return dist(rand_engine);
+  }
+
+  return std::nullopt;
+}
+
 const SEXP Database::view_metadata() const {
   // "type", "length", "n_attributes", "n_dims", "size", "n_calls", "n_merges"
   // maybe_shared, address_optim, (if debug counters)
@@ -1175,10 +1193,13 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     elems_present |= elems.second;
   }
 
+  if(!quiet) Rprintf("Planning to add %ld new values.\n", elems_to_add.cardinality());
+
   // Now we have all the indexes of the elements to add
 
   // Values
   // We are using a blocking queue to pipeline the reads and writes
+  // what is the optimal size here?
   BlockingReaderWriterCircularBuffer<std::vector<std::byte>> q(1024);
 
   // Read task

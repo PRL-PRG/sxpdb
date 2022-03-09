@@ -367,6 +367,40 @@ SEXP sample_val(SEXP sxpdb, SEXP query_ptr) {
   }
 }
 
+SEXP sample_index(SEXP sxpdb, SEXP query_ptr) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
+
+  if(Rf_isNull(query_ptr)) {
+    auto idx = db->sample_index();
+    if(idx) {
+      return Rf_ScalarInteger(*idx);
+    }
+    else {
+      return R_NilValue;
+    }
+  }
+  else {
+    void* ptr = R_ExternalPtrAddr(query_ptr);
+    if(ptr== nullptr) {
+      Rf_warning("Query does not exist.\n");
+      return R_NilValue;
+    }
+    Query* query = static_cast<Query*>(ptr);
+
+    auto idx = db->sample_index(*query);
+    if(idx) {
+      return Rf_ScalarInteger(*idx);
+    }
+    else {
+      return R_NilValue;
+    }
+  }
+}
+
 SEXP sample_similar(SEXP sxpdb, SEXP vals, SEXP multiple, SEXP relax) {
   void* ptr = R_ExternalPtrAddr(sxpdb);
   if(ptr== nullptr) {
@@ -747,23 +781,6 @@ SEXP relax_query(SEXP query_ptr, SEXP relax) {
   return Rf_ScalarLogical(query->nb_values() != n_before);
 }
 
-SEXP sample_from_query(SEXP sxpdb, SEXP query_ptr) {
-  void* ptr = R_ExternalPtrAddr(query_ptr);
-  if(ptr== nullptr) {
-    Rf_warning("Query does not exist.\n");
-    return R_NilValue;
-  }
-  Query* query = static_cast<Query*>(ptr);
-
-  ptr = R_ExternalPtrAddr(sxpdb);
-  if(ptr== nullptr) {
-    Rf_warning("Database does not exist.\n");
-    return R_NilValue;
-  }
-  Database* db = static_cast<Database*>(ptr);
-
-  return db->sample_value(*query);
-}
 
 SEXP is_query_empty(SEXP query_ptr) {
   void* ptr = R_ExternalPtrAddr(query_ptr);

@@ -49,6 +49,11 @@ sample_val <- function(db, query = NULL) {
 }
 
 #' @export
+sample_index <- function(db, query = NULL) {
+  .Call(SXPDB_sample_index, db, query)
+}
+
+#' @export
 sample_similar <- function(db, val, relax = "") {
   stopifnot(is.character(relax))
   .Call(SXPDB_sample_similar, db, val, FALSE, relax)
@@ -173,11 +178,6 @@ relax_query <- function(query, relax) {
   .Call(SXPDB_relax_query, query, relax)
 }
 
-#' @export
-sample_from_query <- function(db, query) {
-    stopifnot(!is.null(query))
-    .Call(SXPDB_sample_from_query, db, query)
-}
 
 #' @export
 is_query_empty <- function(query) {
