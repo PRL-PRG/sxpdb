@@ -200,7 +200,7 @@ Database::~Database() {
   }
 
   if(pid == getpid()) {
-    if(mode == OpenMode::Write && (new_elements || nb_total_values == 0)) {
+    if(mode == OpenMode::Write && (new_elements || nb_total_values == 0 || new_index)) {
       write_configuration();
     }
 

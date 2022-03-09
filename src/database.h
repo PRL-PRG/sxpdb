@@ -66,6 +66,7 @@ public:
 private:
   uint64_t nb_total_values = 0;
   bool new_elements = false;
+  bool new_index = false;
   OpenMode mode;
   bool quiet;
   pid_t pid;
@@ -157,6 +158,7 @@ public:
     // required to build later the reverse index
     classes.load_all();
     search_index.build_indexes(*this) ;
+    new_index = true;
   }
 
   // Utilities
