@@ -326,10 +326,10 @@ const SEXP Database::get_metadata(uint64_t index) const {
   SET_VECTOR_ELT(res, 5, Rf_ScalarInteger(s_meta.size));
 
   //Runtime meta
-  SET_VECTOR_ELT(res, 7, Rf_ScalarInteger(d_meta.n_calls));
-  SET_VECTOR_ELT(res, 8, Rf_ScalarInteger(d_meta.n_merges));
+  SET_VECTOR_ELT(res, 6, Rf_ScalarInteger(d_meta.n_calls));
+  SET_VECTOR_ELT(res, 7, Rf_ScalarInteger(d_meta.n_merges));
 
-  int column_id = 9;
+  int column_id = 8;
   //Debug counters
   if(debug_counters.nb_values() > 0) {
     auto debug_cnt = debug_counters.read(index);
