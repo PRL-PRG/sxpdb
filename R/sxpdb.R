@@ -79,11 +79,6 @@ get_value_idx <- function(db, idx) {
   .Call(SXPDB_get_val, db, idx)
 }
 
-#' @export
-explain_header <- function(db, idx) {
-  stopifnot(is.numeric(idx), idx >= 0, idx < size_db(db))
-  .Call(SXPDB_explain_header, db, idx)
-}
 
 #' @export
 get_meta <- function(db, val) {
