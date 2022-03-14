@@ -115,7 +115,7 @@ public:
   uint64_t parallel_merge_in(Database& other, uint64_t min_chunk_size = 10);
 
   // Adding R values/origins
-  std::pair<const sexp_hash*, bool> add_value(SEXP val);//TODO this should add dummy origins
+  std::tuple<const sexp_hash*, uint64_t, bool> add_value(SEXP val);//TODO this should add dummy origins
   std::pair<const sexp_hash*, bool> add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
   void add_origin(uint64_t index, const std::string& pkg_name, const std::string& func_name, const std::string& param_name);
 

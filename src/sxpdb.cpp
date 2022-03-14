@@ -67,11 +67,11 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
 
   auto hash = db->add_value(val);
 
-  if(hash.first != nullptr) {
+  if(std::get<0>(hash) != nullptr) {
     SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
     Rbyte* bytes= RAW(hash_s);
 
-    XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *hash.first);
+    XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *std::get<0>(hash));
 
     UNPROTECT(1);
 

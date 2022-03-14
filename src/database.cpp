@@ -1109,15 +1109,15 @@ void Database::add_origin(uint64_t index, const std::string& pkg_name, const std
   origins.add_origin(index, pkg_name, func_name, param_name);
 }
 
-std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
+std::tuple<const sexp_hash*, uint64_t, bool> Database::add_value(SEXP val) {
   // Ignore environments and closures
   if(TYPEOF(val) == ENVSXP || TYPEOF(val) == CLOSXP) {
-    return std::make_pair(nullptr, false);
+    return std::make_tuple(nullptr, 0, false);
   }
 
   // Check if the instrumented program has not evily forked itself
   if(pid != getpid()) {
-    return std::make_pair(nullptr, false);
+    return std::make_tuple(nullptr, 0, false);
   }
 
   std::optional<uint64_t> idx = cached_sexp(val);
@@ -1225,17 +1225,19 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val) {
     cache_sexp(val, *idx);
   };
 
-  return {&hashes.read(*idx), buf != nullptr};
+  return {&hashes.read(*idx), *idx, buf != nullptr};
 }
 
 std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& param_name) {
   auto res = add_value(val);
-  if(res.first != nullptr) {// if it is null, it means we ignored it because it was an environment or a closure, or the db was forked
+  if(std::get<0>(res) != nullptr) {// if it is null, it means we ignored it because it was an environment or a closure, or the db was forked
     assert(nb_total_values > 0);
-    origins.add_origin(nb_total_values - 1, pkg_name, func_name, param_name);
+    //res.1 contains the index of the value
+    // if it is a new value, it is going to be nb_total_values
+    origins.add_origin(std::get<1>(res), pkg_name, func_name, param_name);
   }
 
-  return res;
+  return std::make_pair(std::get<0>(res), std::get<2>(res));
 }
 
 uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
