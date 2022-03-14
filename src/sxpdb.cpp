@@ -607,7 +607,27 @@ SEXP map_db(SEXP sxpdb, SEXP fun, SEXP query_ptr) {
   }
 }
 
+SEXP filter_index_db(SEXP sxpdb, SEXP fun, SEXP query_ptr) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
 
+  if(Rf_isNull(query_ptr)) {
+    return db->filter_index(fun);
+  }
+  else {
+    void* ptr = R_ExternalPtrAddr(query_ptr);
+    if(ptr== nullptr) {
+      Rf_warning("Query does not exist.\n");
+      return R_NilValue;
+    }
+    Query* query = static_cast<Query*>(ptr);
+
+    return db->filter_index(*query, fun);
+  }
+}
 
 
 SEXP view_db(SEXP sxpdb, SEXP query_ptr) {

@@ -207,6 +207,16 @@ SEXP check_db(SEXP sxpdb, SEXP slow);
 SEXP map_db(SEXP sxpdb, SEXP fun, SEXP query);
 
 /**
+ * Map over the values of the database
+ * @method filter_index_db
+ * @param sxpdb external pointer to the target database
+ * @param fun function to run on each value in the database, should return a boolean
+ * @param query externalptr or NULL restrict the values to map on to the ones matching the query
+ * @return list of indices of the value for which the function evaluated to true
+ */
+SEXP filter_index_db(SEXP sxpdb, SEXP fun, SEXP query);
+
+/**
  * @method view_db
  * @param sxpdb external pointer to the target database
  * @param query external pointer or NULL restrict the values to view to the ones matching the query

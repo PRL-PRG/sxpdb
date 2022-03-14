@@ -1001,6 +1001,113 @@ const SEXP Database::map(Query& query, const SEXP function) {
   return l;
 }
 
+const SEXP Database::filter_index(const SEXP function) {
+  std::vector<std::byte> buf;
+  buf.reserve(128);
+
+  // Build the call
+  SEXP call = PROTECT(Rf_lang2(function, Rf_install("unserialized_sxpdb_value")));
+
+  std::vector<uint32_t> true_indices;
+
+  // Prepare un environment where we will put the unserialized value
+#if defined(R_VERSION) && R_VERSION >= R_Version(4, 1, 0)
+  SEXP env = R_NewEnv(R_GetCurrentEnv(), TRUE, 1);
+#else
+  SEXP env = Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv());
+  assert(TYPEOF(env) == ENVSXP);
+#endif
+
+  SEXP unserialized_sxpdb_value = Rf_install("unserialized_sxpdb_value");
+
+  for(uint64_t i = 0 ; i < nb_total_values ; i++) {
+    sexp_table.read_in(i, buf);
+
+    SEXP val = PROTECT(ser.unserialize(buf));// no need to protect as it is going to be bound just after
+    // or not?
+
+    // Update the argument for the next call
+    Rf_defineVar(unserialized_sxpdb_value, val, env);
+
+    // Perform the call
+    SEXP res = Rf_eval(call, env);
+
+
+    if(Rf_asLogical(res)) {
+      true_indices.push_back(i);
+    }
+
+    UNPROTECT(1);
+  }
+
+  SEXP l = PROTECT(Rf_allocVector(INTSXP, true_indices.size()));
+
+  std::copy_n(true_indices.begin(), true_indices.size(), INTEGER(l));
+
+  UNPROTECT(2);
+
+  return l;
+}
+
+const SEXP Database::filter_index(Query& query, const SEXP function) {
+  if(new_elements || !query.is_initialized()) {
+    query.update(*this);
+  }
+
+  auto index = query.view();
+  uint64_t index_size = index.cardinality();
+
+  std::vector<std::byte> buf;
+  buf.reserve(128);
+
+  // Build the call
+  SEXP call = PROTECT(Rf_lang2(function, Rf_install("unserialized_sxpdb_value")));
+
+  std::vector<uint32_t> true_indices;
+
+
+  // Prepare un environment where we will put the unserialized value
+#if defined(R_VERSION) && R_VERSION >= R_Version(4, 1, 0)
+  SEXP env = R_NewEnv(R_GetCurrentEnv(), TRUE, 1);
+#else
+  SEXP env = Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv());
+  assert(TYPEOF(env) == ENVSXP);
+#endif
+
+  SEXP unserialized_sxpdb_value = Rf_install("unserialized_sxpdb_value");
+
+  uint64_t j = 0;
+  for(uint64_t i : index) {
+    sexp_table.read_in(i, buf);
+
+    SEXP val = PROTECT(ser.unserialize(buf));// no need to protect as it is going to be bound just after
+    // or not?
+
+    // Update the argument for the next call
+    Rf_defineVar(unserialized_sxpdb_value, val, env);
+
+    // Perform the call
+    SEXP res = Rf_eval(call, env);
+
+
+    if(Rf_asLogical(res)) {
+      true_indices.push_back(i);
+    }
+
+    UNPROTECT(1);
+
+    j++;
+  }
+
+  SEXP l = PROTECT(Rf_allocVector(INTSXP, true_indices.size()));
+
+  std::copy_n(true_indices.begin(), true_indices.size(),INTEGER(l));
+
+  UNPROTECT(2);
+
+  return l;
+}
+
 void Database::add_origin(uint64_t index, const std::string& pkg_name, const std::string& func_name, const std::string& param_name) {
   origins.add_origin(index, pkg_name, func_name, param_name);
 }

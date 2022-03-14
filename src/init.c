@@ -30,6 +30,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"path_db",         (DL_FUNC) &path_db,         1},
 	{"check_db",        (DL_FUNC) &check_db,        2},
 	{"map_db",          (DL_FUNC) &map_db,          3},
+	{"filter_index_db",   (DL_FUNC) &filter_index_db, 3},
 	{"view_db",         (DL_FUNC) &view_db,         2},
 	{"view_metadata",   (DL_FUNC) &view_metadata,   2},
 	{"view_origins",    (DL_FUNC) &view_origins,    2},

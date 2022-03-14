@@ -152,6 +152,10 @@ public:
   const SEXP map(const SEXP function);
   const SEXP map(Query& query, const SEXP function);
 
+  // Filter given a function and returns the indexes for which it is true
+  const SEXP filter_index(const SEXP function);
+  const SEXP filter_index(Query& query, const SEXP function);
+
   //Rebuilding the indexes from scratch
   void build_indexes() {
     //it populates a hash table

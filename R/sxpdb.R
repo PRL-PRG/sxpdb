@@ -148,6 +148,12 @@ map_db <- function(db, fun, query = NULL) {
 }
 
 #' @export
+filter_index_db <- function(db, fun, query = NULL) {
+  stopifnot(is.function(fun))
+  .Call(SXPDB_filter_index_db, db, fun, query)
+}
+
+#' @export
 build_indexes <- function(db) {
   .Call(SXPDB_build_indexes, db)
 }
