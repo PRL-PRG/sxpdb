@@ -353,7 +353,7 @@ const SEXP Database::get_metadata(uint64_t index) const {
   return res;
 }
 
-const std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> Database::source_locations(uint64_t index) const {
+const std::vector<std::tuple<std::string, std::string, std::string>> Database::source_locations(uint64_t index) const {
   return origins.source_locations(index);
 }
 
@@ -1033,7 +1033,7 @@ const SEXP Database::filter_index(const SEXP function) {
     SEXP res = Rf_eval(call, env);
 
 
-    if(Rf_asLogical(res)) {
+    if(Rf_isLogical(res) && Rf_asLogical(res)) {
       true_indices.push_back(i);
     }
 
@@ -1076,7 +1076,6 @@ const SEXP Database::filter_index(Query& query, const SEXP function) {
 
   SEXP unserialized_sxpdb_value = Rf_install("unserialized_sxpdb_value");
 
-  uint64_t j = 0;
   for(uint64_t i : index) {
     sexp_table.read_in(i, buf);
 
@@ -1090,13 +1089,11 @@ const SEXP Database::filter_index(Query& query, const SEXP function) {
     SEXP res = Rf_eval(call, env);
 
 
-    if(Rf_asLogical(res)) {
+    if(Rf_isLogical(res) && Rf_asLogical(res)) {
       true_indices.push_back(i);
     }
 
     UNPROTECT(1);
-
-    j++;
   }
 
   SEXP l = PROTECT(Rf_allocVector(INTSXP, true_indices.size()));

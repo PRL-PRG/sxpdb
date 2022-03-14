@@ -195,10 +195,10 @@ public:
   const std::string& function_name(uint32_t i) const { return function_names.read(i);}
   const std::string& param_name(uint32_t i) const { return param_names.read(i); }
 
-  const std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> source_locations(uint64_t index) const {
+  const std::vector<std::tuple<std::string, std::string, std::string>> source_locations(uint64_t index) const {
     auto locs = get_locs(index);
 
-    std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> str_locs;
+    std::vector<std::tuple<std::string, std::string, std::string>> str_locs;
     str_locs.reserve(locs.size());
     for(const auto& loc : locs) {
       assert(loc.package < package_names.nb_values());

@@ -236,7 +236,7 @@ SEXP get_origins(SEXP sxpdb, SEXP hash_s) {
 
   auto idx = db->get_index(hash);
 
-  std::vector<std::tuple<std::string_view, std::string_view, std::string_view>> src_locs;
+  std::vector<std::tuple<std::string, std::string, std::string>> src_locs;
   if(idx.has_value()) {
     src_locs = db->source_locations(*idx);
   }
@@ -502,7 +502,7 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
 
   uint64_t nb_new_values = 0;
   try{
-    db1->merge_in(*db2);
+    db1->parallel_merge_in(*db2, 150);
   }
   catch(std::exception& e) {
     Rf_error("Error merging database %s into %s: %s\n", db2->configuration_path().c_str(), db1->configuration_path().c_str(), e.what());
