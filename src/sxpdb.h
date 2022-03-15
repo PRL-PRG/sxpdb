@@ -295,6 +295,15 @@ SEXP is_query_empty(SEXP query);
  */
 SEXP extptr_tag(SEXP ptr);
 
+/**
+ * @method merge_all_dbs
+ * 
+ * @param db_paths character vector paths of the dbs to be merged
+ * @param output_path character path of the resulting db
+ * @return data frame of the merged dbs
+ */
+SEXP merge_all_dbs(SEXP db_paths, SEXP output_path);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

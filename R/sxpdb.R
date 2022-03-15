@@ -185,6 +185,11 @@ is_query_empty <- function(query) {
   .Call(SXPDB_is_query_empty, query)
 }
 
+#' @export
+merge_all_dbs <- function(db_paths, output_path) {
+  stopifnot(is.character(db_paths), is.character(output_path))
+  .Call(SXPDB_merge_all_dbs, db_paths, output_path)
+}
 
 ## Utilities
 

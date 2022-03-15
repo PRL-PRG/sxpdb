@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <chrono>
 #include <cassert>
 
 #define EMPTY_ORIGIN_PART ""
@@ -815,4 +816,100 @@ SEXP is_query_empty(SEXP query_ptr) {
 
 SEXP extptr_tag(SEXP ptr) {
   return EXTPTR_TAG(ptr);
+}
+
+
+SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
+  fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0))) / "cran_db";
+
+  Rprintf("Starting merging\n");
+
+  // Open in write mode, and not quiet
+  Database db(db_path, Database::OpenMode::Write, false);
+
+
+  // Progress bar setup
+  int barWidth = 70;
+  double progress = 0;
+
+  size_t nb_paths = Rf_length(db_paths);
+
+  // Some lists to store stats about the merging
+  SEXP paths_c = PROTECT(Rf_allocVector(STRSXP, nb_paths));
+  SEXP size_before_column = PROTECT(Rf_allocVector(INTSXP, nb_paths));
+  SEXP added_values_column = PROTECT(Rf_allocVector(INTSXP, nb_paths));
+  SEXP small_db_size_column = PROTECT(Rf_allocVector(INTSXP, nb_paths));
+  SEXP small_db_bytes_column = PROTECT(Rf_allocVector(INTSXP, nb_paths));
+  SEXP duration_column = PROTECT(Rf_allocVector(INTSXP, nb_paths));
+  SEXP error_c = PROTECT(Rf_allocVector(STRSXP, nb_paths));
+
+  int* s_before_c = INTEGER(size_before_column);
+  int* added_v_c = INTEGER(added_values_column);
+  int* small_db_s_c = INTEGER(small_db_size_column);
+  int* small_db_b_c = INTEGER(small_db_bytes_column);
+  int* dur_c = INTEGER(duration_column);
+
+  for(size_t i = 0; i < nb_paths ; i++) {
+    std::cout << "[";
+
+    uint64_t size_before = db.nb_values();
+    SET_STRING_ELT(paths_c, i, STRING_ELT(db_paths, i));
+    s_before_c[i] = size_before;
+    try {
+      std::chrono::microseconds elapsed = std::chrono::microseconds::zero();
+      auto start = std::chrono::system_clock::now();
+
+      Database small_db(CHAR(STRING_ELT(db_paths, i)), Database::OpenMode::Merge, true);
+      uint64_t small_db_size = small_db.nb_values();
+
+
+      if(small_db_size > 0) {
+        db.parallel_merge_in(small_db, 150);
+      }
+
+      auto end = std::chrono::system_clock::now();
+      elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+      added_v_c[i] = db.nb_values() - size_before;
+      small_db_s_c[i] = small_db_size;
+      small_db_b_c[i] = directory_size(fs::path(CHAR(STRING_ELT(db_paths, i))));
+      dur_c[i] = elapsed.count();
+      SET_STRING_ELT(error_c, i, NA_STRING);
+    }
+    catch(std::exception& e) {
+      added_v_c[i] = 0;
+      small_db_s_c[i] = NA_INTEGER;
+      small_db_b_c[i] = NA_INTEGER;
+      dur_c[i] = 0;
+      SET_STRING_ELT(error_c, i, Rf_mkChar(e.what()));
+    }
+
+    // Progress bar update
+    progress = (double) i / (double) nb_paths;
+    int pos = barWidth * progress;
+    for (int j = 0; j < barWidth; ++j) {
+        if (j < pos) std::cout << "=";
+        else if (j == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    std::cout << "] " << int(progress * 100.0) << " %\r";
+    std::cout.flush();
+
+  }
+  std::cout << std::endl;
+
+  SEXP df = PROTECT(create_data_frame({
+    {"path", paths_c},
+    {"db_size_before", size_before_column},
+    {"added_values", added_values_column},
+    {"small_db_size", small_db_size_column},
+    {"small_db_bytes", small_db_bytes_column},
+    {"duration", duration_column},
+    {"error", error_c}
+  }));
+
+  UNPROTECT(8);
+
+  return df;
+
 }

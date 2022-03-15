@@ -8,6 +8,9 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 #include "roaring.hh"
 
@@ -135,6 +138,18 @@ constexpr int stoi_impl(const char* str, int value = 0) {
 
 constexpr int stoi(const char* str) {
   return stoi_impl(str);
+}
+
+inline uintmax_t directory_size(fs::path directory_path) {
+  uintmax_t size = 0;
+  for(const fs::directory_entry& dir_entry :
+  fs::recursive_directory_iterator(directory_path)) {
+    if(fs::is_regular_file(dir_entry)) {
+      size += fs::file_size(dir_entry);
+    }
+  }
+
+  return size;
 }
 
 #endif
