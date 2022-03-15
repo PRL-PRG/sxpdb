@@ -820,7 +820,7 @@ SEXP extptr_tag(SEXP ptr) {
 
 
 SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
-  fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0))) / "cran_db";
+  fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0))) / "cran_db" / "sxpdb";
 
   Rprintf("Starting merging\n");
 
@@ -850,6 +850,8 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
   int* dur_c = INTEGER(duration_column);
 
   for(size_t i = 0; i < nb_paths ; i++) {
+    fs::path small_db_path = fs::path(CHAR(STRING_ELT(db_paths, i))) / "sxpdb";
+
     std::cout << "[";
 
     uint64_t size_before = db.nb_values();
@@ -858,8 +860,7 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
     try {
       std::chrono::microseconds elapsed = std::chrono::microseconds::zero();
       auto start = std::chrono::system_clock::now();
-
-      Database small_db(CHAR(STRING_ELT(db_paths, i)), Database::OpenMode::Merge, true);
+      Database small_db(, Database::OpenMode::Merge, true);
       uint64_t small_db_size = small_db.nb_values();
 
 
