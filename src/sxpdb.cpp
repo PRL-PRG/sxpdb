@@ -820,12 +820,17 @@ SEXP extptr_tag(SEXP ptr) {
 
 
 SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
-  fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0))) / "cran_db" / "sxpdb";
+  fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0))) / "cran_db";
 
   Rprintf("Starting merging\n");
 
+  // Create the db directory if it does not exist
+  if(!fs::exists(db_path)) {
+    fs::create_directory(db_path);
+  }
+
   // Open in write mode, and not quiet
-  Database db(db_path, Database::OpenMode::Write, false);
+  Database db(db_path / "sxpdb", Database::OpenMode::Write, false);
 
 
   // Progress bar setup
@@ -860,7 +865,7 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
     try {
       std::chrono::microseconds elapsed = std::chrono::microseconds::zero();
       auto start = std::chrono::system_clock::now();
-      Database small_db(, Database::OpenMode::Merge, true);
+      Database small_db(small_db_path, Database::OpenMode::Merge, true);
       uint64_t small_db_size = small_db.nb_values();
 
 
