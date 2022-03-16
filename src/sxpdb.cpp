@@ -855,14 +855,15 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
   int* dur_c = INTEGER(duration_column);
 
   for(size_t i = 0; i < nb_paths ; i++) {
-    fs::path lock_path = db_path / ".LOCK";
+    fs::path small_db_path = fs::path(CHAR(STRING_ELT(db_paths, i)));
+
+    fs::path lock_path = small_db_path / ".LOCK";
 
     try {
       if(fs::exists(lock_path)) {
         // the small db is corrupted, so do not try to open
         throw std::runtime_error("Database is corrupted: lock file is present.\n");
       }
-      fs::path small_db_path = fs::path(CHAR(STRING_ELT(db_paths, i))) / "sxpdb";
 
       std::cout << "[";
 
@@ -871,7 +872,7 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
       s_before_c[i] = size_before;
       std::chrono::microseconds elapsed = std::chrono::microseconds::zero();
       auto start = std::chrono::system_clock::now();
-      Database small_db(small_db_path, Database::OpenMode::Merge, true);
+      Database small_db(small_db_path / "sxpdb", Database::OpenMode::Merge, true);
       uint64_t small_db_size = small_db.nb_values();
 
 
