@@ -27,6 +27,7 @@
 #include "config.h"
 #include "robin_hood.h"
 #include "hasher.h"
+#include "utils.h"
 
 #include "stable_vector.h"
 
@@ -629,7 +630,7 @@ public:
       load_unique();
     }
 
-    assert(n_values == store.size());
+    throw_assert(n_values == store.size());
 
     in_memory = true;
 
@@ -644,7 +645,7 @@ public:
       unique_lines.insert({&chunk[i], i});
     }
 
-    assert(unique_lines.size() == n_values);// the file should contain unique names
+    throw_assert(unique_lines.size() == n_values);// the file should contain unique names
 
     unique_loaded = true;
   }
@@ -743,7 +744,7 @@ public:
   const SEXP to_sexp() const {
     SEXP s = PROTECT(Rf_allocVector(STRSXP, nb_values()));
     int i = 0;
-    assert(nb_values() == store.size());
+    throw_assert(nb_values() == store.size());
     for(const auto& name : std::as_const(store)) {
       SET_STRING_ELT(s, i, Rf_mkChar(name.c_str()));
       i++;

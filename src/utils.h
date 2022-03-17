@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cassert>
 #include <filesystem>
+#include <exception>
 
 namespace fs = std::filesystem;
 
@@ -150,6 +151,12 @@ inline uintmax_t directory_size(fs::path directory_path) {
   }
 
   return size;
+}
+
+#define S1(x) #x
+#define S2(x) S1(x)
+#define throw_assert(condition) if(!(condition)) { \
+  throw std::runtime_error("Asssertion failed at " __FILE__ ":" S2(__LINE__) " " #condition); \
 }
 
 #endif
