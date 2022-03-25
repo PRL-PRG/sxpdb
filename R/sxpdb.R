@@ -1,8 +1,3 @@
-## VERSION = major.minor.patch
-## Until major version is greater than 0, any changes in minor version number
-## signifies version breaking change.
-VERSION = "0.5.0"
-
 ## Primary Functionality
 
 #' @export
@@ -32,12 +27,12 @@ add_val <- function(db, val) {
 }
 
 #' @export
-add_val_origin <- function(db, val, package, func, argument) {
-  stopifnot(write_mode(db), is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
+add_val_origin <- function(db, val, package, func, argument, call_id = 0) {
+  stopifnot(write_mode(db), is.numeric(call_id), is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
   .Call(SXPDB_add_val_origin, db, val, package, func, if(is.na(argument)) NA_character_ else argument)
 }
 
-#' export
+#' @export
 add_origin <- function(db, hash, package, func, argument) {
   stopifnot(write_mode(db), is.raw(hash) && length(hash) == 20, is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
   .Call(SXPDB_add_origin, db, hash, package, func, if(is.na(argument)) NA_character_ else argument)
@@ -217,5 +212,10 @@ is_integer_real <- function(v) {
 #' @export
 extptr_tag <- function(v) {
   .Call(SXPDB_extptr_tag, v)
+}
+
+
+.onUnload <- function (libpath) {
+  library.dynam.unload("sxpdb", libpath)
 }
 

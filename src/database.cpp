@@ -104,6 +104,9 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
   if(!quiet) Rprintf("Loading class names.\n");
   pool.push_task([&](const fs::path& base_path, bool write_mode) {classes.open(base_path, write_mode);}, base_path, write_mode);
 
+  if(!quiet) Rprintf("Loading call ids.\n");
+  pool.push_task([&](const fs::path& base_path, bool write_mode) {call_ids.open(base_path, write_mode);}, base_path, write_mode);
+
   if(mode == OpenMode::Write || mode == OpenMode::Merge) {
     if(!quiet) Rprintf("Loading runtime changing metadata into memory.\n");
     pool.push_task([&]() {runtime_meta.load_all();});
@@ -165,6 +168,11 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
   if(classes.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
                "in the class tables: %lu vs %lu.\n", nb_total_values, classes.nb_values());
+  }
+
+  if(call_ids.nb_values() != nb_total_values) {
+     Rf_error("Inconsistent number of values in the global configuration file and "
+               "in the call_id tables: %lu vs %lu.\n", nb_total_values, call_ids.nb_values());
   }
 
   if(to_check) {
@@ -1228,13 +1236,15 @@ std::tuple<const sexp_hash*, uint64_t, bool> Database::add_value(SEXP val) {
   return {&hashes.read(*idx), *idx, buf != nullptr};
 }
 
-std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& param_name) {
+std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& param_name, uint64_t call_id) {
   auto res = add_value(val);
   if(std::get<0>(res) != nullptr) {// if it is null, it means we ignored it because it was an environment or a closure, or the db was forked
     assert(nb_total_values > 0);
     //res.1 contains the index of the value
     // if it is a new value, it is going to be nb_total_values
     origins.add_origin(std::get<1>(res), pkg_name, func_name, param_name);
+
+    call_ids.add_call_id(std::get<1>(res), call_id);
   }
 
   return std::make_pair(std::get<0>(res), std::get<2>(res));

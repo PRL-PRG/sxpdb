@@ -31,7 +31,6 @@ struct location_t {
   uint32_t package = 0;
   uint32_t function = 0;
   uint32_t param = 0;//std::numeric_limits<uint32_t>::max() will be the magic value to indicate that it is a return value
-
   bool operator== (const location_t& loc) const  {
     return package == loc.package && function == loc.function && param == loc.param;
   }
@@ -81,8 +80,8 @@ private:
 public:
   Origins() : pid(getpid()), dummy_loc({location_t(0, 0, 0)}) {}
 
-  Origins(const fs::path& base_path_, bool write = true) : pid(getpid()), dummy_loc({location_t(0, 0, 0)}), write_mode(write) {
-    open(base_path);
+  Origins(const fs::path& base_path_, bool write = true) : pid(getpid()), dummy_loc({location_t(0, 0, 0)}) {
+    open(base_path, write);
   }
 
   void open(const fs::path& base_path_, bool write = true) {
