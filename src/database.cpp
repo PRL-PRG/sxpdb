@@ -107,6 +107,10 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
   if(!quiet) Rprintf("Loading call ids.\n");
   pool.push_task([&](const fs::path& base_path, bool write_mode) {call_ids.open(base_path, write_mode);}, base_path, write_mode);
 
+  if(!quiet) Rprintf("loading db names.\n");
+  pool.push_task([&](const fs::path& base_path, bool write_mode) {dbnames.open(base_path, write_mode);}, base_path, write_mode);
+
+
   if(mode == OpenMode::Write || mode == OpenMode::Merge) {
     if(!quiet) Rprintf("Loading runtime changing metadata into memory.\n");
     pool.push_task([&]() {runtime_meta.load_all();});
@@ -171,6 +175,13 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
   }
 
   if(call_ids.nb_values() != nb_total_values) {
+     Rf_error("Inconsistent number of values in the global configuration file and "
+               "in the call_id tables: %lu vs %lu.\n", nb_total_values, call_ids.nb_values());
+  }
+
+  // 0 is possible, as we only update that table when merging
+  // SO the table is empty just after tracing
+  if(dbnames.nb_values() != nb_total_values || dbnames.nb_values() != 0) {
      Rf_error("Inconsistent number of values in the global configuration file and "
                "in the call_id tables: %lu vs %lu.\n", nb_total_values, call_ids.nb_values());
   }
@@ -1266,6 +1277,10 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
   // Make sure the offsets are loaded into memory so that we can parallelize
   other.sexp_table.load_all();
 
+  bool has_dbnames = other.dbnames.nb_values() != 0;
+  std::string dbname = other.configuration_path().parent_path().filename();
+
+
   size_t nb_threads = std::thread::hardware_concurrency() - 1;
   thread_pool pool(nb_threads);
 
@@ -1435,6 +1450,7 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     }
   }, std::cref(elems_to_add), std::ref(classes), std::cref(other.classes));
 
+
   //// Origins
   // We have to do new values and old values together...
   // As it is not everything in memory...
@@ -1472,6 +1488,82 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
 
   }, std::cref(elems_to_add), std::cref(elems_present), std::ref(origins), std::cref(other.origins));
 
+  /// DB names
+  // For old and new values
+  pool.push_task([has_dbnames, &dbname](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_here, DBNames& table, const DBNames& other_table) {
+    auto other_already = to_add;
+    if(!to_add.isEmpty()) {
+      other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+    }
+    else {
+      other_already.addRange(0, other_table.nb_values());
+    }
+
+    assert(other_already.cardinality() == already_here.cardinality());
+
+    // New
+    uint64_t n_values = table.nb_values();
+    if(has_dbnames) {
+       for (uint64_t other_idx : to_add) {
+        for(const auto db_id : other_table.get_dbs(other_idx)) {
+            table.add_dbname(n_values, other_table.dbname(db_id));
+          }
+       }
+    }
+    else {
+      for (uint64_t other_idx : to_add) {
+        table.add_dbname(n_values, dbname);
+        n_values++;
+      }
+    }
+
+    // Old
+    if(has_dbnames) {
+      for(auto it = already_here.begin(), other_it = other_already.begin() ; it != already_here.end(); it++, other_it ++) {
+        for(const auto db_id : other_table.get_dbs(*other_it)) {
+          table.add_dbname(*it, other_table.dbname(db_id));
+        }
+      }
+    }
+    else {
+      for(auto it = already_here.begin(), other_it = other_already.begin() ; it != already_here.end(); it++, other_it ++) {
+        for(const auto db_id : other_table.get_dbs(*other_it)) {
+          table.add_dbname(*it, dbname);
+        }
+      }
+    }
+
+  }, std::cref(elems_to_add), std::cref(elems_present), std::ref(dbnames), std::cref(other.dbnames));
+
+  // Call ids
+  pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_here, CallIds& table, const CallIds& other_table) {
+    auto other_already = to_add;
+    if(!to_add.isEmpty()) {
+      other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+    }
+    else {
+      other_already.addRange(0, other_table.nb_values());
+    }
+
+    assert(other_already.cardinality() == already_here.cardinality());
+
+    // New 
+    uint64_t n_values = table.nb_values();
+    for(uint64_t other_idx : to_add) {
+      for(uint64_t call_id : other_table.get_call_ids(other_idx)) {
+        table.add_call_id(n_values, call_id);
+      }
+    }
+
+    // Old 
+    for(auto it = already_here.begin(), other_it = other_already.begin() ; it != already_here.end(); it++, other_it ++) {
+        for(const uint64_t call_id : other_table.get_call_ids(*other_it)) {
+          table.add_call_id(*it, call_id);
+        }
+      }
+
+  }, std::cref(elems_to_add), std::cref(elems_present), std::ref(call_ids), std::cref(other.call_ids));
+
   pool.wait_for_tasks();
 
   nb_total_values += elems_to_add.cardinality();
@@ -1497,6 +1589,9 @@ uint64_t Database::merge_in(Database& other) {
   uint64_t old_nb_classnames = classes.nb_classnames();
 
   other.sexp_table.load_all();
+
+  bool has_dbnames = other.dbnames.nb_values() != 0;
+  std::string dbname = other.configuration_path().parent_path().filename();
 
   sexp_hash key;
   runtime_meta_t meta;
@@ -1539,12 +1634,27 @@ uint64_t Database::merge_in(Database& other) {
     debug_counters.append(other.debug_counters.read(other_idx));
 #endif
 
-    // Hashes
-    hashes.append(key);
-    sexp_index.insert({&hashes.memory_view().back(), nb_total_values});
+         // DB names
+      if(has_dbnames) {
+        for(const auto db_id : other.dbnames.get_dbs(other_idx)) {
+          dbnames.add_dbname(nb_total_values, other.dbnames.dbname(db_id));
+        }
+      }
+      else {//It results from tracing
+        dbnames.add_dbname(nb_total_values, dbname);
+      }
 
-    nb_total_values++;
-    new_elements = true;
+      // Call ids
+      for(const auto call_id : other.call_ids.get_call_ids(other_idx)) {
+        call_ids.add_call_id(nb_total_values, call_id);
+      }
+
+      // Hashes
+      hashes.append(key);
+      sexp_index.insert({&hashes.memory_view().back(), nb_total_values});
+
+      nb_total_values++;
+      new_elements = true;
 
     }
     else {
@@ -1574,6 +1684,21 @@ uint64_t Database::merge_in(Database& other) {
         origins.add_origin(db_idx, other.origins.package_name(loc.package),
                            other.origins.function_name(loc.function),
                            other.origins.param_name(loc.param));
+      }
+
+      // DB names
+      if(has_dbnames) {
+        for(const auto db_id : other.dbnames.get_dbs(other_idx)) {
+          dbnames.add_dbname(db_idx, other.dbnames.dbname(db_id));
+        }
+      }
+      else {//It results from tracing
+        dbnames.add_dbname(db_idx, dbname);
+      }
+
+      // Call ids
+      for(const auto call_id : other.call_ids.get_call_ids(other_idx)) {
+        call_ids.add_call_id(db_idx, call_id);
       }
     }
   }

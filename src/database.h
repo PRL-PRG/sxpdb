@@ -24,6 +24,7 @@
 #include "classnames.h"
 #include "serialization.h"
 #include "call_ids.h"
+#include "dbnames.h"
 
 #include "robin_hood.h"
 #include "xxhash.h"
@@ -90,6 +91,7 @@ private:
   Origins origins;
   ClassNames classes;
   CallIds call_ids;
+  DBNames dbnames;
 
   // Handling of SEXP serialization,
   // SEXP caching and so on
