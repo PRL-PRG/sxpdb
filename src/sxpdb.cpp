@@ -83,7 +83,8 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
 }
 
 SEXP add_val_origin_(SEXP sxpdb, SEXP val,
-                     const char* package_name, const char* function_name, const char* argument_name) {
+                     const char* package_name, const char* function_name, const char* argument_name,
+                     uint64_t call_id) {
 
   void* ptr = R_ExternalPtrAddr(sxpdb);
   if(ptr== nullptr) {
@@ -104,7 +105,7 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
 
   try {
 
-    auto hash = db->add_value(val, package_name, function_name, argument_name);
+    auto hash = db->add_value(val, package_name, function_name, argument_name, call_id);
 
     if(hash.first != nullptr) {
       SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
@@ -118,8 +119,8 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
     }
   }
   catch(std::exception& e) {
-    Rf_error("Error adding value from package %s, function %s and argument %s, into the database: %s\n",
-             package_name, function_name, argument_name, e.what());
+    Rf_error("Error adding value from package %s, function %s and argument %s, with call id %lu, into the database: %s\n",
+             package_name, function_name, argument_name, call_id, e.what());
   }
 
   return R_NilValue;
@@ -192,7 +193,7 @@ SEXP add_origin(SEXP sxpdb, SEXP hash, SEXP package, SEXP function, SEXP argumen
   return add_origin_(sxpdb, &h, package_name, function_name, argument_name);
 }
 
-SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument) {
+SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument, SEXP call_id) {
   const char *package_name = EMPTY_ORIGIN_PART;
   const char *function_name = EMPTY_ORIGIN_PART;
   const char *argument_name = EMPTY_ORIGIN_PART;
@@ -220,7 +221,7 @@ SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argu
     argument_name = CHAR(PRINTNAME(argument));// a symbol cannot be NA
   }
 
-  return add_val_origin_(sxpdb, val, package_name, function_name, argument_name);
+  return add_val_origin_(sxpdb, val, package_name, function_name, argument_name, Rf_asInteger(call_id));
 }
 
 SEXP get_origins(SEXP sxpdb, SEXP hash_s) {

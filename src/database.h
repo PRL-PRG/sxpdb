@@ -23,6 +23,8 @@
 #include "origins.h"
 #include "classnames.h"
 #include "serialization.h"
+#include "call_ids.h"
+#include "dbnames.h"
 
 #include "robin_hood.h"
 #include "xxhash.h"
@@ -88,6 +90,8 @@ private:
   SearchIndex search_index;
   Origins origins;
   ClassNames classes;
+  CallIds call_ids;
+  DBNames dbnames;
 
   // Handling of SEXP serialization,
   // SEXP caching and so on
@@ -116,7 +120,7 @@ public:
 
   // Adding R values/origins
   std::tuple<const sexp_hash*, uint64_t, bool> add_value(SEXP val);//TODO this should add dummy origins
-  std::pair<const sexp_hash*, bool> add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name);
+  std::pair<const sexp_hash*, bool> add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& arg_name, uint64_t call_id);
   void add_origin(uint64_t index, const std::string& pkg_name, const std::string& func_name, const std::string& param_name);
 
   // Accessors for individual elements

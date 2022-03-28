@@ -5,6 +5,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <Rversion.h>
+#include <stdint.h>
 
 
 #ifdef __cplusplus
@@ -139,12 +140,14 @@ SEXP get_meta_idx(SEXP db, SEXP idx);
  * @param package name
  * @param function name
  * @param argument name ; "" or NA mean that it is a return value
+ * @param call_id integer or double
  * @return average duration in milliseconds
  */
-SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument);
+SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument, SEXP call_id);
 
 SEXP add_val_origin_(SEXP sxpdb, SEXP val,
-                     const char* package_name, const char* function_name, const char* argument_name);
+                     const char* package_name, const char* function_name, const char* argument_name,
+                     uint64_t call_id);
 
 /**
  * Get the origins of a value using its hash
