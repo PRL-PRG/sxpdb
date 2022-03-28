@@ -6,6 +6,8 @@
 
 #include "readerwritercircularbuffer.h"
 
+#include <stdexcept>
+
 using namespace moodycamel;
 
 Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
@@ -98,11 +100,28 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
   static_meta.open(static_meta_path, write_mode);
   debug_counters.open(debug_counters_path, write_mode);
 
+  // To catch the exceptions from other threads
+  std::exception_ptr teptr_origs = nullptr;
+  std::exception_ptr teptr_classnames = nullptr;
   if(!quiet) Rprintf("Loading origins.\n");
-  pool.push_task([&](const fs::path& base_path, bool write_mode) {origins.open(base_path, write_mode);}, base_path, write_mode);
+  pool.push_task([&](const fs::path& base_path, bool write_mode) {
+  try {
+    origins.open(base_path, write_mode);
+  }
+  catch(...) {
+    teptr_origs = std::current_exception();
+  }
+  }, base_path, write_mode);
 
-  if(!quiet) Rprintf("Loading class names.\n");
-  pool.push_task([&](const fs::path& base_path, bool write_mode) {classes.open(base_path, write_mode);}, base_path, write_mode);
+if(!quiet) Rprintf("Loading class names.\n");
+pool.push_task([&](const fs::path& base_path, bool write_mode) {
+  try {
+    classes.open(base_path, write_mode);
+  }
+  catch(...) {
+    teptr_classnames = std::current_exception();
+  }
+  }, base_path, write_mode);
 
   if(mode == OpenMode::Write || mode == OpenMode::Merge) {
     if(!quiet) Rprintf("Loading runtime changing metadata into memory.\n");
@@ -130,6 +149,14 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
   }
 
   pool.wait_for_tasks();
+
+  if(teptr_origs) {
+    std::rethrow_exception(teptr_origs);
+  }
+
+  if(teptr_classnames) {
+    std::rethrow_exception(teptr_classnames);
+  }
 
   // Check if the number of values in tables are coherent
   if(sexp_table.nb_values() != nb_total_values) {
