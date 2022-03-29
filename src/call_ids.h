@@ -52,7 +52,7 @@ public:
 
     void add_call_id(uint64_t index, uint64_t call_id) {
         assert(write_mode);
-        assert(pid === getpid());
+        assert(pid == getpid());
 
         if(index > call_ids.size()) {
               Rf_error("Cannot add a call id for a value that was not recorded in the main table."
