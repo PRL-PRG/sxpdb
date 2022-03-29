@@ -10,6 +10,14 @@
 using namespace std::chrono_literals;
 
 void SearchIndex::open_from_config(const fs::path& base_path, const Config& config) {
+  last_computed = std::stoul(config["index_last_computed"]);
+  index_generated = std::stoi(config["index_generated"]) != 0;
+
+  if(!index_generated) {
+    return;
+  }
+
+
   types_index_path = base_path / config["types_index"];
   na_index_path = base_path / config["na_index"];
   class_index_path = base_path / config["class_index"];
@@ -17,9 +25,6 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
   attributes_index_path = base_path / config["vector_index"];
   lengths_index_path = base_path / config["lengths_index"];
   classnames_index_path = base_path / config["classnames_index"];
-
-  last_computed = std::stoul(config["index_last_computed"]);
-  index_generated = std::stoi(config["index_generated"]) != 0;
 
 
   if(!types_index_path.empty()) {
