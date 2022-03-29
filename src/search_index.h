@@ -189,6 +189,8 @@ private:
 
   uint64_t last_computed = 0;
 
+  bool write_mode = false;
+
   friend class Database;
 
 
@@ -217,6 +219,8 @@ public:
     lengths_index.resize(nb_intervals);
   }
 
+  void set_write_mode(bool write) { write_mode = write; }
+
   bool is_initialized() const {return index_generated; }
 
   void open_from_config(const fs::path& base_path, const Config& config);
@@ -224,7 +228,7 @@ public:
   void add_paths_config(std::unordered_map<std::string, std::string>& conf, const fs::path& base_path_) {
     fs::path base_path = base_path_ / "search_index";
 
-    if(!fs::exists(base_path)) {
+    if(!fs::exists(base_path) && write_mode) {
         fs::create_directory(base_path);
     }
 

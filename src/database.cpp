@@ -68,6 +68,7 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
 
     // The search indexes
     if(!quiet) Rprintf("Loading search indexes.\n");
+    search_index.set_write_mode(mode == OpenMode::Write);
     search_index.open_from_config(base_path, config);
 
     nb_total_values = std::stoul(config["nb_values"]);
