@@ -820,7 +820,7 @@ SEXP extptr_tag(SEXP ptr) {
 }
 
 
-SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
+SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
   fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0))) / "cran_db";
 
   Rprintf("Starting merging\n");
@@ -829,6 +829,8 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
   if(!fs::exists(db_path)) {
     fs::create_directory(db_path);
   }
+
+  bool parallel = Rf_asLogical(in_parallel);
 
   // Open in write mode, and not quiet
   Database db(db_path / "sxpdb", Database::OpenMode::Write, false);
@@ -873,12 +875,17 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path) {
       s_before_c[i] = size_before;
       std::chrono::microseconds elapsed = std::chrono::microseconds::zero();
       auto start = std::chrono::system_clock::now();
-      Database small_db(small_db_path / "sxpdb", Database::OpenMode::Merge, true);
+      Database small_db(small_db_path / "sxpdb", Database::OpenMode::Merge, false);
       uint64_t small_db_size = small_db.nb_values();
 
 
       if(small_db_size > 0) {
-        db.parallel_merge_in(small_db, 150);
+        if(parallel) {
+          db.parallel_merge_in(small_db, 150);
+        }
+        else {
+          db.merge_in(small_db);
+        }
       }
 
       auto end = std::chrono::system_clock::now();

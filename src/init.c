@@ -41,7 +41,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"relax_query", (DL_FUNC) &relax_query,         2},
 	{"is_query_empty", (DL_FUNC) &is_query_empty,   1},
 	{"extptr_tag",   (DL_FUNC) &extptr_tag,         1},
-	{"merge_all_dbs", (DL_FUNC) &merge_all_dbs,     2},
+	{"merge_all_dbs", (DL_FUNC) &merge_all_dbs,     3},
 
 
 	// Must have at the end

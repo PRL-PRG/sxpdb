@@ -181,9 +181,9 @@ is_query_empty <- function(query) {
 }
 
 #' @export
-merge_all_dbs <- function(db_paths, output_path) {
-  stopifnot(is.character(db_paths), is.character(output_path))
-  .Call(SXPDB_merge_all_dbs, db_paths, output_path)
+merge_all_dbs <- function(db_paths, output_path, parallel = TRUE) {
+  stopifnot(is.character(db_paths), is.character(output_path), is.logical(parallel))
+  .Call(SXPDB_merge_all_dbs, db_paths, output_path, parallel)
 }
 
 ## Utilities

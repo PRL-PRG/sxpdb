@@ -303,9 +303,10 @@ SEXP extptr_tag(SEXP ptr);
  * 
  * @param db_paths character vector paths of the dbs to be merged
  * @param output_path character path of the resulting db
+ * @param parallel logical, whether the merge should be performed in parallel or not
  * @return data frame of the merged dbs
  */
-SEXP merge_all_dbs(SEXP db_paths, SEXP output_path);
+SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP parallel);
 
 #ifdef __cplusplus
 } // extern "C"
