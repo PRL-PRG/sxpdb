@@ -104,6 +104,9 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
   // To catch the exceptions from other threads
   std::exception_ptr teptr_origs = nullptr;
   std::exception_ptr teptr_classnames = nullptr;
+  std::exception_ptr teptr_call_ids = nullptr;
+  std::exception_ptr teptr_dbnames = nullptr;
+
   if(!quiet) Rprintf("Loading origins.\n");
   pool.push_task([&](const fs::path& base_path, bool write_mode) {
   try {
@@ -125,10 +128,24 @@ pool.push_task([&](const fs::path& base_path, bool write_mode) {
   }, base_path, write_mode);
 
   if(!quiet) Rprintf("Loading call ids.\n");
-  pool.push_task([&](const fs::path& base_path, bool write_mode) {call_ids.open(base_path, write_mode);}, base_path, write_mode);
+  pool.push_task([&](const fs::path& base_path, bool write_mode) {
+    try {
+      call_ids.open(base_path, write_mode);
+    }
+    catch(...) {
+      teptr_call_ids = std::current_exception();
+    }
+  }, base_path, write_mode);
 
   if(!quiet) Rprintf("loading db names.\n");
-  pool.push_task([&](const fs::path& base_path, bool write_mode) {dbnames.open(base_path, write_mode);}, base_path, write_mode);
+  pool.push_task([&](const fs::path& base_path, bool write_mode) {
+    try {
+      dbnames.open(base_path, write_mode);
+    }
+    catch(...) {
+      teptr_dbnames = std::current_exception();
+    }
+  }, base_path, write_mode);
 
 
   if(mode == OpenMode::Write || mode == OpenMode::Merge) {
@@ -164,6 +181,14 @@ pool.push_task([&](const fs::path& base_path, bool write_mode) {
 
   if(teptr_classnames) {
     std::rethrow_exception(teptr_classnames);
+  }
+
+  if(teptr_call_ids) {
+    std::rethrow_exception(teptr_call_ids);
+  }
+
+  if(teptr_dbnames) {
+    std::rethrow_exception(teptr_dbnames);
   }
 
   // Check if the number of values in tables are coherent
