@@ -234,9 +234,9 @@ pool.push_task([&](const fs::path& base_path, bool write_mode) {
 
   // 0 is possible, as we only update that table when merging
   // SO the table is empty just after tracing
-  if(dbnames.nb_values() != nb_total_values || dbnames.nb_values() != 0) {
+  if(dbnames.nb_values() != 0 && dbnames.nb_values() != nb_total_values) {
      Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the call_id tables: %lu vs %lu.\n", nb_total_values, call_ids.nb_values());
+               "in the db names tables: %lu vs %lu.\n", nb_total_values, dbnames.nb_values());
   }
 
   if(to_check) {
