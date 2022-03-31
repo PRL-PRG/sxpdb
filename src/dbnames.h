@@ -35,13 +35,18 @@ public:
     void open(const fs::path& base_path_, bool write = true) {
         write_mode = write;
         base_path = fs::absolute(base_path_);
+        
+        // open the table only in write mode or
+        // if it already exists
+        if(write_mode || fs::exists(base_path / "dbs.bin")) {
+            dbs_table = std::make_unique<VSizeTable<std::vector<uint32_t>>>(base_path / "dbs.bin", write_mode);
 
-        dbs_table = std::make_unique<VSizeTable<std::vector<uint32_t>>>(base_path / "dbs.bin", write_mode);
-
-        db_names.open(base_path / "dbnames.bin", write_mode);
+            db_names.open(base_path / "dbnames.bin", write_mode);
+        }
+       
 
         // Populate db names in write_mode
-        // In other mode, we just directly read from the db_table
+        // In other mode, we just directly read from the db_table if it exists
         if(write_mode) {
             dbs.clear();
             dbs.resize(dbs_table->nb_values());
@@ -143,8 +148,11 @@ public:
     }
 
     uint64_t nb_values() const {
-        if(write_mode) {
+        if(write_mode && last_written > 0 ) {
             return dbs.size();
+        }
+        else if(write_mode && last_written == 0) {
+            return 0;
         }
         else {
             return dbs_table->nb_values();

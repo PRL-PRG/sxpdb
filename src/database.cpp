@@ -137,7 +137,7 @@ pool.push_task([&](const fs::path& base_path, bool write_mode) {
     }
   }, base_path, write_mode);
 
-  if(!quiet) Rprintf("loading db names.\n");
+  if(!quiet) Rprintf("Loading db names.\n");
   pool.push_task([&](const fs::path& base_path, bool write_mode) {
     try {
       dbnames.open(base_path, write_mode);
