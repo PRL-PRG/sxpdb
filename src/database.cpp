@@ -1561,6 +1561,7 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
         for(const auto db_id : other_table.get_dbs(other_idx)) {
             table.add_dbname(n_values, other_table.dbname(db_id));
           }
+          n_values++;
        }
     }
     else {
@@ -1606,6 +1607,7 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
       for(uint64_t call_id : other_table.get_call_ids(other_idx)) {
         table.add_call_id(n_values, call_id);
       }
+      n_values++;
     }
 
     // Old 

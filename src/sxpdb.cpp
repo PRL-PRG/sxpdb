@@ -825,10 +825,11 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
 
   Rprintf("Starting merging\n");
 
-  // Create the db directory if it does not exist
-  if(!fs::exists(db_path)) {
-    fs::create_directory(db_path);
-  }
+    //Removes the db if it exists
+  fs::remove_all(db_path);
+
+  // Create the db directory 
+  fs::create_directory(db_path);
 
   bool parallel = Rf_asLogical(in_parallel);
 

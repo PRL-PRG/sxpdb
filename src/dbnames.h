@@ -75,7 +75,7 @@ public:
         assert(write_mode);
         assert(pid == getpid());
 
-        if(index != dbs.size()) {
+        if(index > dbs.size()) {
             Rf_error("Cannot add a db name for a value that was not recorded in the main table."
                     " Last index is %lu, but the index of that new db name is %lu.\n",
                     dbs.size(), index);
