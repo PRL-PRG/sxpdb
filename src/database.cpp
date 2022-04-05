@@ -1326,12 +1326,16 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
   assert(runtime_meta.loaded());
   assert(hashes.loaded());
   assert(debug_counters.loaded());
+  assert(other.hashes.loaded());
 
   // Make sure the offsets are loaded into memory so that we can parallelize
   other.sexp_table.load_all();
 
   bool has_dbnames = other.dbnames.nb_values() != 0;
   std::string dbname = other.configuration_path().parent_path().filename();
+
+  bool has_debug = debug_counters.nb_values() > 0 && other.debug_counters.nb_values() > 0;
+
 
 
   size_t nb_threads = std::thread::hardware_concurrency() - 1;
@@ -1377,7 +1381,8 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     elems_present |= elems.second;
   }
 
-  if(!quiet) Rprintf("Planning to add %ld new values.\n", elems_to_add.cardinality());
+  if(!quiet) Rprintf("Planning to add %lu new values from the %lu of the merged database.\n",
+   elems_to_add.cardinality(), other.nb_values());
 
   // Now we have all the indexes of the elements to add
 
@@ -1439,45 +1444,53 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
 #ifndef NDEBUG
   //// Debug informations
   // Add the new ones
-  pool.push_task([](const roaring::Roaring64Map& index,FSizeTable<debug_counters_t>& table, const FSizeTable<debug_counters_t>& other_table) {
+  if(has_debug) {
+    pool.push_task([](const roaring::Roaring64Map& index,FSizeTable<debug_counters_t>& table, const FSizeTable<debug_counters_t>& other_table) {
+      for(uint64_t idx : index) {
+        table.append(other_table.read(idx));
+      }
+    }, std::cref(elems_to_add), std::ref(debug_counters), std::cref(other.debug_counters));
+    // Update the already existing ones
+    pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_db, FSizeTable<debug_counters_t>& table, const FSizeTable<debug_counters_t>& other_table) {
+      auto other_already = to_add;
+
+
+      // the indexes in the other db which need to be used to be modified are the negation of the ones that have to be added
+      // mimimum returns garbage if to_add is empty
+      if(!to_add.isEmpty()) {
+        other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+      }
+      else {
+        other_already.addRange(0, other_table.nb_values());
+      }
+
+      assert(other_already.cardinality() == already_db.cardinality());
+
+      debug_counters_t dbg;
+
+      for(auto db_it = already_db.begin(), other_it = other_already.begin(); db_it != already_db.end() ; db_it++, other_it++) {
+        table.read_in(*db_it, dbg);
+        const debug_counters_t& other_dbg = other_table.read(*other_it);
+        dbg.n_maybe_shared += other_dbg.n_maybe_shared;
+        dbg.n_sexp_address_opt += other_dbg.n_sexp_address_opt;
+        table.write(*db_it, dbg);
+      }
+    }, std::cref(elems_to_add), std::cref(elems_present), std::ref(debug_counters), std::cref(other.debug_counters));
+  }
+  #endif
+
+  // Hashes and sexp_index
+  pool.push_task([](const roaring::Roaring64Map& index, FSizeMemoryViewTable<sexp_hash>& table,
+   const FSizeMemoryViewTable<sexp_hash>& other_table, sexp_hash_map& sxp_index) {
+    sexp_hash key;
+    uint64_t n_values = table.nb_values();
     for(uint64_t idx : index) {
-      table.append(other_table.read(idx));
+      other_table.read_in(idx, key);
+      table.append(key);
+      sxp_index.insert({&table.memory_view().back(), n_values});
+      n_values++;
     }
-  }, std::cref(elems_to_add), std::ref(debug_counters), std::cref(other.debug_counters));
-  // Update the already existing ones
-  pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_db, FSizeTable<debug_counters_t>& table, const FSizeTable<debug_counters_t>& other_table) {
-    auto other_already = to_add;
-
-
-    // the indexes in the other db which need to be used to be modified are the negation of the ones that have to be added
-    // mimimum returns garbage if to_add is empty
-    if(!to_add.isEmpty()) {
-      other_already.flip(to_add.minimum(), to_add.maximum() + 1);
-    }
-    else {
-      other_already.addRange(0, other_table.nb_values());
-    }
-
-    assert(other_already.cardinality() == already_db.cardinality());
-
-    debug_counters_t dbg;
-
-    for(auto db_it = already_db.begin(), other_it = other_already.begin(); db_it != already_db.end() ; db_it++, other_it++) {
-      table.read_in(*db_it, dbg);
-      const debug_counters_t& other_dbg = other_table.read(*other_it);
-      dbg.n_maybe_shared += other_dbg.n_maybe_shared;
-      dbg.n_sexp_address_opt += other_dbg.n_sexp_address_opt;
-      table.write(*db_it, dbg);
-    }
-  }, std::cref(elems_to_add), std::cref(elems_present), std::ref(debug_counters), std::cref(other.debug_counters));
-#endif
-
-  // Hashes
-  pool.push_task([](const roaring::Roaring64Map& index, FSizeMemoryViewTable<sexp_hash>& table, const FSizeMemoryViewTable<sexp_hash>& other_table) {
-    for(uint64_t idx : index) {
-      table.append(other_table.read(idx));
-    }
-  }, std::cref(elems_to_add), std::ref(hashes), std::cref(other.hashes));
+  }, std::cref(elems_to_add), std::ref(hashes), std::cref(other.hashes), std::ref(sexp_index));
 
   // Static meta data
   pool.push_task([](const roaring::Roaring64Map& index,FSizeTable<static_meta_t>& table, const FSizeTable<static_meta_t>& other_table) {
@@ -1651,6 +1664,9 @@ uint64_t Database::merge_in(Database& other) {
   sexp_hash key;
   runtime_meta_t meta;
   debug_counters_t cnts;
+
+  bool has_debug = debug_counters.nb_values() > 0 && other.debug_counters.nb_values() > 0;
+
   for(uint64_t other_idx = 0; other_idx < other.nb_values(); other_idx++) {
      other.hashes.read_in(other_idx, key);
 
@@ -1685,8 +1701,9 @@ uint64_t Database::merge_in(Database& other) {
       }
       //TODO: Pre-merge the origin tables (package, function, and parameters names?)
 #ifndef NDEBUG
-      // TODO: check if there are debug counters in the other database
-    debug_counters.append(other.debug_counters.read(other_idx));
+    if(has_debug) {
+      debug_counters.append(other.debug_counters.read(other_idx));
+    }
 #endif
 
          // DB names
@@ -1727,11 +1744,13 @@ uint64_t Database::merge_in(Database& other) {
 
       // Debug counters
 #ifndef NDEBUG
-      debug_counters.read_in(db_idx, cnts);
-      debug_counters_t other_cnts = other.debug_counters.read(other_idx);
-      cnts.n_maybe_shared += other_cnts.n_maybe_shared;
-      cnts.n_sexp_address_opt += other_cnts.n_sexp_address_opt;
-      debug_counters.write(db_idx, cnts);
+      if(has_debug) {
+        debug_counters.read_in(db_idx, cnts);
+        debug_counters_t other_cnts = other.debug_counters.read(other_idx);
+        cnts.n_maybe_shared += other_cnts.n_maybe_shared;
+        cnts.n_sexp_address_opt += other_cnts.n_sexp_address_opt;
+        debug_counters.write(db_idx, cnts);
+      }
 #endif
 
       // New origins

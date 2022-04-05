@@ -314,7 +314,7 @@ private:
   using Table<T>::pid;
   using Table<T>::write_mode;
 
-  mutable std::fstream file;
+  mutable int fd = -1;
   StableVector<T> store;
   uint64_t last_written = 0;
   mutable T data;
@@ -328,25 +328,20 @@ public:
   void open(const fs::path& path, bool write = true) override {
     Table<T>::open(path, write);
     // We have to create the file if it does not exists; it requires other flags than the next ones
-    if(!fs::exists(file_path)) {
-      file.open(file_path, std::fstream::out | std::fstream::app);
-      file.close();
-    }
+    
+    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
 
-    file.open(file_path, std::fstream::in  | std::fstream::binary);
-
-    if(!file) {
+    if(fd == -1) {
       Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
     }
-
+    // Now seek to the end for write to be able to append to the file
+    uint64_t end_pos = lseek(fd, 0, SEEK_END);
 
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
     if(n_values != n_values_file) {
       Rf_warning("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.c_str(), n_values, n_values_file);
     }
-
-    file.exceptions(std::fstream::failbit);
 
     last_written = n_values;
   }
@@ -378,16 +373,23 @@ public:
 
   void load_all() override {
     store.resize(n_values);
-    file.seekg(0);
+
+
+    // We will read sequentially
+    uint64_t end_pos = lseek(fd, 0, SEEK_END);
+    posix_fadvise(fd, 0, end_pos, POSIX_FADV_SEQUENTIAL);
+
+    lseek(fd, 0, SEEK_SET);
+
     for(auto& v : store) {
-      file.read(reinterpret_cast<char*>(&v), sizeof(T));
+      ::read(fd, reinterpret_cast<char*>(&v), sizeof(T));
     }
     in_memory = true;
     // all the values up to that index are already in the file
 
     // Now we can close the backing file a
     // and open it only when when materializing the data back on disk
-    file.close();
+    ::close(fd);
   }
 
   const StableVector<T>& memory_view() {
@@ -401,12 +403,12 @@ public:
     uint64_t nb_new_values = n_values - last_written;
     if(write_mode && in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
-      file.open(file_path, std::fstream::out | std::fstream::binary);
-      file.seekp(last_written * sizeof(T));
+      fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
+      lseek(fd, last_written * sizeof(T), SEEK_SET);
       for(auto it = store.begin() + last_written; it != store.end(); it++) {
-        file.write(reinterpret_cast<char*>(&(*it)), sizeof(T));
+        ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
       }
-      file.close();
+      ::close(fd);
     }
     // Always rewrite the configuration file
     new_elements = true;
@@ -418,12 +420,12 @@ public:
     uint64_t nb_new_values = n_values - last_written;
     if(write_mode && in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
-      file.open(file_path, std::fstream::out  | std::fstream::binary);
-      file.seekp(last_written * sizeof(T));
+      fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
+      lseek(fd, last_written * sizeof(T), SEEK_SET);
       for(auto it = store.begin() + last_written; it != store.end(); it++) {
-        file.write(reinterpret_cast<char*>(&(*it)), sizeof(T));
+        ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
       }
-      file.close();
+      ::close(fd);
     }
     new_elements = true;// Always force writing of the config file
   }

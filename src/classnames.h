@@ -71,7 +71,7 @@ public:
     assert(write_mode);
     assert(pid == getpid());
     if(index != classes.size()) {
-      Rf_error("Cannot add a classname for a value that was not recorded in the main table."
+      Rf_error("Cannot add a class name for a value that was not recorded in the main table."
                  " Last index is %lu, but the index of that new class name is %lu.\n",
                  classes.size(), index);
     }

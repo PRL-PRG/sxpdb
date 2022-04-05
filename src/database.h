@@ -62,7 +62,7 @@ public:
   friend class SearchIndex;
   friend class Query;
 
-  typedef robin_hood::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher, xxh128_pointer_equal> sexp_hash_map;
+  typedef std::unordered_map<const sexp_hash*, uint64_t, xxh128_pointer_hasher, xxh128_pointer_equal> sexp_hash_map;
 
   enum class OpenMode {Read, Write, Merge};
 private:
