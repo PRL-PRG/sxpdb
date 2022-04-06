@@ -1373,8 +1373,8 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
   }
   pool.wait_for_tasks();// get should also wait anyway
 
-  roaring::Roaring64Map elems_to_add;
-  roaring::Roaring64Map elems_present;
+  roaring::Roaring64Map elems_to_add;// ids from the other db
+  roaring::Roaring64Map elems_present;//ids in the current, big db
   for(auto& fut : elems_fut) {
     auto elems = fut.get();
     elems_to_add |= elems.first;
@@ -1423,6 +1423,9 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     auto other_already = to_add;
     if(!to_add.isEmpty()) {
       other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+      // add begin and end
+      other_already.addRange(0, to_add.minimum());
+      other_already.addRange(to_add.maximum() + 1, other_table.nb_values());
     }
     else {
       other_already.addRange(0, other_table.nb_values());
@@ -1459,6 +1462,8 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
       // mimimum returns garbage if to_add is empty
       if(!to_add.isEmpty()) {
         other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+        other_already.addRange(0, to_add.minimum());
+        other_already.addRange(to_add.maximum() + 1, other_table.nb_values());
       }
       else {
         other_already.addRange(0, other_table.nb_values());
@@ -1524,6 +1529,8 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     auto other_already = to_add;
     if(!to_add.isEmpty()) {
       other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+      other_already.addRange(0, to_add.minimum());
+      other_already.addRange(to_add.maximum() + 1, other_origins.nb_values());  
     }
     else {
       other_already.addRange(0, other_origins.nb_values());
@@ -1562,6 +1569,8 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     auto other_already = to_add;
     if(!to_add.isEmpty()) {
       other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+      other_already.addRange(0, to_add.minimum());
+      other_already.addRange(to_add.maximum() + 1, other_nb_values);
     }
     else {
       // other_table is probably empty because the db names are only built after merging
@@ -1609,6 +1618,8 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     auto other_already = to_add;
     if(!to_add.isEmpty()) {
       other_already.flip(to_add.minimum(), to_add.maximum() + 1);
+      other_already.addRange(0, to_add.minimum());
+      other_already.addRange(to_add.maximum() + 1, other_table.nb_values());
     }
     else {
       other_already.addRange(0, other_table.nb_values());
