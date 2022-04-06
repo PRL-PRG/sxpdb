@@ -1556,13 +1556,17 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
 
   /// DB names
   // For old and new values
-  pool.push_task([has_dbnames, &dbname](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_here, DBNames& table, const DBNames& other_table) {
+  pool.push_task([has_dbnames, &dbname](const roaring::Roaring64Map& to_add,
+   const roaring::Roaring64Map& already_here, DBNames& table, const DBNames& other_table,
+   uint64_t other_nb_values) {
     auto other_already = to_add;
     if(!to_add.isEmpty()) {
       other_already.flip(to_add.minimum(), to_add.maximum() + 1);
     }
     else {
-      other_already.addRange(0, other_table.nb_values());
+      // other_table is probably empty because the db names are only built after merging
+      //other_already.addRange(0, other_table.nb_values());
+      other_already.addRange(0, other_nb_values);
     }
 
     assert(other_already.cardinality() == already_here.cardinality());
@@ -1594,13 +1598,11 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     }
     else {
       for(auto it = already_here.begin(), other_it = other_already.begin() ; it != already_here.end(); it++, other_it ++) {
-        for(const auto db_id : other_table.get_dbs(*other_it)) {
-          table.add_dbname(*it, dbname);
-        }
+        table.add_dbname(*it, dbname);
       }
     }
 
-  }, std::cref(elems_to_add), std::cref(elems_present), std::ref(dbnames), std::cref(other.dbnames));
+  }, std::cref(elems_to_add), std::cref(elems_present), std::ref(dbnames), std::cref(other.dbnames), other.nb_values());
 
   // Call ids
   pool.push_task([](const roaring::Roaring64Map& to_add, const roaring::Roaring64Map& already_here, CallIds& table, const CallIds& other_table) {
