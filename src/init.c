@@ -33,6 +33,8 @@ static const R_CallMethodDef callMethods[] = {
 	{"filter_index_db",   (DL_FUNC) &filter_index_db, 3},
 	{"view_db",         (DL_FUNC) &view_db,         2},
 	{"view_metadata",   (DL_FUNC) &view_metadata,   2},
+	{"view_call_ids",   (DL_FUNC) &view_call_ids,   2},
+	{"view_db_names",   (DL_FUNC) &view_db_names,   2},
 	{"view_origins",    (DL_FUNC) &view_origins,    2},
 	{"build_indexes",  (DL_FUNC) &build_indexes,    1},
 	{"write_mode",     (DL_FUNC) &write_mode,       1},

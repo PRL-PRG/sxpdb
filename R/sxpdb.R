@@ -107,6 +107,16 @@ view_meta_db <- function(db, query = NULL) {
   .Call(SXPDB_view_metadata, db, query)
 }
 
+#' @export
+view_call_ids<- function(db, query = NULL) {
+  .Call(SXPDB_view_call_ids, db, query)
+}
+
+#' @export
+view_db_names <- function(db, query = NULL) {
+  .Call(SXPDB_view_db_names, db, query)
+}
+
 
 #' @export
 get_origins <- function(db, hash) {

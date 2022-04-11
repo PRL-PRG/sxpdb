@@ -151,6 +151,10 @@ public:
   const SEXP view_origins() const;
   const SEXP view_origins(Query& query) const;
 
+  const SEXP view_call_ids() const;
+
+  const SEXP view_db_names() const;
+
 
   // Map on all the elements and return an R value
   const SEXP map(const SEXP function);

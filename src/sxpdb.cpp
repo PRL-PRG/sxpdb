@@ -675,6 +675,26 @@ SEXP view_metadata(SEXP sxpdb, SEXP query_ptr) {
   }
 }
 
+SEXP view_call_ids(SEXP sxpdb, SEXP query) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
+
+  return db->view_call_ids();
+}
+
+SEXP view_db_names(SEXP sxpdb, SEXP query) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
+
+  return db->view_db_names();
+}
+
 
 SEXP view_origins(SEXP sxpdb, SEXP query_ptr) {
   void* ptr = R_ExternalPtrAddr(sxpdb);

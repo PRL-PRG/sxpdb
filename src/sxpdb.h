@@ -244,6 +244,24 @@ SEXP view_metadata(SEXP sxpdb, SEXP query);
 SEXP view_origins(SEXP sxpdb, SEXP query);
 
 /**
+ * @method view_call_ids
+ * @param sxpdb external pointer to the target database
+ * @param query external pointer or NULL restrict the call ids to the ones of the values matching the query.
+ *  Query currently is not taken into account for this function
+ * @return a data frame of the call ids for all the values, in the same order as view_db or map_db. 
+ */
+SEXP view_call_ids(SEXP sxpdb, SEXP query);
+
+/**
+ * @method view_db_names
+ * @param sxpdb external pointer to the target database
+ * @param query external pointer or NULL restrict the call ids to the ones of the values matching the query.
+ *  Query currently is not taken into account for this function
+ * @return a data frame of the db names for all the values, in the same order as view_db or map_db. 
+ */
+SEXP view_db_names(SEXP sxpdb, SEXP query);
+
+/**
  * @method build_indexes
  * @param sxpdb external pointer to the target database
  * @return R_NilValue

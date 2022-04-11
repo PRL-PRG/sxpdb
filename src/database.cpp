@@ -886,6 +886,59 @@ const SEXP Database::view_values(Query& query) const {
   return l;
 }
 
+const SEXP Database::view_call_ids() const {
+  SEXP ids_c = PROTECT(Rf_allocVector(VECSXP, nb_total_values));
+
+  for(uint64_t i = 0; i < nb_total_values ; i++) {
+    auto ids = call_ids.get_call_ids(i);
+    SEXP cur_ids = PROTECT(Rf_allocVector(INTSXP, ids.size()));
+
+    int* vals = INTEGER(cur_ids);
+
+    for(uint64_t j = 0; j < ids.size() ; j++) {
+      vals[j] = (uint32_t) ids[j];
+    }
+
+    SET_VECTOR_ELT(ids_c, i, cur_ids);
+
+    UNPROTECT(1);
+  }
+
+  SEXP df = create_data_frame({
+    {"call_id", ids_c}
+  });
+
+  UNPROTECT(1);
+
+  return df;
+}
+
+const SEXP Database::view_db_names() const {
+  SEXP dbname_cache = PROTECT(dbnames.dbnames_cache());
+
+  SEXP names = PROTECT(Rf_allocVector(VECSXP, nb_total_values));
+
+  for(uint64_t i = 0; i < nb_total_values ; i++) {
+    auto dbs = dbnames.get_dbs(i);
+
+    SEXP dbs_c = PROTECT(Rf_allocVector(STRSXP, dbs.size()));
+    for(uint32_t j = 0 ; j < dbs.size() ; j++) {
+      SET_STRING_ELT(dbs_c, j, STRING_ELT(dbname_cache, dbs[j]));
+    }
+    SET_VECTOR_ELT(names, i, dbs_c);
+
+    UNPROTECT(1);
+  }
+
+  SEXP df = create_data_frame({
+    {"dbname", names}
+  });
+
+  UNPROTECT(2);
+
+  return df;
+}
+
 
 const SEXP Database::view_origins() const {
   SEXP pkg_cache = PROTECT(origins.package_cache());
