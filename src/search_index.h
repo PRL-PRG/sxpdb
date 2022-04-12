@@ -266,6 +266,8 @@ public:
       conf["classnames_index"] = fs::relative(classnames_index_path, base_path_);
 
       conf["index_last_computed"] = std::to_string(last_computed);
+
+      conf["index_generated"] = std::to_string(index_generated);
     }
     else {
       conf["index_last_computed"] = "0";
