@@ -172,6 +172,8 @@ private:
   fs::path attributes_index_path = "";
   fs::path lengths_index_path = "";
   fs::path classnames_index_path = "";
+  fs::path packages_index_path = "";
+  fs::path functions_index_path = "";
 
   // Actual indexes
   std::vector<roaring::Roaring64Map> types_index;//the index in the vector is the type (from TYPEOF())
@@ -180,6 +182,8 @@ private:
   roaring::Roaring64Map vector_index;//vector (but not scalar)
   roaring::Roaring64Map attributes_index;
   std::vector<roaring::Roaring64Map> lengths_index;
+  std::vector<roaring::Roaring64Map> packages_index;
+  std::vector<std::pair<uint32_t, roaring::Roaring64Map>> function_index;
 
   ReverseIndex classnames_index;
 
@@ -198,6 +202,8 @@ private:
   static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_indexes_values(const Database& db, uint64_t start, uint64_t end);
   static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_indexes_classnames(const Database& db, ReverseIndex& index, uint64_t start, uint64_t end);
   static const std::vector<std::pair<std::string, roaring::Roaring64Map>> build_values(const std::vector<std::vector<std::byte>>& bufs, uint64_t start);
+  static const std::vector<std::pair<std::string, std::vector<std::pair<uint32_t, roaring::Roaring64Map>>>> build_indexes_origins(const Database& db,  uint64_t start, uint64_t end);
+
 
 public:
    SearchIndex() : pid(getpid()), classnames_index(200) {
@@ -265,6 +271,16 @@ public:
       }
       conf["classnames_index"] = fs::relative(classnames_index_path, base_path_);
 
+      if(packages_index_path.empty()) {
+        packages_index_path = base_path / "packages_index";
+      }
+      conf["packages_index"] = fs::relative(packages_index_path, base_path_);
+
+      if(functions_index_path.empty()) {
+        functions_index_path = base_path / "functions_index";
+      }
+      conf["functions_index"] = fs::relative(functions_index_path, base_path_);
+
       conf["index_last_computed"] = std::to_string(last_computed);
 
       conf["index_generated"] = std::to_string(index_generated);
@@ -279,6 +295,8 @@ public:
   roaring::Roaring64Map search_length(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_length) const;
 
   roaring::Roaring64Map search_classname(const Database& db, const roaring::Roaring64Map& bin_index, uint32_t precise_classname) const;
+
+  roaring::Roaring64Map search_function(const Database& db, const roaring::Roaring64Map& fun_index, uint32_t precise_fun) const;
 
   virtual ~SearchIndex();
 

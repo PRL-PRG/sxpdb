@@ -1033,6 +1033,21 @@ const SEXP Database::view_origins(Query& query) const {
   return origs;
 }
 
+const SEXP Database::values_from_origin(const std::string& package, const std::string& function) {
+
+  // Find out all the values for these origins
+  // hashtable package -> id and then vector of bitmaps with the indexes of the values
+  // Second hashtable for the functions?
+
+  // we just need to return the list of parameter names in one case
+  // by looking at the origin table
+
+  // If we also want unique calls, we look at the values' call ids and db names
+  // then we can add two columns with call_id and db_name
+  // (not pasting them for space efficiency purposes)
+
+}
+
 const SEXP Database::map(const SEXP function) {
   std::vector<std::byte> buf;
   buf.reserve(128);

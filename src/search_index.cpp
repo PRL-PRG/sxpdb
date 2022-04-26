@@ -25,6 +25,7 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
   attributes_index_path = base_path / config["vector_index"];
   lengths_index_path = base_path / config["lengths_index"];
   classnames_index_path = base_path / config["classnames_index"];
+  packages_index_path = base_path / config["packages_index"];
 
 
   if(!types_index_path.empty()) {
@@ -63,6 +64,46 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
 
   if(!classnames_index_path.empty()) {
     classnames_index.open(classnames_index_path);
+    new_elements = true;
+  }
+
+  if(!packages_index_path.empty()) {
+    int nb_packages = 0;
+    // Count how many package indexes there are.
+    for(auto dir : fs::directory_iterator(packages_index_path.parent_path())) {
+      if(dir.is_regular_file()) {
+        auto path = dir.path();
+        if(path.extension() == "ror") {
+          std::string name = path.stem().string();
+          // Check if it is a package index
+          if(name.rfind("packages_index", 0) == 0) {
+            nb_packages++;
+          }
+        }
+      }
+    }
+    for(int i = 0; i < nb_packages; i++) {
+      packages_index[i] = read_index(packages_index_path.parent_path() / (packages_index_path.stem().string() + "_" + std::to_string(i) + ".ror"));
+      new_elements = true;
+    }
+  }
+
+   if(!functions_index_path.empty()) {
+    for(auto dir : fs::directory_iterator(functions_index_path.parent_path())) {
+      if(dir.is_regular_file()) {
+        auto path = dir.path();
+        if(path.extension() == "ror") {
+          std::string name = path.stem().string();
+          // Check if it is a function index
+          if(name.rfind("functions_index", 0) == 0) {
+            // Extract the max index of the function from the bin
+            uint64_t nim_fun = std::stoul(name.substr(name.rfind('_')));
+            function_index.push_back({nim_fun, read_index(path)});
+            new_elements = true;
+          }
+        }
+      }
+    }
   }
 
 }
@@ -189,6 +230,45 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
   return results;
 }
 
+const  std::vector<std::pair<std::string, std::vector<std::pair<uint32_t, roaring::Roaring64Map>>>>  SearchIndex::build_indexes_origins(const Database& db, uint64_t start, uint64_t end) {
+    uint32_t nb_packages = db.origins.nb_packages() + 1;// we want to count the empty one
+    uint32_t nb_functions = db.origins.nb_functions() + 1;
+    std::vector<std::pair<std::string, std::vector<std::pair<uint32_t, roaring::Roaring64Map>>>> results;
+    results.push_back({"packages_index", std::vector<std::pair<uint32_t, roaring::Roaring64Map>>(nb_packages)});
+    results.push_back({"functions_index", std::vector<std::pair<uint32_t, roaring::Roaring64Map>>()});
+
+    std::vector<roaring::Roaring64Map> funcs(nb_functions);
+
+    for(uint64_t i = start; i < end ; i++) {
+      auto locs = db.origins.get_locs(i);
+      for(auto loc : locs) {
+        results[0].second[loc.package].second.add(i);//packages
+        funcs[loc.function].add(i);
+      }
+    }
+
+    // Merge the function indexes into intervals
+    // No more than 100 000 values per slot? Or 10 000?
+    // for 400 packages, we had about 36 000 functions
+    // and 39e6 unique values. So in average 1 000 unique values per
+    // function, probably with outliers
+    uint32_t j = 0;
+    roaring::Roaring64Map current_index;
+    for(const auto& fun : funcs) {
+      if(current_index.cardinality() > 10000) {
+        results[1].second.push_back({j, current_index});
+        current_index.clear();
+      }
+      current_index |= fun;
+      j++;
+    }
+    if(!current_index.isEmpty()) {
+      results[1].second.push_back({j, current_index});
+    }
+
+    return results;
+}
+
 
 
 
@@ -200,6 +280,7 @@ void SearchIndex::build_indexes(const Database& db) {
 
   auto results_meta_fut = pool.submit(build_indexes_static_meta, std::cref(db), last_computed, db.nb_values());
   auto results_classnames_fut = pool.submit(build_indexes_classnames, std::cref(db), std::ref(classnames_index), last_computed, db.nb_values());
+  auto results_origins_fut = pool.submit(build_indexes_origins, std::cref(db), last_computed, db.nb_values());
   std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_value_fut = std::async( std::launch::deferred, build_indexes_values, std::cref(db), last_computed, db.nb_values());
 
 
@@ -287,6 +368,21 @@ void SearchIndex::build_indexes(const Database& db) {
     lengths_index[i] |= results_meta[i].second;
   }
 
+  // Origins
+  auto results_origins = results_origins_fut.get();
+  // get package index
+  assert(results_origins[0].first == "packages_index");
+  packages_index.resize(results_origins[0].second.size());
+  for(int i = 0; i < results_origins[0].second.size(); i++) {
+      packages_index[i] = results_origins[0].second[i].second;
+  }
+  // get function index
+  assert(results_origins[1].first == "functions_index");
+  function_index.resize(results_origins[1].second.size());
+  for(int i = 0; i < results_origins[1].second.size(); i++) {
+      function_index[i] = results_origins[1].second[i];
+  }
+
 
   types_index[ANYSXP].addRange(0, db.nb_values()); // [a, b[
 
@@ -322,6 +418,21 @@ roaring::Roaring64Map SearchIndex::search_classname(const Database& db, const ro
   return precise_index;
 }
 
+roaring::Roaring64Map SearchIndex::search_function(const Database& db, const roaring::Roaring64Map& fun_index, uint32_t precise_fun) const {
+  roaring::Roaring64Map precise_index;
+
+  for(uint64_t i : fun_index) {
+    auto locs = db.origins.get_locs(i);
+    for(auto loc : locs) {
+      if(loc.function == precise_fun) {
+        precise_index.add(i);
+        break;
+      }
+    }
+  }
+  return precise_index;
+}
+
 SearchIndex::~SearchIndex() {
   // Write all the indexes
   if(pid == getpid() && write_mode) {
@@ -339,6 +450,14 @@ SearchIndex::~SearchIndex() {
     }
 
     classnames_index.write(classnames_index_path);
+
+    for(int i = 0; i < packages_index.size() ; i++) {
+      write_index(packages_index_path.parent_path() / (packages_index_path.stem().string() + "_" + std::to_string(i) + ".ror"), packages_index[i]);
+    }
+
+    for(int i = 0; i < function_index.size() ; i++) {
+      write_index(functions_index_path.parent_path() / (functions_index_path.stem().string() + "_" + std::to_string(function_index[i].first) + ".ror"), function_index[i].second);
+    }
   }
 }
 

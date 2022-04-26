@@ -194,6 +194,14 @@ public:
   const std::string& function_name(uint32_t i) const { return function_names.read(i);}
   const std::string& param_name(uint32_t i) const { return param_names.read(i); }
 
+  const std::optional<uint64_t> package_id(const std::string& package_name) {
+    return package_names.get_index(package_name);
+  }
+
+  const std::optional<uint64_t> function_id(const std::string& function_name) {
+    return function_names.get_index(function_name);
+  }
+
   const std::vector<std::tuple<std::string, std::string, std::string>> source_locations(uint64_t index) const {
     auto locs = get_locs(index);
 

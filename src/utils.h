@@ -153,6 +153,15 @@ inline uintmax_t directory_size(fs::path directory_path) {
   return size;
 }
 
+inline uintmax_t nb_files_directory(fs::path directory_path) {
+  auto dirIter = fs::directory_iterator(directory_path);
+  return std::count_if(
+      begin(dirIter),
+      end(dirIter),
+      [](auto& entry) { return entry.is_regular_file(); }
+  );
+}
+
 #define S1(x) #x
 #define S2(x) S1(x)
 #define throw_assert(condition) if(!(condition)) { \

@@ -155,6 +155,8 @@ public:
 
   const SEXP view_db_names() const;
 
+  const SEXP values_from_origin(const std::string& package, const std::string& function);
+
 
   // Map on all the elements and return an R value
   const SEXP map(const SEXP function);

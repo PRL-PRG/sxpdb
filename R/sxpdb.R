@@ -29,7 +29,7 @@ add_val <- function(db, val) {
 #' @export
 add_val_origin <- function(db, val, package, func, argument, call_id = 0) {
   stopifnot(write_mode(db), is.numeric(call_id), is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
-  .Call(SXPDB_add_val_origin, db, val, package, func, if(is.na(argument)) NA_character_ else argument)
+  .Call(SXPDB_add_val_origin, db, val, package, func, if(is.na(argument)) NA_character_ else argument, call_id)
 }
 
 #' @export
