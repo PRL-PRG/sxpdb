@@ -326,6 +326,16 @@ SEXP extptr_tag(SEXP ptr);
  */
 SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP parallel);
 
+/**
+ * @method values_from_origins
+ * 
+ * @param sxpdb external pointer to the target database
+ * @param pkg character name of the package
+ * @param fun character name of the function
+ * @return data frame with column with the ids of the values corresponding to that origin and with the parameter names
+ */
+SEXP values_from_origins(SEXP sxpdb, SEXP pkg, SEXP fun);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

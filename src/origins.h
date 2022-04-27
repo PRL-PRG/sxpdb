@@ -260,6 +260,12 @@ public:
     }
   }
 
+  void load_hashtables() {
+    package_names.load_unique();
+    function_names.load_unique();
+    // not for the parameters
+  }
+
   uint64_t nb_values() const {
     if(write_mode) {
       return locations.size();

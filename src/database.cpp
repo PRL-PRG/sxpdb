@@ -1034,18 +1034,89 @@ const SEXP Database::view_origins(Query& query) const {
 }
 
 const SEXP Database::values_from_origin(const std::string& package, const std::string& function) {
-
+  // Make sure the internal hash tables for the origins are loaded
+  origins.load_hashtables();
   // Find out all the values for these origins
-  // hashtable package -> id and then vector of bitmaps with the indexes of the values
-  // Second hashtable for the functions?
+  // First the ids
+  auto pkg_id = origins.package_id(package);
+  if(!pkg_id.has_value()) {
+    Rf_warning("No values from package %s in the database.\n", package.c_str());
+    return R_NilValue;
+  }
+
+  auto fun_id = origins.function_id(function);
+  if(!pkg_id.has_value()) {
+    Rf_warning("No values from function %s in the database.\n", function.c_str());
+    return R_NilValue;
+  }
+
+  if(search_index.packages_index.size() == 0) {
+      Rf_warning("The package index is empty. Have you built the indexes?\n");
+      return R_NilValue;
+  }
+  // Now the indexes
+  auto pkg_index = search_index.packages_index.at(pkg_id.value());
+
+  // we need to find out in which consolidated index the function lies in
+  // TODO: we could do a dichotomic search here...
+  int bin_index = -1;
+  for(int i = 0 ; i < search_index.function_index.size() ; i ++) {
+    if(search_index.function_index[i].first > fun_id.value()) {
+      bin_index = i;
+      break;
+    }
+  }
+  if(bin_index == -1) {
+    bin_index = search_index.function_index.size() - 1;
+    if(bin_index < 0) {
+      Rf_warning("The function index is empty. Have you built the indexes?\n");
+      return R_NilValue;
+    }
+  }
+  auto fun_index = search_index.search_function(*this, search_index.function_index[bin_index].second, fun_id.value());
+
+  // All the values linked to that origin
+  auto origin_index = pkg_index & fun_index;
+
+  uint64_t n_values = origin_index.cardinality();
 
   // we just need to return the list of parameter names in one case
   // by looking at the origin table
-
+  
   // If we also want unique calls, we look at the values' call ids and db names
   // then we can add two columns with call_id and db_name
   // (not pasting them for space efficiency purposes)
 
+  SEXP values = PROTECT(Rf_allocVector(INTSXP, n_values));
+  int* vals = INTEGER(values);
+  SEXP params = PROTECT(Rf_allocVector(STRSXP, n_values));
+
+  int i = 0;
+  for(uint64_t v : origin_index) {
+    assert(v <= std::numeric_limits<uint32_t>::max());
+    vals[i] = v;
+
+    auto locs = origins.get_locs(v);
+    // Filter and keep only the ones corresponding to pkg and fun
+    std::string pars = "";
+    for(auto loc : locs) {
+      if(loc.package == pkg_id.value() && loc.function == fun_id.value()) {
+        pars += origins.param_name(loc.param) + "; ";
+      }
+    }
+    SET_STRING_ELT(params, i, Rf_mkChar(pars.c_str()));
+
+    i++;
+  }
+
+  SEXP df = create_data_frame({
+    {"id", values},
+    {"param", params}
+  });
+
+  UNPROTECT(2);
+
+  return df;
 }
 
 const SEXP Database::map(const SEXP function) {

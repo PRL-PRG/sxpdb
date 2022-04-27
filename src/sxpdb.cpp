@@ -740,6 +740,19 @@ SEXP write_mode(SEXP sxpdb) {
   return Rf_ScalarLogical(db->rw_mode());
 }
 
+SEXP values_from_origins(SEXP sxpdb, SEXP pkg, SEXP fun) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
+
+  std::string pkg_name = CHAR(STRING_ELT(pkg, 0));
+  std::string fun_name = CHAR(STRING_ELT(fun, 0));
+
+  return db->values_from_origin(pkg_name, fun_name);
+}
+
 SEXP query_from_value(SEXP value) {
   Query* query = new Query();
   *query = Query::from_value(value); // populate from the value

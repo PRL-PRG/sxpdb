@@ -26,6 +26,7 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
   lengths_index_path = base_path / config["lengths_index"];
   classnames_index_path = base_path / config["classnames_index"];
   packages_index_path = base_path / config["packages_index"];
+  functions_index_path = base_path / config["functions_index"];
 
 
   if(!types_index_path.empty()) {
@@ -73,7 +74,7 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
     for(auto dir : fs::directory_iterator(packages_index_path.parent_path())) {
       if(dir.is_regular_file()) {
         auto path = dir.path();
-        if(path.extension() == "ror") {
+        if(path.extension() == ".ror") {
           std::string name = path.stem().string();
           // Check if it is a package index
           if(name.rfind("packages_index", 0) == 0) {
@@ -82,6 +83,7 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
         }
       }
     }
+    packages_index.resize(nb_packages);
     for(int i = 0; i < nb_packages; i++) {
       packages_index[i] = read_index(packages_index_path.parent_path() / (packages_index_path.stem().string() + "_" + std::to_string(i) + ".ror"));
       new_elements = true;
@@ -92,12 +94,13 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
     for(auto dir : fs::directory_iterator(functions_index_path.parent_path())) {
       if(dir.is_regular_file()) {
         auto path = dir.path();
-        if(path.extension() == "ror") {
+        if(path.extension() == ".ror") {
           std::string name = path.stem().string();
           // Check if it is a function index
           if(name.rfind("functions_index", 0) == 0) {
             // Extract the max index of the function from the bin
-            uint64_t nim_fun = std::stoul(name.substr(name.rfind('_')));
+            uint64_t nim_fun = std::stoul(name.substr(name.rfind('_') + 1));
+            //TODO: we should actually replace the index instead of adding it (suggests to use a hashtable...)
             function_index.push_back({nim_fun, read_index(path)});
             new_elements = true;
           }

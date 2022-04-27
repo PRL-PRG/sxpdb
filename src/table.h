@@ -639,6 +639,9 @@ public:
   }
 
   void load_unique() {
+    if(unique_loaded) {
+      return;
+    }
     // Populate the hash table
     unique_lines.reserve(store.size());
     assert(store.nb_chunks() == 1);
