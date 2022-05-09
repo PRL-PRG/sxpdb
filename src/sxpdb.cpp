@@ -66,17 +66,23 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
   }
   Database* db = static_cast<Database*>(ptr);
 
-  auto hash = db->add_value(val);
+  try {
 
-  if(std::get<0>(hash) != nullptr) {
-    SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
-    Rbyte* bytes= RAW(hash_s);
+    auto hash = db->add_value(val, "", "", "", 0);
 
-    XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *std::get<0>(hash));
+    if(hash.first != nullptr) {
+      SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
+      Rbyte* bytes= RAW(hash_s);
 
-    UNPROTECT(1);
+      XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *hash.first);
 
-    return hash_s;
+      UNPROTECT(1);
+
+      return hash_s;
+    }
+  }
+  catch(std::exception& e) {
+    Rf_error("Error adding value into the database: %s\n", e.what());
   }
 
   return R_NilValue;
