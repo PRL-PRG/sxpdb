@@ -1439,7 +1439,7 @@ std::tuple<const sexp_hash*, uint64_t, bool> Database::add_value(SEXP val) {
   return {&hashes.read(*idx), *idx, buf != nullptr};
 }
 
-std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& param_name, uint64_t call_id) {
+std::tuple<const sexp_hash*, uint64_t, bool> Database::add_value(SEXP val, const std::string& pkg_name, const std::string& func_name, const std::string& param_name, uint64_t call_id) {
   auto res = add_value(val);
   if(std::get<0>(res) != nullptr) {// if it is null, it means we ignored it because it was an environment or a closure, or the db was forked
     assert(nb_total_values > 0);
@@ -1450,7 +1450,7 @@ std::pair<const sexp_hash*, bool> Database::add_value(SEXP val, const std::strin
     call_ids.add_call_id(std::get<1>(res), call_id);
   }
 
-  return std::make_pair(std::get<0>(res), std::get<2>(res));
+  return res;
 }
 
 uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {

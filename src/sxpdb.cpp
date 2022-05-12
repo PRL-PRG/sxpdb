@@ -68,23 +68,17 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
 
   try {
 
-    auto hash = db->add_value(val, "", "", "", 0);
+    auto res = db->add_value(val, "", "", "", 0);
 
-    if(hash.first != nullptr) {
-      SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
-      Rbyte* bytes= RAW(hash_s);
-
-      XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *hash.first);
-
-      UNPROTECT(1);
-
-      return hash_s;
+    if(std::get<0>(res) != nullptr) {
+      return Rf_ScalarInteger(std::get<1>(res));
     }
   }
   catch(std::exception& e) {
     Rf_error("Error adding value into the database: %s\n", e.what());
   }
 
+  Rf_warning("Did not add the value in the bd. Is it an environment or a closure?\n");
   return R_NilValue;
 }
 
@@ -111,24 +105,17 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
 
   try {
 
-    auto hash = db->add_value(val, package_name, function_name, argument_name, call_id);
+    auto res = db->add_value(val, package_name, function_name, argument_name, call_id);
 
-    if(hash.first != nullptr) {
-      SEXP hash_s = PROTECT(Rf_allocVector(RAWSXP, sizeof(XXH128_hash_t)));
-      Rbyte* bytes= RAW(hash_s);
-
-      XXH128_canonicalFromHash(reinterpret_cast<XXH128_canonical_t*>(bytes), *hash.first);
-
-      UNPROTECT(1);
-
-      return hash_s;
+   if(std::get<0>(res) != nullptr) {
+      return Rf_ScalarInteger(std::get<1>(res));
     }
   }
   catch(std::exception& e) {
     Rf_error("Error adding value from package %s, function %s and argument %s, with call id %lu, into the database: %s\n",
              package_name, function_name, argument_name, call_id, e.what());
   }
-
+  Rf_warning("Did not add the value in the bd. Is it an environment or a closure?\n");
   return R_NilValue;
 }
 

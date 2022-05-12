@@ -38,7 +38,7 @@ SEXP close_db(SEXP db);
  * @method add_val
  * @param  db       external pointer to the database
  * @param  val      R value in form of SEXP
- * @return          val if val hasn't been added to database before,
+ * @return          index  of the value if it has been added to the db (now or before),
  *                  else R_NilValue
  */
 SEXP add_val(SEXP db, SEXP val);
@@ -141,7 +141,7 @@ SEXP get_meta_idx(SEXP db, SEXP idx);
  * @param function name
  * @param argument name ; "" or NA mean that it is a return value
  * @param call_id integer or double
- * @return average duration in milliseconds
+ * @return index of the value if it was added, NULL otherwise
  */
 SEXP add_val_origin(SEXP sxpdb, SEXP val, SEXP package, SEXP function, SEXP argument, SEXP call_id);
 
