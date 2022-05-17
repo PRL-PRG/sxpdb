@@ -78,7 +78,10 @@ SEXP add_val(SEXP sxpdb, SEXP val) {
     Rf_error("Error adding value into the database: %s\n", e.what());
   }
 
-  Rf_warning("Did not add the value in the bd. Is it an environment or a closure?\n");
+  if(!db->is_quiet()) {
+    Rf_warning("Did not add the value in the bd. Is it an environment or a closure?\n");
+  }
+
   return R_NilValue;
 }
 
@@ -115,7 +118,10 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
     Rf_error("Error adding value from package %s, function %s and argument %s, with call id %lu, into the database: %s\n",
              package_name, function_name, argument_name, call_id, e.what());
   }
-  Rf_warning("Did not add the value in the bd. Is it an environment or a closure?\n");
+  
+  if(!db->is_quiet()) {
+    Rf_warning("Did not add the value in the bd. Is it an environment or a closure?\n");
+  }  
   return R_NilValue;
 }
 

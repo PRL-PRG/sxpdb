@@ -182,6 +182,8 @@ public:
 
   bool rw_mode() const { return mode == OpenMode::Write; }
 
+  bool is_quiet() const { return quiet; }
+
   virtual ~Database();
 
 };
