@@ -1174,9 +1174,9 @@ const SEXP Database::map(Query& query, const SEXP function) {
 
   // Prepare un environment where we will put the unserialized value
 #if defined(R_VERSION) && R_VERSION >= R_Version(4, 1, 0)
-  SEXP env = R_NewEnv(R_GetCurrentEnv(), TRUE, 1);
+  SEXP env = PROTECT(R_NewEnv(R_GetCurrentEnv(), TRUE, 1));
 #else
-  SEXP env = Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv());
+  SEXP env = PROTECT(Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv()));
   assert(TYPEOF(env) == ENVSXP);
 #endif
 
@@ -1203,7 +1203,7 @@ const SEXP Database::map(Query& query, const SEXP function) {
     j++;
   }
 
-  UNPROTECT(2);
+  UNPROTECT(3);
 
   return l;
 }
@@ -1273,9 +1273,9 @@ const SEXP Database::filter_index(Query& query, const SEXP function) {
 
   // Prepare un environment where we will put the unserialized value
 #if defined(R_VERSION) && R_VERSION >= R_Version(4, 1, 0)
-  SEXP env = R_NewEnv(R_GetCurrentEnv(), TRUE, 1);
+  SEXP env = PROTECT(R_NewEnv(R_GetCurrentEnv(), TRUE, 1));
 #else
-  SEXP env = Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv());
+  SEXP env = PROTECT(Rf_eval(Rf_lang1(Rf_install("new.env")), R_GetCurrentEnv()));
   assert(TYPEOF(env) == ENVSXP);
 #endif
 
@@ -1305,7 +1305,7 @@ const SEXP Database::filter_index(Query& query, const SEXP function) {
 
   std::copy_n(true_indices.begin(), true_indices.size(),INTEGER(l));
 
-  UNPROTECT(2);
+  UNPROTECT(3);
 
   return l;
 }
