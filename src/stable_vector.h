@@ -271,10 +271,12 @@ public:
   StableVectorIterator& operator++() {
     if(pos < v.data[chunk_pos].size() - 1) {
       pos++;
+      assert(pos > 0);
     }
     else {
       chunk_pos++;
       pos = 0;
+      assert(chunk_pos > 0);
     }
     return *this;
   }
@@ -287,9 +289,8 @@ public:
 
   StableVectorIterator& operator+=(difference_type rhs) {
     difference_type shift = rhs;
-    pos+= shift;
     int sign  = rhs > 0 ? 1 : -1;
-    while(pos >= v.data[chunk_pos].size() || pos < 0) {
+    while(pos + shift >= v.data[chunk_pos].size() || pos < 0) {
       shift -= v.data[chunk_pos].size();
       pos += shift;
       chunk_pos += sign;

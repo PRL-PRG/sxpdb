@@ -482,9 +482,7 @@ const SEXP Database::sample_value() {
 }
 
 const SEXP Database::sample_value(Query& query, uint64_t n) {
-  if(new_elements || !query.is_initialized()) {
-    query.update(*this);
-  }
+  update_query(query);
 
   auto index = query.sample(rand_engine);
 
@@ -497,9 +495,7 @@ const SEXP Database::sample_value(Query& query, uint64_t n) {
 }
 
 const std::optional<uint64_t> Database::sample_index(Query& query) {
-  if(new_elements || !query.is_initialized()) {
-    query.update(*this);
-  }
+  update_query(query);
 
   return query.sample(rand_engine);
 }
@@ -513,6 +509,14 @@ const std::optional<uint64_t> Database::sample_index() {
 
   return std::nullopt;
 }
+
+ void Database::update_query(Query& query) const {
+    if(new_elements || !query.is_initialized()) {
+      // Make sure the reverse indexes are loaded.
+      const_cast<ClassNames&>(classes).load_all();
+      query.update(*this);
+    }
+  }
 
 const SEXP Database::view_metadata() const {
   // "type", "length", "n_attributes", "n_dims", "size", "n_calls", "n_merges"
@@ -675,9 +679,7 @@ const SEXP Database::view_metadata() const {
 }
 
 const SEXP Database::view_metadata(Query& query) const  {
-  if(new_elements || !query.is_initialized()) {
-    query.update(*this);
-  }
+  update_query(query);
 
   auto index = query.view();
   uint64_t index_size = index.cardinality();
@@ -861,9 +863,7 @@ const SEXP Database::view_values() const {
 }
 
 const SEXP Database::view_values(Query& query) const {
-  if(new_elements || !query.is_initialized()) {
-    query.update(*this);
-  }
+  update_query(query);
 
   auto index = query.view();
   uint64_t index_size = index.cardinality();
@@ -983,9 +983,7 @@ const SEXP Database::view_origins() const {
 }
 
 const SEXP Database::view_origins(Query& query) const {
-  if(new_elements || !query.is_initialized()) {
-    query.update(*this);
-  }
+  update_query(query);
 
   auto index = query.view();
   uint64_t index_size = index.cardinality();
@@ -1162,9 +1160,7 @@ const SEXP Database::map(const SEXP function) {
 
 
 const SEXP Database::map(Query& query, const SEXP function) {
-  if(new_elements || !query.is_initialized()) {
-    query.update(*this);
-  }
+  update_query(query);
 
   auto index = query.view();
   uint64_t index_size = index.cardinality();
@@ -1261,9 +1257,7 @@ const SEXP Database::filter_index(const SEXP function) {
 }
 
 const SEXP Database::filter_index(Query& query, const SEXP function) {
-  if(new_elements || !query.is_initialized()) {
-    query.update(*this);
-  }
+  update_query(query);
 
   auto index = query.view();
   uint64_t index_size = index.cardinality();

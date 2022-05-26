@@ -67,6 +67,7 @@ public:
             call_ids.emplace_back(1, call_id);
         }
 
+
         new_call_ids = true;
     }
 
@@ -89,7 +90,7 @@ public:
 
     virtual ~CallIds() {
         if(write_mode && pid == getpid() && new_call_ids) {
-               fs::rename(base_path / "call_ids.bin", base_path / "call_ids-old.bin");
+            fs::rename(base_path / "call_ids.bin", base_path / "call_ids-old.bin");
             fs::rename(base_path / "call_ids.conf", base_path / "call_ids-old.conf");
             fs::rename(base_path / "call_ids_offsets.bin", base_path / "call_ids_offsets-old.bin");
             fs::rename(base_path / "call_ids_offsets.conf", base_path / "call_ids_offsets-old.conf");

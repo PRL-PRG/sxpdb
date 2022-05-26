@@ -148,6 +148,42 @@ public:
     return d;
   }
 
+  // Creates a query from a query plan (a plain R list)
+  inline static const Query from_plan(SEXP plan, bool quiet = true) {
+    if(!Rf_isVectorList(plan)) {
+      Rf_error("Expecting a list as input.\n");
+    }
+    SEXP names = Rf_getAttrib(plan, R_NamesSymbol);
+
+    Query d(ANYSXP, quiet = quiet);
+
+    std::string cur_name = "";
+    for(int i = 0 ; i < Rf_length(names) ; i++) {
+      cur_name == CHAR(STRING_ELT(names, i));
+      if(cur_name == "type") {
+        //d.type = //TODO
+      }
+      else if(cur_name == "vector") {
+
+      }
+      else if (cur_name == "length") {
+
+      }
+      else if(cur_name == "classname") {
+
+      }
+      else if(cur_name == "na") {
+
+      }
+      else if(cur_name == "ndims") {
+
+      }
+      else if (cur_name == "attributes") {
+
+      }
+    }
+  }
+
   inline static const Query unify(const Query& d1, const Query& d2) {
     Query d(UNIONTYPE);
 

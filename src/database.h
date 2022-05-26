@@ -175,6 +175,8 @@ public:
     new_index = true;
   }
 
+  void update_query(Query& query) const;
+
   // Utilities
   const std::vector<size_t> check(bool slow_check);
   const fs::path& configuration_path() const {return config_path; }
