@@ -45,6 +45,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"extptr_tag",   (DL_FUNC) &extptr_tag,         1},
 	{"merge_all_dbs", (DL_FUNC) &merge_all_dbs,     3},
 	{"values_from_origins", (DL_FUNC) &values_from_origins, 3},
+	{"values_from_calls", (DL_FUNC) &values_from_calls, 3},
 
 
 	// Must have at the end

@@ -203,6 +203,12 @@ values_from_origin <- function(db, pkg_name, fun_name) {
   .Call(SXPDB_values_from_origins, db, pkg_name, fun_name)
 }
 
+#' @export 
+values_from_calls <- function(db, pkg_name, fun_name) {
+  stopifnot(is.character(pkg_name), is.character(fun_name))
+  .Call(SXPDB_values_from_calls, db, pkg_name, fun_name)
+}
+
 ## Utilities
 
 types_map <- c("NULL", "symbol", "pairlist", "closure", "environment", "promise",
