@@ -1031,6 +1031,126 @@ const SEXP Database::view_origins(Query& query) const {
   return origs;
 }
 
+const SEXP Database::values_from_calls(const std::string& package, const std::string& function) {
+
+  // This will look very similar to values_from_origins
+  origins.load_hashtables();
+
+  auto pkg_id = origins.package_id(package);
+  if(!pkg_id.has_value()) {
+    Rf_warning("No values from package %s in the database.\n", package.c_str());
+    return R_NilValue;
+  }
+
+  auto fun_id = origins.function_id(function);
+  if(!pkg_id.has_value()) {
+    Rf_warning("No values from function %s in the database.\n", function.c_str());
+    return R_NilValue;
+  }
+
+  if(search_index.packages_index.size() == 0) {
+      Rf_warning("The package index is empty. Have you built the indexes?\n");
+      return R_NilValue;
+  }
+  // Now the indexes
+  auto pkg_index = search_index.packages_index.at(pkg_id.value());
+
+  int bin_index = -1;
+  // TODO: do a dichotomic search here
+  for(int i = 0 ; i < search_index.function_index.size() ; i ++) {
+    if(search_index.function_index[i].first > fun_id.value()) {
+      bin_index = i;
+      break;
+    }
+  }
+  if(bin_index == -1) {
+    bin_index = search_index.function_index.size() - 1;
+    if(bin_index < 0) {
+      Rf_warning("The function index is empty. Have you built the indexes?\n");
+      return R_NilValue;
+    }
+  }
+  auto fun_index = search_index.search_function(*this, search_index.function_index[bin_index].second, fun_id.value());
+  
+
+  // All the values linked to that origin
+  auto origin_index = pkg_index & fun_index;
+
+  // Now that we have all the values associated to the origins, we need to find out the calls 
+  // associated to them.
+
+  // Maps call ids to value ids
+  robin_hood::unordered_map<uint64_t, robin_hood::unordered_set<uint64_t>> calls_to_values;
+  for(uint64_t v : origin_index) {
+    auto ids = call_ids.get_call_ids(v);
+
+    for(uint64_t cid : ids) {
+      auto it = calls_to_values.find(cid);
+
+      if(it != calls_to_values.end()) {
+        it->second.insert(v);
+      }
+      else {
+        it->second.emplace(v);
+      }
+    }
+  }
+
+
+  // Now we just output the hashmap!
+  SEXP dfs = PROTECT(Rf_allocVector(VECSXP, calls_to_values.size()));
+
+  std::string param;
+  R_xlen_t i = 0;
+  for(auto p : calls_to_values) {
+    size_t nb_values = p.second.size();
+
+    SEXP call_id = PROTECT(Rf_allocVector(INTSXP, nb_values));
+    SEXP value_idx = PROTECT(Rf_allocVector(INTSXP, nb_values));
+    int* val_idx = INTEGER(value_idx);
+    SEXP params = PROTECT(Rf_allocVector(STRSXP, nb_values));
+
+    std::fill_n(INTEGER(call_id), nb_values, p.first);
+
+    R_xlen_t j = 0;
+    for(auto vid : p.second) {
+      val_idx[j] = vid;
+
+      auto locs = origins.get_locs(vid);
+      for(auto loc : locs) {
+        if(loc.package == pkg_id.value() && loc.function == fun_id.value()) {
+          // Might fail if the same value is used for different parameters
+          // In that case there would be a missing param name and one doubled.
+          // To fix that, we would need to track if a param has been already seen or not
+          param = origins.param_name(loc.param);
+          break;
+        }
+      }
+      
+      SET_STRING_ELT(params, j, Rf_mkChar(param.c_str()));
+
+      j++;
+    }
+
+    SEXP df = PROTECT(create_data_frame({
+      {"call_id", call_id},
+      {"value_id", value_idx},
+      {"param", params}
+    }));
+
+    SET_VECTOR_ELT(dfs, i, df);
+
+    UNPROTECT(3);
+    i++;
+  }
+
+  SEXP value_calls = PROTECT(bind_rows(dfs));
+
+  UNPROTECT(2);
+
+  return value_calls;
+}
+
 const SEXP Database::values_from_origin(const std::string& package, const std::string& function) {
   // Make sure the internal hash tables for the origins are loaded
   origins.load_hashtables();
