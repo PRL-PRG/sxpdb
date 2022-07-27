@@ -1140,7 +1140,7 @@ const SEXP Database::values_from_calls(const std::string& package, const std::st
 
     SET_VECTOR_ELT(dfs, i, df);
 
-    UNPROTECT(3);
+    UNPROTECT(4);
     i++;
   }
 
