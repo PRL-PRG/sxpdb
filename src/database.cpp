@@ -1091,7 +1091,7 @@ const SEXP Database::values_from_calls(const std::string& package, const std::st
         it->second.insert(v);
       }
       else {
-        it->second.emplace(v);
+        calls_to_values.emplace(cid, v);
       }
     }
   }

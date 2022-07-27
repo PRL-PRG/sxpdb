@@ -577,7 +577,7 @@ private:
   mutable std::string val;
 
   StableVector<std::string> store;//to not get invalidated pointers in the hash table
-  robin_hood::unordered_map<const std::string*, uint64_t, string_pointer_hasher, string_pointer_equal> unique_lines;
+  robin_hood::unordered_map<std::string, uint64_t> unique_lines;
   uint64_t last_written = 0;
 
   bool unique_loaded = false;
@@ -647,7 +647,7 @@ public:
     assert(store.nb_chunks() == 1);
     auto chunk = store.chunk(0);
     for(uint64_t i = 0; i < chunk.size() ; i++) {
-      unique_lines.insert({&chunk[i], i});
+      unique_lines.insert({chunk[i], i});
     }
 
     throw_assert(unique_lines.size() == n_values);// the file should contain unique names
@@ -656,11 +656,11 @@ public:
   }
 
   uint64_t append_index(const std::string& value) {
-    auto it = unique_lines.find(&value);
+    auto it = unique_lines.find(value);
 
     if(it == unique_lines.end()) {
       store.push_back(value);
-      auto res = unique_lines.insert({&store.back(), store.size() - 1});
+      auto res = unique_lines.insert({store.back(), store.size() - 1});
 
       n_values++;
       assert(store.size() == n_values);
@@ -693,7 +693,7 @@ public:
 
   std::optional<uint64_t> get_index(const std::string& value) const {
     assert(unique_loaded);
-    auto it = unique_lines.find(&value);
+    auto it = unique_lines.find(value);
     if(it != unique_lines.end()) {
       return it->second;
     }
