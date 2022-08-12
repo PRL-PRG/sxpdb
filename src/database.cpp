@@ -1100,11 +1100,11 @@ const SEXP Database::values_from_calls(const std::string& package, const std::st
   // Now we just output the hashmap!
   SEXP dfs = PROTECT(Rf_allocVector(VECSXP, calls_to_values.size()));
 
-  std::string param;
   R_xlen_t i = 0;
   for(auto p : calls_to_values) {
     size_t nb_values = p.second.size();
 
+    // Not nb_values here but rather nb arguments + 1 (return value?)
     SEXP call_id = PROTECT(Rf_allocVector(INTSXP, nb_values));
     SEXP value_idx = PROTECT(Rf_allocVector(INTSXP, nb_values));
     int* val_idx = INTEGER(value_idx);
@@ -1117,17 +1117,29 @@ const SEXP Database::values_from_calls(const std::string& package, const std::st
       val_idx[j] = vid;
 
       auto locs = origins.get_locs(vid);
+      robin_hood::unordered_set<std::string> parameters;
       for(auto loc : locs) {
         if(loc.package == pkg_id.value() && loc.function == fun_id.value()) {
           // Might fail if the same value is used for different parameters
           // In that case there would be a missing param name and one doubled.
           // To fix that, we would need to track if a param has been already seen or not
-          param = origins.param_name(loc.param);
-          break;
+          parameters.insert(origins.param_name(loc.param));
         }
       }
+
+      if(parameters.size() == 0) {
+        Rf_warning("Value %lu does not correspond to a parameter of %s::%s.\n", package.c_str(), function.c_str());
+        SET_STRING_ELT(params, j, NA_STRING);
+      }
+      else {
+        std::string pars = *parameters.begin();
+        for(auto it = ++parameters.begin() ; it != parameters.end() ; it++) {
+          pars +=  "; ";
+          pars += *it;
+        }
+        SET_STRING_ELT(params, j, Rf_mkChar(pars.c_str()));
+      }
       
-      SET_STRING_ELT(params, j, Rf_mkChar(param.c_str()));
 
       j++;
     }
