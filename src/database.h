@@ -180,7 +180,9 @@ public:
   // Utilities
   const std::vector<size_t> check(bool slow_check);
   const fs::path& configuration_path() const {return config_path; }
+
   uint64_t nb_values() const { return nb_total_values; }
+  uint64_t nb_values(Query& query) const;
 
   bool rw_mode() const { return mode == OpenMode::Write; }
 

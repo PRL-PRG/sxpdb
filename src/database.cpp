@@ -886,6 +886,13 @@ const SEXP Database::view_values(Query& query) const {
   return l;
 }
 
+uint64_t Database::nb_values(Query& query) const {
+  update_query(query);
+
+  auto index = query.view();
+  return index.cardinality();
+}
+
 const SEXP Database::view_call_ids() const {
   SEXP ids_c = PROTECT(Rf_allocVector(VECSXP, nb_total_values));
 

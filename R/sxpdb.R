@@ -92,6 +92,11 @@ size_db <- function(db) {
 }
 
 #' @export
+nb_values_db <- function(db, query = NULL) {
+  .Call(SXPDB_nb_values_db, db, query)
+}
+
+#' @export
 report <- function() {
 	.Call(SXPDB_print_report) #TODO
 }
@@ -171,6 +176,11 @@ write_mode <- function(db) {
 #' @export
 query_from_value <- function(value) {
   .Call(SXPDB_query_from_value, value)
+}
+
+#' @export
+query_from_plan <- function(plan) {
+  .Call(SXPDB_query_from_plan, plan)
 }
 
 #' @export

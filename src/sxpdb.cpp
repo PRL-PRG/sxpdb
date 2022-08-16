@@ -652,6 +652,28 @@ SEXP view_db(SEXP sxpdb, SEXP query_ptr) {
   }
 }
 
+SEXP nb_values_db(SEXP sxpdb, SEXP query_ptr) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
+
+  if(Rf_isNull(query_ptr)) {
+    return Rf_ScalarInteger(db->nb_values());
+  }
+  else {
+    void* ptr = R_ExternalPtrAddr(query_ptr);
+    if(ptr== nullptr) {
+      Rf_warning("Query does not exist.\n");
+      return R_NilValue;
+    }
+    Query* query = static_cast<Query*>(ptr);
+    return Rf_ScalarInteger(db->nb_values(*query));
+  }
+}
+
+
 SEXP view_metadata(SEXP sxpdb, SEXP query_ptr) {
   void* ptr = R_ExternalPtrAddr(sxpdb);
   if(ptr== nullptr) {
@@ -768,6 +790,20 @@ SEXP values_from_calls(SEXP sxpdb, SEXP pkg, SEXP fun) {
 SEXP query_from_value(SEXP value) {
   Query* query = new Query();
   *query = Query::from_value(value); // populate from the value
+
+  SEXP query_ptr = PROTECT(R_MakeExternalPtr(query, Rf_install("query"), R_NilValue));
+
+  // ASk to close the database when R session is closed.
+  R_RegisterCFinalizerEx(query_ptr, (R_CFinalizer_t) close_query, TRUE);
+
+  UNPROTECT(1);
+
+  return query_ptr;
+}
+
+SEXP query_from_plan(SEXP plan) {
+  Query* query = new Query();
+  *query = Query::from_plan(plan); // populate from the value
 
   SEXP query_ptr = PROTECT(R_MakeExternalPtr(query, Rf_install("query"), R_NilValue));
 
