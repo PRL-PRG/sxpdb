@@ -168,6 +168,11 @@ public:
 
   //Rebuilding the indexes from scratch
   void build_indexes() {
+    if(mode == OpenMode::Read) {
+      Rf_warning("Cannot build the index in read mode.\n");
+      return;
+    }
+    
     //it populates a hash table
     // required to build later the reverse index
     classes.load_all();

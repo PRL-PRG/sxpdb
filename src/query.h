@@ -161,7 +161,7 @@ public:
     std::string cur_name = "";
     SEXP cur_sexp;
     for(int i = 0 ; i < Rf_length(names) ; i++) {
-      cur_name == CHAR(STRING_ELT(names, i));
+      cur_name = CHAR(STRING_ELT(names, i));
       cur_sexp = VECTOR_ELT(plan, i);
       if(cur_name == "type") {
         d.type = TYPEOF(cur_sexp);// put whatever you want the type of here

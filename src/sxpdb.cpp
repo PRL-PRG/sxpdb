@@ -1011,6 +1011,9 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
     {"error", error_c}
   }));
 
+  Rprintf("\nBuilding seach indexes.\n");
+  db.build_indexes();
+
   UNPROTECT(8);
 
   return df;
