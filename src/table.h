@@ -185,7 +185,7 @@ public:
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
     if(n_values != n_values_file) {
-      Rf_warning("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.c_str(), n_values, n_values_file);
+      Rf_error("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.c_str(), n_values, n_values_file);
     }
 
     file.exceptions(std::fstream::failbit);
@@ -340,7 +340,7 @@ public:
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
     if(n_values != n_values_file) {
-      Rf_warning("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.c_str(), n_values, n_values_file);
+      Rf_error("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.c_str(), n_values, n_values_file);
     }
 
     last_written = n_values;
@@ -644,7 +644,7 @@ public:
     }
     // Populate the hash table
     unique_lines.reserve(store.size());
-    assert(store.nb_chunks() == 1);
+    throw_assert(store.nb_chunks() == 1);
     auto chunk = store.chunk(0);
     for(uint64_t i = 0; i < chunk.size() ; i++) {
       unique_lines.insert({chunk[i], i});

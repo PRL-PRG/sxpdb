@@ -285,7 +285,7 @@ Database::~Database() {
 }
 
 void Database::write_configuration() {
-  assert(mode == OpenMode::Write);
+  throw_assert(mode == OpenMode::Write);
   std::unordered_map<std::string, std::string> conf;
 
   conf["major"] = std::to_string(version_major);
@@ -1595,11 +1595,11 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
   // then parallelize across the various tables
   static_meta.load_all();
 
-  assert(static_meta.loaded());
-  assert(runtime_meta.loaded());
-  assert(hashes.loaded());
-  assert(debug_counters.loaded());
-  assert(other.hashes.loaded());
+  throw_assert(static_meta.loaded());
+  throw_assert(runtime_meta.loaded());
+  throw_assert(hashes.loaded());
+  throw_assert(debug_counters.loaded());
+  throw_assert(other.hashes.loaded());
 
   // Make sure the offsets are loaded into memory so that we can parallelize
   other.sexp_table.load_all();
@@ -1926,13 +1926,13 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     new_elements = true;
   }
 
-  assert(nb_total_values >= old_total_values);
-  assert(sexp_table.nb_values() == nb_total_values);
-  assert(classes.nb_values() == nb_total_values);
-  assert(hashes.nb_values() == nb_total_values);
-  assert(static_meta.nb_values() == nb_total_values);
-  assert(runtime_meta.nb_values() == nb_total_values);
-  assert(classes.nb_classnames() >= old_nb_classnames);
+  throw_assert(nb_total_values >= old_total_values);
+  throw_assert(sexp_table.nb_values() == nb_total_values);
+  throw_assert(classes.nb_values() == nb_total_values);
+  throw_assert(hashes.nb_values() == nb_total_values);
+  throw_assert(static_meta.nb_values() == nb_total_values);
+  throw_assert(runtime_meta.nb_values() == nb_total_values);
+  throw_assert(classes.nb_classnames() >= old_nb_classnames);
 
 
   return nb_total_values - old_total_values;
@@ -2067,9 +2067,9 @@ uint64_t Database::merge_in(Database& other) {
     new_elements = true;
   }
 
-  assert(nb_total_values >= old_total_values);
-  assert(sexp_table.nb_values() == nb_total_values);
-  assert(classes.nb_classnames() >= old_nb_classnames);
+  throw_assert(nb_total_values >= old_total_values);
+  throw_assert(sexp_table.nb_values() == nb_total_values);
+  throw_assert(classes.nb_classnames() >= old_nb_classnames);
 
   return nb_total_values - old_total_values;
 }
