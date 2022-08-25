@@ -15,6 +15,7 @@ open_db <- function(db = "db", mode = FALSE, quiet = TRUE) {
 
 #' @export
 close_db <- function(db) {
+  stopifnot(check_db(db))
   # Check if it is a EXTPTR and if it has the right tag here maybe
   .Call(SXPDB_close_db, db)
 }
@@ -22,42 +23,44 @@ close_db <- function(db) {
 
 #' @export
 add_val <- function(db, val) {
-  stopifnot(write_mode(db))
+  stopifnot(check_db(db), write_mode(db))
   .Call(SXPDB_add_val, db, val)
 }
 
 #' @export
 add_val_origin <- function(db, val, package, func, argument, call_id = 0) {
-  stopifnot(write_mode(db), is.numeric(call_id), is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
+  stopifnot(check_db(db), write_mode(db), is.numeric(call_id), is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
   .Call(SXPDB_add_val_origin, db, val, package, func, if(is.na(argument)) NA_character_ else argument, call_id)
 }
 
 #' @export
 add_origin <- function(db, hash, package, func, argument) {
-  stopifnot(write_mode(db), is.raw(hash) && length(hash) == 20, is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
+  stopifnot(check_db(db), write_mode(db), is.raw(hash) && length(hash) == 20, is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
   .Call(SXPDB_add_origin, db, hash, package, func, if(is.na(argument)) NA_character_ else argument)
 }
 
 #' @export
 sample_val <- function(db, query = NULL) {
+  stopifnot(check_db(db))
   .Call(SXPDB_sample_val, db, query)
 }
 
 #' @export
 sample_index <- function(db, query = NULL) {
+  stopifnot(check_db(db))
   .Call(SXPDB_sample_index, db, query)
 }
 
 #' @export
 sample_similar <- function(db, val, relax = "") {
-  stopifnot(is.character(relax))
+  stopifnot(check_db(db), is.character(relax))
   .Call(SXPDB_sample_similar, db, val, FALSE, relax)
 }
 
 
 #' @export
 merge_db <- function(db1, db2) {
-  stopifnot(write_mode(db1))
+  stopifnot(check_db(db), write_mode(db1))
   .Call(SXPDB_merge_db, db1, db2)
 }
 
@@ -65,106 +68,114 @@ merge_db <- function(db1, db2) {
 
 #' @export
 have_seen <- function(db, val) {
+  stopifnot(check_db(db))
 	.Call(SXPDB_have_seen, db, val)
 }
 
 #' @export
 get_value_idx <- function(db, idx) {
-  stopifnot(is.numeric(idx), idx >= 0, idx < size_db(db))
+  stopifnot(check_db(db), is.numeric(idx), idx >= 0, idx < size_db(db))
   .Call(SXPDB_get_val, db, idx)
 }
 
 
 #' @export
 get_meta <- function(db, val) {
+  stopifnot(check_db(db))
   .Call(SXPDB_get_meta, db, val)
 }
 
 #' @export
 get_meta_idx <- function(db, idx) {
-  stopifnot(is.numeric(idx), idx >= 0, idx < size_db(db))
+  stopifnot(check_db(db), is.numeric(idx), idx >= 0, idx < size_db(db))
   .Call(SXPDB_get_meta_idx, db, idx)
 }
 
 #' @export
 size_db <- function(db) {
+  stopifnot(check_db(db))
   .Call(SXPDB_size_db, db)
 }
 
-#' @export
-report <- function() {
-	.Call(SXPDB_print_report) #TODO
-}
+
 
 
 #' @export
 view_db <- function(db, query = NULL) {
+  stopifnot(check_db(db))
   .Call(SXPDB_view_db, db, query)
 }
 
 #' @export
 view_meta_db <- function(db, query = NULL) {
+  stopifnot(check_db(db))
   .Call(SXPDB_view_metadata, db, query)
 }
 
 #' @export
 view_call_ids<- function(db, query = NULL) {
+  stopifnot(check_db(db))
   .Call(SXPDB_view_call_ids, db, query)
 }
 
 #' @export
 view_db_names <- function(db, query = NULL) {
+  stopifnot(check_db(db))
   .Call(SXPDB_view_db_names, db, query)
 }
 
 
 #' @export
 get_origins <- function(db, hash) {
-  stopifnot(is.raw(hash))
+  stopifnot(check_db(db), is.raw(hash))
   .Call(SXPDB_get_origins, db, hash)
 }
 
 #' @export
 get_origins_idx <- function(db, i) {
-  stopifnot(is.numeric(i), i >= 0, i < size_db(db))
+  stopifnot(check_db(db), is.numeric(i), i >= 0, i < size_db(db))
   .Call(SXPDB_get_origins_idx, db, i)
 }
 
 #' @export
 view_origins_db <- function(db, query = NULL) {
+  stopifnot(check_db(db))
   .Call(SXPDB_view_origins, db, query)
 }
 
 #' @export
 path_db <- function(db) {
+  stopifnot(check_db(db))
   .Call(SXPDB_path_db, db)
 }
 
 #' @export
-check_db <- function(db, slow = FALSE) {
-  stopifnot(is.logical(slow))
+check_all_db <- function(db, slow = FALSE) {
+  stopifnot(check_db(db), is.logical(slow))
   .Call(SXPDB_check_db, db, slow)
 }
 
 #' @export
 map_db <- function(db, fun, query = NULL) {
-  stopifnot(is.function(fun))
+  stopifnot(check_db(db), is.function(fun))
   .Call(SXPDB_map_db, db, fun, query)
 }
 
 #' @export
 filter_index_db <- function(db, fun, query = NULL) {
-  stopifnot(is.function(fun))
+  stopifnot(check_db(db), is.function(fun))
   .Call(SXPDB_filter_index_db, db, fun, query)
 }
 
 #' @export
 build_indexes <- function(db) {
+  stopifnot(check_db(db))
   .Call(SXPDB_build_indexes, db)
 }
 
 #' @export
 write_mode <- function(db) {
+  stopifnot(check_db(db))
   .Call(SXPDB_write_mode, db)
 }
 
@@ -199,13 +210,13 @@ merge_all_dbs <- function(db_paths, output_path, parallel = TRUE) {
 
 #' @export 
 values_from_origin <- function(db, pkg_name, fun_name) {
-  stopifnot(is.character(pkg_name), is.character(fun_name))
+  stopifnot(check_db(db), is.character(pkg_name), is.character(fun_name))
   .Call(SXPDB_values_from_origins, db, pkg_name, fun_name)
 }
 
 #' @export 
 values_from_calls <- function(db, pkg_name, fun_name) {
-  stopifnot(is.character(pkg_name), is.character(fun_name))
+  stopifnot(check_db(db), is.character(pkg_name), is.character(fun_name))
   .Call(SXPDB_values_from_calls, db, pkg_name, fun_name)
 }
 
@@ -235,6 +246,10 @@ is_integer_real <- function(v) {
 #' @export
 extptr_tag <- function(v) {
   .Call(SXPDB_extptr_tag, v)
+}
+
+check_db <- function(v) {
+  typeof(v) == "externalptr" && extptr_tag(v) == "sxpdb"
 }
 
 
