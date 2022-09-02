@@ -1,4 +1,4 @@
 library(testthat)
-library(record)
+library(sxpdb)
 
-test_check("record")
+test_check("sxpdb")
