@@ -57,8 +57,15 @@ sample_similar <- function(db, val, relax = "") {
 
 #' @export
 merge_db <- function(db1, db2) {
+  .Deprecated("merge_into", package = "sxpdb")
   stopifnot(write_mode(db1))
   .Call(SXPDB_merge_db, db1, db2)
+}
+
+#' @export
+merge_into <- function(target, source) {
+   stopifnot(write_mode(target))
+  .Call(SXPDB_merge_into_db, target, source)
 }
 
 ## Testing/Information Gathering Related Functionality
@@ -265,21 +272,28 @@ close.sxpdb <- function(db) {
   close_db(db)
 }
 
+dir_size <- function(path) {
+  sum(file.size(list.files(path, recursive = TRUE, full.names = TRUE)), na.rm = TRUE)  
+}
+
 #' @export
-summary.sxpdb <- function(db) {
+summary.sxpdb <- function(db, digits = max(3L, getOption("digits") - 3L)) {
   # TODO: more info:
-  # - size of the db?
+  # - number of packages, functions, parameters
   # - index built or not
   # - if built, some info about the type distribution
   structure(list(
     size = size_db(db),
+    byte_size = dir_size(path_db(db)),
     path = path_db(db),
-    write_mode = write_mode(db)), class = "summary.sxpdb")
+    write_mode = write_mode(db),
+    digits = digits), class = "summary.sxpdb")
 }
 
 #' @export
 print.summary.sxpdb <- function(s) {
   cat("path: ", s$path, "\n")
-  cat("size: ", s$size, "\n")
+  cat("size: ", s$byte_size, " bytes\n")
+  cat("size: ", s$size, " elements\n")
   cat("write? ", s$write_mode, "\n")
 }

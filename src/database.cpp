@@ -2080,3 +2080,149 @@ const std::vector<size_t> Database::check(bool slow_check) {
   //TODO!
   return errors;
 }
+
+
+const std::vector<uint64_t>& Database::merge_into(Database& other) {
+  uint64_t old_total_values = nb_total_values;
+  uint64_t old_nb_classnames = classes.nb_classnames();
+
+  other.sexp_table.load_all();
+
+  bool has_dbnames = other.dbnames.nb_values() != 0;
+  std::string dbname = other.configuration_path().parent_path().filename();
+
+  sexp_hash key;
+  runtime_meta_t meta;
+  debug_counters_t cnts;
+
+  bool has_debug = debug_counters.nb_values() > 0 && other.debug_counters.nb_values() > 0;
+
+  // Mapping old to new indexes
+  std::vector<uint64_t> mapping(other.nb_values());
+
+  for(uint64_t other_idx = 0; other_idx < other.nb_values(); other_idx++) {
+     other.hashes.read_in(other_idx, key);
+
+   // This will take time
+   // Lookup of data from the small db into the large db
+   // Assuming the lookup is O(1)
+   // It should be quicker than iterating the large db each time and
+   // looking up in the small db
+    auto has_hash = sexp_index.find(&key);
+
+    // It is not present in the target db
+    if(has_hash == sexp_index.end()) {
+      sexp_table.append(other.sexp_table.read(other_idx));
+
+      static_meta.append(other.static_meta.read(other_idx));
+
+      runtime_meta.append(other.runtime_meta.read(other_idx));
+
+      // Class names
+      for(const auto& class_id : other.classes.get_classnames(other_idx)) {
+        classes.add_classname(nb_total_values, other.classes.class_name(class_id));
+      }
+      if(other.classes.get_classnames(other_idx).size() == 0) {
+        classes.add_emptyclass(nb_total_values);
+      }
+
+      // Origins
+      for(const auto& loc : other.origins.get_locs(other_idx)) {
+        origins.add_origin(nb_total_values, other.origins.package_name(loc.package),
+                           other.origins.function_name(loc.function),
+                           other.origins.param_name(loc.param));
+      }
+      //TODO: Pre-merge the origin tables (package, function, and parameters names?)
+#ifndef NDEBUG
+    if(has_debug) {
+      debug_counters.append(other.debug_counters.read(other_idx));
+    }
+#endif
+
+         // DB names
+      if(has_dbnames) {
+        for(const auto db_id : other.dbnames.get_dbs(other_idx)) {
+          dbnames.add_dbname(nb_total_values, other.dbnames.dbname(db_id));
+        }
+      }
+      else {//It results from tracing
+        dbnames.add_dbname(nb_total_values, dbname);
+      }
+
+      // Call ids
+      for(const auto call_id : other.call_ids.get_call_ids(other_idx)) {
+        call_ids.add_call_id(nb_total_values, call_id);
+      }
+
+      // Hashes
+      hashes.append(key);
+      sexp_index.insert({&hashes.memory_view().back(), nb_total_values});
+
+      // Update the mapping
+      mapping[other_idx] = nb_total_values;
+
+      nb_total_values++;
+      new_elements = true;
+
+    }
+    else {
+      // It is present in the target db: we just have to update the runtime metadata
+      // the debug counters,
+      // and the possible new origins
+      uint64_t db_idx = has_hash->second;
+
+      // Update mapping
+      mapping[other_idx] = db_idx;
+
+      // Runtime metadata
+      runtime_meta.read_in(db_idx, meta);
+      const runtime_meta_t& other_meta = other.runtime_meta.read(other_idx);
+      meta.n_calls += other_meta.n_calls;
+      meta.n_merges++;
+      runtime_meta.write(db_idx, meta);
+
+      // Debug counters
+#ifndef NDEBUG
+      if(has_debug) {
+        debug_counters.read_in(db_idx, cnts);
+        debug_counters_t other_cnts = other.debug_counters.read(other_idx);
+        cnts.n_maybe_shared += other_cnts.n_maybe_shared;
+        cnts.n_sexp_address_opt += other_cnts.n_sexp_address_opt;
+        debug_counters.write(db_idx, cnts);
+      }
+#endif
+
+      // New origins
+      for(const auto& loc : other.origins.get_locs(other_idx)) {
+        origins.add_origin(db_idx, other.origins.package_name(loc.package),
+                           other.origins.function_name(loc.function),
+                           other.origins.param_name(loc.param));
+      }
+
+      // DB names
+      if(has_dbnames) {
+        for(const auto db_id : other.dbnames.get_dbs(other_idx)) {
+          dbnames.add_dbname(db_idx, other.dbnames.dbname(db_id));
+        }
+      }
+      else {//It results from tracing
+        dbnames.add_dbname(db_idx, dbname);
+      }
+
+      // Call ids
+      for(const auto call_id : other.call_ids.get_call_ids(other_idx)) {
+        call_ids.add_call_id(db_idx, call_id);
+      }
+    }
+  }
+
+  if(nb_total_values > old_total_values) {
+    new_elements = true;
+  }
+
+  throw_assert(nb_total_values >= old_total_values);
+  throw_assert(sexp_table.nb_values() == nb_total_values);
+  throw_assert(classes.nb_classnames() >= old_nb_classnames);
+
+  return mapping;
+}

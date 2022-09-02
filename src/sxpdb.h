@@ -106,6 +106,15 @@ SEXP get_val(SEXP db, SEXP i);
 SEXP merge_db(SEXP db1, SEXP db2);
 
 /**
+ * Merges target into source
+ * @method merge_db
+ * @param  target       external pointer to the target database
+ * @param  source       external pointer to the source  database
+ * @return R_NilValue if error, mapping from old indexes to new ones otherwise
+ */
+SEXP merge_into_db(SEXP target, SEXP source);
+
+/**
  * Number of values in the database
  * @method size_db
  * @param  db       external pointer to the target database

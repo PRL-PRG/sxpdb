@@ -501,7 +501,6 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
   }
   Database* db2 = static_cast<Database*>(ptr2);
 
-  uint64_t nb_new_values = 0;
   try{
     db1->parallel_merge_in(*db2, 150);
   }
@@ -510,6 +509,34 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
   }
 
   return Rf_ScalarInteger(db1->nb_values());
+}
+
+SEXP merge_into_db(SEXP target, SEXP source) {
+  void* ptr1 = R_ExternalPtrAddr(source);
+  if(ptr1== nullptr) {
+    return R_NilValue;
+  }
+  Database* db1 = static_cast<Database*>(ptr1);
+
+  void* ptr2 = R_ExternalPtrAddr(target);
+  if(ptr2== nullptr) {
+    return R_NilValue;
+  }
+  Database* db2 = static_cast<Database*>(ptr2);
+
+  SEXP mapping  = R_NilValue;
+  try{
+    auto map = db1->merge_into(*db2);
+    mapping = PROTECT(Rf_allocVector(INTSXP, map.size()));
+    std::copy(map.begin(), map.end(), INTEGER(mapping));
+
+    UNPROTECT(1);
+  }
+  catch(std::exception& e) {
+    Rf_error("Error merging database %s into %s: %s\n", db2->configuration_path().c_str(), db1->configuration_path().c_str(), e.what());
+  }
+
+  return mapping;
 }
 
 SEXP size_db(SEXP sxpdb) {
