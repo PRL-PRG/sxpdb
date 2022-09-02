@@ -285,7 +285,7 @@ Database::~Database() {
 }
 
 void Database::write_configuration() {
-  assert(mode == OpenMode::Write);
+  throw_assert(mode == OpenMode::Write);
   std::unordered_map<std::string, std::string> conf;
 
   conf["major"] = std::to_string(version_major);
@@ -886,6 +886,13 @@ const SEXP Database::view_values(Query& query) const {
   return l;
 }
 
+uint64_t Database::nb_values(Query& query) const {
+  update_query(query);
+
+  auto index = query.view();
+  return index.cardinality();
+}
+
 const SEXP Database::view_call_ids() const {
   SEXP ids_c = PROTECT(Rf_allocVector(VECSXP, nb_total_values));
 
@@ -1101,11 +1108,11 @@ const SEXP Database::values_from_calls(const std::string& package, const std::st
   // Now we just output the hashmap!
   SEXP dfs = PROTECT(Rf_allocVector(VECSXP, calls_to_values.size()));
 
-  std::string param;
   R_xlen_t i = 0;
   for(auto p : calls_to_values) {
     size_t nb_values = p.second.size();
 
+    // Not nb_values here but rather nb arguments + 1 (return value?)
     SEXP call_id = PROTECT(Rf_allocVector(INTSXP, nb_values));
     SEXP value_idx = PROTECT(Rf_allocVector(INTSXP, nb_values));
     int* val_idx = INTEGER(value_idx);
@@ -1118,17 +1125,29 @@ const SEXP Database::values_from_calls(const std::string& package, const std::st
       val_idx[j] = vid;
 
       auto locs = origins.get_locs(vid);
+      robin_hood::unordered_set<std::string> parameters;
       for(auto loc : locs) {
         if(loc.package == pkg_id.value() && loc.function == fun_id.value()) {
           // Might fail if the same value is used for different parameters
           // In that case there would be a missing param name and one doubled.
           // To fix that, we would need to track if a param has been already seen or not
-          param = origins.param_name(loc.param);
-          break;
+          parameters.insert(origins.param_name(loc.param));
         }
       }
+
+      if(parameters.size() == 0) {
+        Rf_warning("Value %lu does not correspond to a parameter of %s::%s.\n", package.c_str(), function.c_str());
+        SET_STRING_ELT(params, j, NA_STRING);
+      }
+      else {
+        std::string pars = *parameters.begin();
+        for(auto it = ++parameters.begin() ; it != parameters.end() ; it++) {
+          pars +=  "; ";
+          pars += *it;
+        }
+        SET_STRING_ELT(params, j, Rf_mkChar(pars.c_str()));
+      }
       
-      SET_STRING_ELT(params, j, Rf_mkChar(param.c_str()));
 
       j++;
     }
@@ -1576,11 +1595,11 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
   // then parallelize across the various tables
   static_meta.load_all();
 
-  assert(static_meta.loaded());
-  assert(runtime_meta.loaded());
-  assert(hashes.loaded());
-  assert(debug_counters.loaded());
-  assert(other.hashes.loaded());
+  throw_assert(static_meta.loaded());
+  throw_assert(runtime_meta.loaded());
+  throw_assert(hashes.loaded());
+  throw_assert(debug_counters.loaded());
+  throw_assert(other.hashes.loaded());
 
   // Make sure the offsets are loaded into memory so that we can parallelize
   other.sexp_table.load_all();
@@ -1907,13 +1926,13 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     new_elements = true;
   }
 
-  assert(nb_total_values >= old_total_values);
-  assert(sexp_table.nb_values() == nb_total_values);
-  assert(classes.nb_values() == nb_total_values);
-  assert(hashes.nb_values() == nb_total_values);
-  assert(static_meta.nb_values() == nb_total_values);
-  assert(runtime_meta.nb_values() == nb_total_values);
-  assert(classes.nb_classnames() >= old_nb_classnames);
+  throw_assert(nb_total_values >= old_total_values);
+  throw_assert(sexp_table.nb_values() == nb_total_values);
+  throw_assert(classes.nb_values() == nb_total_values);
+  throw_assert(hashes.nb_values() == nb_total_values);
+  throw_assert(static_meta.nb_values() == nb_total_values);
+  throw_assert(runtime_meta.nb_values() == nb_total_values);
+  throw_assert(classes.nb_classnames() >= old_nb_classnames);
 
 
   return nb_total_values - old_total_values;
@@ -2048,9 +2067,9 @@ uint64_t Database::merge_in(Database& other) {
     new_elements = true;
   }
 
-  assert(nb_total_values >= old_total_values);
-  assert(sexp_table.nb_values() == nb_total_values);
-  assert(classes.nb_classnames() >= old_nb_classnames);
+  throw_assert(nb_total_values >= old_total_values);
+  throw_assert(sexp_table.nb_values() == nb_total_values);
+  throw_assert(classes.nb_classnames() >= old_nb_classnames);
 
   return nb_total_values - old_total_values;
 }

@@ -114,6 +114,15 @@ SEXP merge_db(SEXP db1, SEXP db2);
 SEXP size_db(SEXP db);
 
 /**
+ * Number of values matching a given query
+ * @method size_db
+ * @param  db       external pointer to the target database
+ * @param query externalptr or NULL restrict the values to map on to the ones matching the query
+ * @return R_NilValue if error, number of values in the database otherwise
+ */
+SEXP nb_values_db(SEXP db, SEXP query);
+
+/**
  * Metadata associated to a value
  * @method get_meta
  * @param  db       external pointer to the target database
@@ -281,6 +290,21 @@ SEXP write_mode(SEXP sxpdb);
  * @return external pointer to the query object
  */
 SEXP query_from_value(SEXP value);
+
+/**
+ * @method query_from_plan
+ * @param plan a named list describing the query. In the absence of a name, 
+ *      the associated metadatum will be set to unspecified. Metadata:
+ *         - type: any value of the desired type
+ *         - vector: boolean
+ *         - length: integer
+ *         - class name: character vector of class names, or boolean
+ *         - na: boolean
+ *         - ndims: integer
+ *         - attributes: boolean
+ * @return external pointer to the query object
+ */
+SEXP query_from_plan(SEXP value);
 
 /**
  * @method close_query

@@ -157,31 +157,42 @@ public:
 
     Query d(ANYSXP, quiet = quiet);
 
+    // If something is not present, it is just not taken into account for the search plan
     std::string cur_name = "";
+    SEXP cur_sexp;
     for(int i = 0 ; i < Rf_length(names) ; i++) {
-      cur_name == CHAR(STRING_ELT(names, i));
+      cur_name = CHAR(STRING_ELT(names, i));
+      cur_sexp = VECTOR_ELT(plan, i);
       if(cur_name == "type") {
-        //d.type = //TODO
+        d.type = TYPEOF(cur_sexp);// put whatever you want the type of here
       }
       else if(cur_name == "vector") {
-
+        d.is_vector = Rf_asLogical(cur_sexp);
       }
       else if (cur_name == "length") {
-
+        d.length = Rf_asInteger(cur_sexp);
       }
       else if(cur_name == "classname") {
-
+        d.has_class = true;
+        if(TYPEOF(cur_sexp) == STRSXP) {
+          d.class_names = std::vector<std::string>(Rf_xlength(cur_sexp));
+          for(R_xlen_t j = 0; j < Rf_xlength(cur_sexp); j++) {
+            d.class_names[j] = CHAR(STRING_ELT(cur_sexp, j));
+          }
+        }
       }
       else if(cur_name == "na") {
-
+        d.has_na = Rf_asLogical(cur_sexp);
       }
       else if(cur_name == "ndims") {
-
+        d.ndims = Rf_asInteger(cur_sexp);
       }
       else if (cur_name == "attributes") {
-
+        d.has_attributes = Rf_asLogical(cur_sexp);
       }
     }
+
+    return d;
   }
 
   inline static const Query unify(const Query& d1, const Query& d2) {

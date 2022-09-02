@@ -22,3 +22,20 @@ close_db(db)
 close_db(db2)
 
 ```
+
+
+## S3 API
+
+```R
+db <- open_db("cran_db", quiet=FALSE)
+
+add_val(db, 45)
+
+db[0]
+
+summary(db)
+
+length(db)
+
+close(db)
+```
