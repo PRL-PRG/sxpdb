@@ -1080,7 +1080,7 @@ const SEXP Database::values_from_calls(const std::string& package, const std::st
   // associated to them.
 
   // Maps call ids to value ids and db names
-  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> calls_to_values;
+  robin_hood::unordered_map<uint64_t, robin_hood::unordered_set<uint64_t>> calls_to_values;
   for(uint64_t v : origin_index) {
     auto ids = call_ids.get_call_ids(v);
     //auto dbs = dbnames.get_dbs(v);
