@@ -10,7 +10,7 @@ open_db <- function(db = "db", mode = FALSE, quiet = TRUE) {
 
   prefix <- file.path(db, "sxpdb")
 
-  .Call(SXPDB_open_db, prefix, mode, quiet)
+  structure(.Call(SXPDB_open_db, prefix, mode, quiet), class = "sxpdb")
 }
 
 #' @export
@@ -95,12 +95,6 @@ size_db <- function(db) {
 nb_values_db <- function(db, query = NULL) {
   .Call(SXPDB_nb_values_db, db, query)
 }
-
-#' @export
-report <- function() {
-	.Call(SXPDB_print_report) #TODO
-}
-
 
 #' @export
 view_db <- function(db, query = NULL) {
@@ -252,3 +246,40 @@ extptr_tag <- function(v) {
   library.dynam.unload("sxpdb", libpath)
 }
 
+
+## S3 API
+
+#' @export
+length.sxpdb <- function(db) {
+  size_db(db)
+}
+
+
+#' @export
+`[.sxpdb` <- function(db, i) {
+    get_value_idx(db, i)
+}
+
+#' @export
+close.sxpdb <- function(db) {
+  close_db(db)
+}
+
+#' @export
+summary.sxpdb <- function(db) {
+  # TODO: more info:
+  # - size of the db?
+  # - index built or not
+  # - if built, some info about the type distribution
+  structure(list(
+    size = size_db(db),
+    path = path_db(db),
+    write_mode = write_mode(db)), class = "summary.sxpdb")
+}
+
+#' @export
+print.summary.sxpdb <- function(s) {
+  cat("path: ", s$path, "\n")
+  cat("size: ", s$size, "\n")
+  cat("write? ", s$write_mode, "\n")
+}
