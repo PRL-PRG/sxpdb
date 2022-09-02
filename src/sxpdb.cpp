@@ -512,13 +512,13 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
 }
 
 SEXP merge_into_db(SEXP target, SEXP source) {
-  void* ptr1 = R_ExternalPtrAddr(source);
+  void* ptr1 = R_ExternalPtrAddr(target);
   if(ptr1== nullptr) {
     return R_NilValue;
   }
   Database* db1 = static_cast<Database*>(ptr1);
 
-  void* ptr2 = R_ExternalPtrAddr(target);
+  void* ptr2 = R_ExternalPtrAddr(source);
   if(ptr2== nullptr) {
     return R_NilValue;
   }

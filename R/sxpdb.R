@@ -67,7 +67,7 @@ merge_db <- function(db1, db2) {
 
 #' @export
 merge_into <- function(target, source) {
-   stopifnot(chedk_db(target), check_db(source), write_mode(target))
+   stopifnot(check_db(target), check_db(source), write_mode(target))
   .Call(SXPDB_merge_into_db, target, source)
 }
 
