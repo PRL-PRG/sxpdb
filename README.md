@@ -1,3 +1,9 @@
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/PRL-PRG/sxpdb/actions/workflows/R-CMD-check.yaml/badge.s
+vg)](https://github.com/PRL-PRG/sxpdb/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
+
 # sxpdb
 
 Stores R values. It stores the values in an efficient ways that scales to millions of unique values and provides a rich query API to find values from the database.
