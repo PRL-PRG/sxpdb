@@ -1,8 +1,16 @@
-## Primary Functionality
-
+#' Open a database
+#' 
+#' `open_db` opens a database for reading, writing, or merging. Reading does not load as much in memory. 
+#' For instance, it will directly read values from the disk. When merging database _source_ into database
+#' _target_, _source_ must be open in merge mode, and _target_, in write mode. Writing mode is required
+#' when adding any new values to the database or building or updating search indexes.
+#' 
+#' @param db character vector of the name and path where to create the db. Default to `"db"`
+#' @param mode `TRUE` if in write mode, `FALSE` if in read mode (default), `"merge"` if in merge mode
+#' @param quiet boolean, whether to print messages or not
+#' @returns  `NULL` on error, a external pointer with class tag "sxpdb" and class "sxpdb" to the database on success
+#' @seealso [close_db()]
 #' @export
-# Open database specified by db
-# if the database does not exist, it will create
 open_db <- function(db = "db", mode = FALSE, quiet = TRUE) {
 	if (!dir.exists(db)) {
     dir.create(db, recursive = TRUE)
@@ -13,6 +21,14 @@ open_db <- function(db = "db", mode = FALSE, quiet = TRUE) {
   structure(.Call(SXPDB_open_db, prefix, mode, quiet), class = "sxpdb")
 }
 
+#' Closes the database
+#' 
+#' Closes a previously open database. If `db` was uncorrectly opened, or has been already closed,
+#' the function will error.
+#' 
+#' @param db database, sxpdb object
+#' @return `NULL`
+#' @seealso [open_db()]
 #' @export
 close_db <- function(db) {
   stopifnot(check_db(db))
@@ -20,44 +36,119 @@ close_db <- function(db) {
   .Call(SXPDB_close_db, db)
 }
 
-
+#' Add a value in the dabatase
+#' 
+#' `add_val` adds an R value in the database. It does not add origins or call ids. 
+#'  This should be used in conjunction with [add_origin()]. 
+#'  You should most likely never use it and rather directly use [add_val_origin()].
+#' 
+#' @param db database, sxpdb object
+#' @param val any R value. Currently, environments and closures will be silently ignored
+#' @returns integer index of the value if it has been added (now or before), or `NULL` if it has been ignored
+#' @seealso [add_val_origin()], [add_origin()]
 #' @export
 add_val <- function(db, val) {
   stopifnot(check_db(db), write_mode(db))
   .Call(SXPDB_add_val, db, val)
 }
 
+#' Add a value with origin and call id
+#'
+#' `add_val_origin` adds an R value in the database, along with its origin
+#' (package, function, argument names), and its call id.
+#'
+#' @param db database, sxpdb object
+#' @param val any R value. Currently, environments and closures will be silently ignored
+#' @param package character vector for the package name 
+#' @param func character vector for the function name
+#' @param argument character vector for the argument name. `""` or `NA` mean that `val` is a return value.
+#' @param call_id integer unique id of the call from which the value comes from. Defaults to `0`
+#' @returns integer index of the value if it has been added (now or before), or `NULL` if it has been ignored
 #' @export
 add_val_origin <- function(db, val, package, func, argument, call_id = 0) {
   stopifnot(check_db(db), write_mode(db), is.numeric(call_id), is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
   .Call(SXPDB_add_val_origin, db, val, package, func, if(is.na(argument)) NA_character_ else argument, call_id)
 }
 
+#' Add origin to an already recorded value
+#'
+#' `add_origin` adds package, function and argument names for a value already recorded in the database.
+#' The value is represented here by its hash. You will not probably use it and rather use [add_val_origin()]
+#' directly, as `add_origin` will only save you the hash computation. If performance is an issue, you
+#' should not use the R API anyway and directly hook into the C one.
+#'
+#' @param db database, sxpdb object
+#' @param hash hash of an already recorded value
+#' @param package character vector for the package name 
+#' @param func character vector for the function name
+#' @param argument character vector for the argument name. `""` or `NA` mean that `val` is a return value.
+#' @returns `NULL`
+#' @seealso [add_val_origin()]
 #' @export
 add_origin <- function(db, hash, package, func, argument) {
   stopifnot(check_db(db), write_mode(db), is.raw(hash) && length(hash) == 20, is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
   .Call(SXPDB_add_origin, db, hash, package, func, if(is.na(argument)) NA_character_ else argument)
 }
 
+#' Sample randomly a value from the database
+#'
+#' `sample_val` samples a value from the database and returns the value.
+#' The sampling uses an uniform distribution.
+#' The value is picked along the whole database or according to a query built from [query_from_plan()]
+#' or [query_from_value()].
+#'
+#' @param db database, sxpdb object
+#' @param query query object or `NULL`. If `NULL`, samples from the whole database
+#' @returns an R value. If the query is empty, it will return `NULL`. It is ambiguous with sampling
+#' a value that  happens to be `NULL` so you should rather use [sample_index()].
+#' @seealso [sample_index()]
 #' @export
 sample_val <- function(db, query = NULL) {
   stopifnot(check_db(db))
   .Call(SXPDB_sample_val, db, query)
 }
 
+#' Sample randomly a value from the database
+#'
+#' `sample_index` samples a value from the database and returns an index to the value.
+#' The sampling uses an uniform distribution.
+#' The value is picked along the whole database or according to a query built from [query_from_plan()]
+#' or [query_from_value()].
+#'
+#' @inheritParams sample_val
+#' @returns integer, an index to a value in the database. You can then access the value 
+#'          with [get_value_idx()]. `NULL` if the query is empty.
+#' @seealso [sample_val()]
 #' @export
 sample_index <- function(db, query = NULL) {
   stopifnot(check_db(db))
   .Call(SXPDB_sample_index, db, query)
 }
 
+#' Sample randomly a value similar to a given from the database
+#'
+#' `sample_similar` samples a value from the database, which is similar to `val` along
+#' metadata parameters, relaxed according to `relax`.
+#' The sampling uses an uniform distribution.
+#' 
+#'  You should rather use a combination of [query_from_value()] and [sample_index()] for more control.
+#'
+#' @param db database, sxpdb object
+#' @param val any R value
+#' @param relax character vector, as in [relax_query()]
+#' @returns an R value. If the query is empty, it will return `NULL`. It is ambiguous with sampling
+#' a value that  happens to be `NULL` so you should rather use [sample_index()] with [query_from_value()].
+#' @seealso [sample_index()], [query_from-value()]
 #' @export
 sample_similar <- function(db, val, relax = "") {
   stopifnot(check_db(db), is.character(relax))
   .Call(SXPDB_sample_similar, db, val, FALSE, relax)
 }
 
-
+#' Merge a db into another one.
+#' 
+#' Deprecated. Rather use [merge_into()]
+#' @returns `NULL` in case of error, number of values in the _target_ database after merging otherwise
 #' @export
 merge_db <- function(db1, db2) {
   .Deprecated("merge_into", package = "sxpdb")
@@ -65,6 +156,17 @@ merge_db <- function(db1, db2) {
   .Call(SXPDB_merge_db, db1, db2)
 }
 
+#' Merge a source db into a target db
+#'
+#' `merge_into` merges db _source_ into db _target_. Db _target_ must be open in write mode and
+#' db _source_ must be opened in merge mode.
+#'
+#' @param target database, sxpdb object
+#' @param source database, sxpdb object
+#' @returns `NULL`in case of an error, a mapping from old indexes of all the values in the _source_
+#'          database to the new indexes for them in the _target_ database.
+#'
+#' @seealso [merge_all_dbs()]
 #' @export
 merge_into <- function(target, source) {
    stopifnot(check_db(target), check_db(source), write_mode(target))
