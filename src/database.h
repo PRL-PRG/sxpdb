@@ -28,7 +28,7 @@
 
 #include "robin_hood.h"
 #include "xxhash.h"
-#include "roaring.hh"
+#include "roaring++.h"
 
 
 class Query;

@@ -16,7 +16,7 @@
 #include <execution>
 #endif
 
-#include "roaring.hh"
+#include "roaring++.h"
 #include "robin_hood.h"
 #include "config.h"
 

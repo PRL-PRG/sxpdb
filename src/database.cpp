@@ -2,7 +2,7 @@
 
 #include "stable_vector.h"
 
-#include "thread_pool.hpp"
+#include "thread_pool.h"
 
 #include "readerwritercircularbuffer.h"
 

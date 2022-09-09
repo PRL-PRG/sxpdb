@@ -945,7 +945,7 @@ uint32_t roaring_read_uint32_iterator(roaring_uint32_iterator_t *it,
      * But for C compatibility when just `roaring.h` is included building as
      * C++, default to global access for the C public API.
      *
-     * BUT when `roaring.hh` is included instead, it sets this flag.  That way
+     * BUT when `roaring++.h` is included instead, it sets this flag.  That way
      * explicit namespacing must be used to get the C functions.
      *
      * This is outside the include guard so that if you include BOTH headers,

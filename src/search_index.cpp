@@ -2,7 +2,7 @@
 
 #include "database.h"
 
-#include "thread_pool.hpp"
+#include "thread_pool.h"
 
 #include <future>
 #include <thread>

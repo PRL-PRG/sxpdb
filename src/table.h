@@ -382,7 +382,7 @@ public:
     lseek(fd, 0, SEEK_SET);
 
     for(auto& v : store) {
-      ::read(fd, reinterpret_cast<char*>(&v), sizeof(T));
+      std::ignore = ::read(fd, reinterpret_cast<char*>(&v), sizeof(T));
     }
     in_memory = true;
     // all the values up to that index are already in the file
@@ -406,7 +406,7 @@ public:
       fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
       lseek(fd, last_written * sizeof(T), SEEK_SET);
       for(auto it = store.begin() + last_written; it != store.end(); it++) {
-        ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
+        std::ignore = ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
       }
       ::close(fd);
     }
@@ -423,7 +423,7 @@ public:
       fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
       lseek(fd, last_written * sizeof(T), SEEK_SET);
       for(auto it = store.begin() + last_written; it != store.end(); it++) {
-        ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
+        std::ignore = ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
       }
       ::close(fd);
     }
@@ -479,9 +479,9 @@ public:
 
     auto pos = lseek(fd, 0, SEEK_CUR);// Get current position
 
-    ::write(fd, reinterpret_cast<char*>(&size), sizeof(size));
+    std::ignore = ::write(fd, reinterpret_cast<char*>(&size), sizeof(size));
     // TODO: have a variant for non-contiguous types that would use begin and end
-    ::write(fd, reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size);
+    std::ignore = ::write(fd, reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size);
 
     offset_table.append(pos);
 
@@ -507,11 +507,11 @@ public:
     uint64_t offset = offset_table.read(idx);
 
     uint64_t size = 0;
-    pread(fd, reinterpret_cast<char*>(&size), sizeof(size), offset);
+    std::ignore = pread(fd, reinterpret_cast<char*>(&size), sizeof(size), offset);
     assert(size > 0);
 
     val.resize(size);// Ensure the target element is big enough
-    pread(fd, reinterpret_cast<char*>(val.data()), sizeof(typename T::value_type) * size, offset + sizeof(size));
+    std::ignore = pread(fd, reinterpret_cast<char*>(val.data()), sizeof(typename T::value_type) * size, offset + sizeof(size));
   }
 
   void load_all() override {
@@ -533,7 +533,7 @@ public:
     uint64_t offset = offset_table.read(idx);
 
     uint64_t size = 0;
-    pread(fd, reinterpret_cast<char*>(&size), sizeof(size), offset);
+    std::ignore = pread(fd, reinterpret_cast<char*>(&size), sizeof(size), offset);
     assert(size > 0 );
 
     if(value.size() != size) {
@@ -541,7 +541,7 @@ public:
       return;
     }
 
-    pwrite(fd, reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size, offset);
+    std::ignore = pwrite(fd, reinterpret_cast<const char*>(value.data()), sizeof(typename T::value_type) * size, offset);
     // seek back to the end
     lseek(fd, 0, SEEK_END);
   }

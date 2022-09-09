@@ -18,7 +18,7 @@
 #include <execution>
 #endif
 
-#include "roaring.hh"
+#include "roaring++.h"
 
 #include "utils.h"
 #include "search_index.h"

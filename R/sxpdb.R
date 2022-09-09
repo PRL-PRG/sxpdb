@@ -254,12 +254,6 @@ string_sexp_type <- function(int_type) {
 }
 
 #' @export
-is_integer_real <- function(v) {
-  stopifnot(is.double(v))
-  .Call(SXPDB_is_integer_real, v)
-}
-
-#' @export
 extptr_tag <- function(v) {
   .Call(SXPDB_extptr_tag, v)
 }
@@ -277,19 +271,19 @@ check_db <- function(v) {
 ## S3 API
 
 #' @export
-length.sxpdb <- function(db) {
-  size_db(db)
+length.sxpdb <- function(x) {
+  size_db(x)
 }
 
 
 #' @export
-`[.sxpdb` <- function(db, i) {
-    get_value_idx(db, i)
+`[.sxpdb` <- function(x, i) {
+    get_value_idx(x, i)
 }
 
 #' @export
-close.sxpdb <- function(db) {
-  close_db(db)
+close.sxpdb <- function(con, ...) {
+  close_db(con)
 }
 
 dir_size <- function(path) {
@@ -297,23 +291,23 @@ dir_size <- function(path) {
 }
 
 #' @export
-summary.sxpdb <- function(db, digits = max(3L, getOption("digits") - 3L)) {
+summary.sxpdb <- function(object, digits = max(3L, getOption("digits") - 3L), ...) {
   # TODO: more info:
   # - number of packages, functions, parameters
   # - index built or not
   # - if built, some info about the type distribution
   structure(list(
-    size = size_db(db),
-    byte_size = dir_size(path_db(db)),
-    path = path_db(db),
-    write_mode = write_mode(db),
+    size = size_db(object),
+    byte_size = dir_size(path_db(object)),
+    path = path_db(object),
+    write_mode = write_mode(object),
     digits = digits), class = "summary.sxpdb")
 }
 
 #' @export
-print.summary.sxpdb <- function(s) {
-  cat("path: ", s$path, "\n")
-  cat("size: ", s$byte_size, " bytes\n")
-  cat("size: ", s$size, " elements\n")
-  cat("write? ", s$write_mode, "\n")
+print.summary.sxpdb <- function(x, ...) {
+  cat("path: ", x$path, "\n")
+  cat("size: ", x$byte_size, " bytes\n")
+  cat("size: ", x$size, " elements\n")
+  cat("write? ", x$write_mode, "\n")
 }

@@ -13,7 +13,7 @@
 
 namespace fs = std::filesystem;
 
-#include "roaring.hh"
+#include "roaring++.h"
 
 inline const SEXP create_data_frame(
   const std::vector<std::pair<std::string, SEXP>>& columns) {

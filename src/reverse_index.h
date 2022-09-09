@@ -10,7 +10,7 @@
 
 namespace fs =  std::filesystem;
 
-#include "roaring.hh"
+#include "roaring++.h"
 
 #include "config.h"
 
