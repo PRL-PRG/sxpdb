@@ -148,6 +148,9 @@ sample_similar <- function(db, val, relax = "") {
 #' Merge a db into another one.
 #' 
 #' Deprecated. Rather use [merge_into()]
+#' 
+#' @param db1 database, sxpdb object
+#' @param db2 database, sxpdb object
 #' @returns `NULL` in case of error, number of values in the _target_ database after merging otherwise
 #' @export
 merge_db <- function(db1, db2) {
@@ -173,52 +176,138 @@ merge_into <- function(target, source) {
   .Call(SXPDB_merge_into_db, target, source)
 }
 
-## Testing/Information Gathering Related Functionality
-
+#' Checks if a value is in the database
+#' 
+#' `have_seen` checks if a value is stored in the database and returns its index in that case. 
+#' 
+#' @param db database, sxpdb object
+#' @param val R value
+#' @returns integer index of the value if the value is in the db, `NULL` otherwise
+#'
 #' @export
 have_seen <- function(db, val) {
   stopifnot(check_db(db))
 	.Call(SXPDB_have_seen, db, val)
 }
 
+#' Get the value in the db at a given index
+#'
+#' `get_value_idx` returns the value in `db` at index `idx`. You can also use the notation `db[idx]`.
+#'
+#' @param db database, sxpdb object
+#' @param idx integer, index in the database. Indexes start at 0 (not at 1!) so `idx >= 0` and 
+#'            `idx < size_db(db)`
+#' @returns an R value
+#' @seealso [`[.sxpdb`()]
 #' @export
 get_value_idx <- function(db, idx) {
   stopifnot(check_db(db), is.numeric(idx), idx >= 0, idx < size_db(db))
   .Call(SXPDB_get_val, db, idx)
 }
 
-
+#' Get the metadata associated to a value
+#'
+#' @description
+#' `get_meta` returns the metadata associated to a value. It includes:
+#'      * _runtime_ metadata: number of calls the value has been seen in, number of times the value has been seen during merges
+#'      * _static_ metadata: type, size in bytes, length (for vector values), number of attributes, number of dimensionsm number of rows (for data frames, matrixes)
+#'      * _debug_ metadata: only if the database was created with sxpdb in debug mode, includes how many times `MAYBE_SHARED` has been true on the value, 
+#' and how many times we were able to use the SEXP address optimization
+#'
+#' @param db database, sxpdb object
+#' @param val a R value
+#' @returns a named list with the metadata, or `NULL` if there is no such value in the database
+#'
+#' @seealso [get_meta_idx()]
 #' @export
 get_meta <- function(db, val) {
   stopifnot(check_db(db))
   .Call(SXPDB_get_meta, db, val)
 }
 
+#' Get the metadata associated to an index
+#'
+#' @description
+#' `get_meta` returns the metadata associated to a index in the database. It includes:
+#'      * _runtime_ metadata: number of calls the value has been seen in, number of times the value has been seen during merges
+#'      * _static_ metadata: type, size in bytes, length (for vector values), number of attributes, number of dimensionsm number of rows (for data frames, matrixes)
+#'      * _debug_ metadata: only if the database was created with sxpdb in debug mode, includes how many times `MAYBE_SHARED` has been true on the value, 
+#' and how many times we were able to use the SEXP address optimization
+#'
+#' @param db database, sxpdb object
+#' @param idx integer index of the value to look for
+#' @returns a named list with the metadata, or `NULL` if there is no such value in the database. It will
+#'  error if the index is negative or lager than the number of elements in the database.
+#'
+#' @seealso [get_meta()]
 #' @export
 get_meta_idx <- function(db, idx) {
   stopifnot(check_db(db), is.numeric(idx), idx >= 0, idx < size_db(db))
   .Call(SXPDB_get_meta_idx, db, idx)
 }
 
+#' Number of elements in the database
+#'
+#' `size_db` returns the number of elements in the database. All elements are unique.
+#'
+#' @param db database, sxpdb object
+#' @returns integer, number of values in the database, or `NULL` in case of error
+#'
+#' @seealso [nb_values_db()]
 #' @export
 size_db <- function(db) {
   stopifnot(check_db(db))
   .Call(SXPDB_size_db, db)
 }
 
-
+#' Computes the number of values matching a given query
+#'
+#' `nb_values_db` returns the number of values matching a given query. This is very cheap to compute
+#' as it will just intersect or union some pre-computed arrays, so prefer to using [view_meta_data()]
+#' for simple quantitative questions. `nb_values_db` called with a `NULL` query is equivalent to calling
+#' `size_db`.
+#'
+#' @inheritParams sample_val
+#' @returns integer, number of values matching the query.
+#' @seealso [size_db()]
 #' @export
 nb_values_db <- function(db, query = NULL) {
   stopifnot(check_db(db))
   .Call(SXPDB_nb_values_db, db, query)
 }
 
+
+#' Fetch values from the database.
+#' 
+#' `view_db` fetches values from the database, given a query. It will materialize the R values,
+#'  and might quickly feel up memory. Rather use metadata (with [view_metadata_db()]) if you don't need 
+#' to look at the valeus itself. If you need to extract data from the values or transform them, rather use 
+#' [map_db()], which will only load one value at a time.
+#' 
+#' @param db database, sxpdb object
+#' @param query query object, typically built from [query_from_plan()] or [query_from_value()].
+#' @returns list of values matching the query
+#' @seealso [map_db()] [view_meta_db()] [filter_index_db()] [get_val_idx()]
 #' @export
 view_db <- function(db, query = NULL) {
   stopifnot(check_db(db))
   .Call(SXPDB_view_db, db, query)
 }
 
+#' Fetches metadata from the database.
+#'
+#' @description 
+#' `view_metadata_db` fetches metadata from the database, given a query.
+#' They include:
+#'      * _runtime_ metadata: number of calls the value has been seen in, number of times the value has been seen during merges
+#'      * _static_ metadata: type, size in bytes, length (for vector values), number of attributes, number of dimensionsm number of rows (for data frames, matrixes)
+#'      * _debug_ metadata: only if the database was created with sxpdb in debug mode, includes how many times `MAYBE_SHARED` has been true on the value, 
+#' and how many times we were able to use the SEXP address optimization
+#'
+#' @inheritParams view_db
+#' @returns data frame of the metadata for all the values, in the order of their indexes in the database
+#' 
+#' @seealso [map_db()] [get_meta_idx()] [view_db()] [map_db()] [filter_index_db()]
 #' @export
 view_meta_db <- function(db, query = NULL) {
   stopifnot(check_db(db))
