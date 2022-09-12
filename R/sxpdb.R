@@ -45,7 +45,7 @@ close_db <- function(db) {
 #' @param db database, sxpdb object
 #' @param val any R value. Currently, environments and closures will be silently ignored
 #' @returns integer index of the value if it has been added (now or before), or `NULL` if it has been ignored
-#' @seealso [add_val_origin()], [add_origin()]
+#' @seealso [add_val_origin()], [add_origin()], [build_indexes()]
 #' @export
 add_val <- function(db, val) {
   stopifnot(check_db(db), write_mode(db))
@@ -64,6 +64,7 @@ add_val <- function(db, val) {
 #' @param argument character vector for the argument name. `""` or `NA` mean that `val` is a return value.
 #' @param call_id integer unique id of the call from which the value comes from. Defaults to `0`
 #' @returns integer index of the value if it has been added (now or before), or `NULL` if it has been ignored
+#' @seealso [build_indexes()]
 #' @export
 add_val_origin <- function(db, val, package, func, argument, call_id = 0) {
   stopifnot(check_db(db), write_mode(db), is.numeric(call_id), is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
@@ -83,7 +84,7 @@ add_val_origin <- function(db, val, package, func, argument, call_id = 0) {
 #' @param func character vector for the function name
 #' @param argument character vector for the argument name. `""` or `NA` mean that `val` is a return value.
 #' @returns `NULL`
-#' @seealso [add_val_origin()]
+#' @seealso [add_val_origin()], [build_indexes()]
 #' @export
 add_origin <- function(db, hash, package, func, argument) {
   stopifnot(check_db(db), write_mode(db), is.raw(hash) && length(hash) == 20, is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
@@ -169,7 +170,7 @@ merge_db <- function(db1, db2) {
 #' @returns `NULL`in case of an error, a mapping from old indexes of all the values in the _source_
 #'          database to the new indexes for them in the _target_ database.
 #'
-#' @seealso [merge_all_dbs()]
+#' @seealso [merge_all_dbs()], [build_indexes()]
 #' @export
 merge_into <- function(target, source) {
    stopifnot(check_db(target), check_db(source), write_mode(target))
@@ -314,113 +315,328 @@ view_meta_db <- function(db, query = NULL) {
   .Call(SXPDB_view_metadata, db, query)
 }
 
+#' Fetches call ids from the database.
+#'
+#' `view_call_ids` fetches call ids from the database, according to a given query.
+#'
+#' @inheritParams view_db
+#' @param query not taken into account currently
+#' @returns a data frame with column `call_id` where each cell is a list of integers, the call ids, and each row 
+#' corresponds to a value. The values are ordered in the same way as their indexes in the database.
+#'
+#' @seealso [map_db()] [get_meta_idx()] [view_db()] [map_db()] [filter_index_db()] [view_db_names()]
 #' @export
 view_call_ids<- function(db, query = NULL) {
   stopifnot(check_db(db))
   .Call(SXPDB_view_call_ids, db, query)
 }
 
+#' Fetches the origin databases 
+#'
+#' `view_db_names` fetches the origin databases of each values, i.e. in which database they were written
+#' first, if they result from merging in the current database.
+#'
+#' @inheritParams view_db
+#' @param query not taken into account currently
+#' @returns a data frame with column `dbname` with the database names, in the same order as the values
+#' ordered by indexes in the database.
+#'
+#' @seealso [map_db()] [get_meta_idx()] [view_db()] [map_db()] [filter_index_db()] [view_call_ids()]
 #' @export
 view_db_names <- function(db, query = NULL) {
   stopifnot(check_db(db))
   .Call(SXPDB_view_db_names, db, query)
 }
 
-
+#' Get the origins of a value
+#'
+#' `get_origins` returns the origins (package, function, parameter names) of a function given the hash
+#' of the value. It save a hash computation, compared to [get_origins_idx()].
+#'
+#' @param db database, sxpdb object
+#' @param hash RAW, hash of the value to look for
+#' @returns data frame with columns `pkg`, `fun` and `param` for  package
+#' function and parameter names.
+#'
+#' @seealso [get_origins_idx()], [view_origins_db()]
 #' @export
 get_origins <- function(db, hash) {
   stopifnot(check_db(db), is.raw(hash))
   .Call(SXPDB_get_origins, db, hash)
 }
 
+#' Get the origins of a value
+#'
+#' `get_origins` returns the origins (package, function, parameter names) of a function given the index
+#' of the value. 
+#'
+#' @param db database, sxpdb object
+#' @param i integer, index of the value in the database
+#' @returns data frame with columns `pkg`, `fun` and `param` for  package
+#' function and parameter names.
+#'
+#' @seealso [get_origins()], [view_origins_db()]
 #' @export
 get_origins_idx <- function(db, i) {
   stopifnot(check_db(db), is.numeric(i), i >= 0, i < size_db(db))
   .Call(SXPDB_get_origins_idx, db, i)
 }
 
+#' Fetches origins from the database
+#'
+#' `view_origins_db` fetches origins from the database, according to a given query.
+#'
+#' @inheritParams view_db
+#' @returns data frame with columns `id`, `pkg`, `fun` and `param` for the index in the database, and package
+#' function and parameter names.
+#'
+#' @seealso [get_origins()], [get_origins_idx()], [view_db()], [map_db()], [view_metadata_db()]
 #' @export
 view_origins_db <- function(db, query = NULL) {
   stopifnot(check_db(db))
   .Call(SXPDB_view_origins, db, query)
 }
 
+#'  Path to the database directory
+#' 
+#' The database is stored as a directory of various configuration files and tables. `path_db`returns 
+#' the path to this directory.
+#' 
+#' @param db database, sxpdb object
+#' @returns character path to the database
+#' 
 #' @export
 path_db <- function(db) {
   stopifnot(check_db(db))
   .Call(SXPDB_path_db, db)
 }
 
+#' Checks if the db is not corrupted.
+#'
+#' `check_all_db` checks if the database is not currupted and suggests some fixes if it is.
+#'
+#' @param db database, sxpdb object
+#' @param slow boolean, if `TRUE`, it will unserialize all the values in the database and check 
+#'        them all, if `FALSE, it will perform only quick consistency checks.
+#' @returns integer vector of indices of values with problems
+#'
 #' @export
 check_all_db <- function(db, slow = FALSE) {
   stopifnot(check_db(db), is.logical(slow))
   .Call(SXPDB_check_db, db, slow)
 }
 
+#' Map a function on the values in the database
+#'
+#' `map_db` runs a function on each of the elements of the database matching a query
+#' and return a list of the results.
+#'
+#' @inheritParams view_db
+#' @param fun R function, the function to apply to each value matching the query. It takes on argument, 
+#' the value and should return an R value.
+#'
+#' @seealso [view_db()], [filter_index_db()], [view_meta_db()], [view_origins_db()]
 #' @export
 map_db <- function(db, fun, query = NULL) {
   stopifnot(check_db(db), is.function(fun))
   .Call(SXPDB_map_db, db, fun, query)
 }
 
+#' Filters values from the database according to some predicate
+#'
+#' Sometimes, the query language is not enough to select some values. You can use `filter_index_db`
+#' to refine a query and only keep the values for which the predicate is true.
+#'
+#' @inheritParams view_db
+#' @param fun R function, the predicate, which should take one argument, the value, and return a boolean.
+#' ǸA_logical_` is considered as `TRUE`.
+#' @returns list of indices of the values matche2d by the query for which `fun` evaluated to `TRUE`
+#' or `NA_logical_`.
+#' @seealso [map_db()], [view_db()]
 #' @export
 filter_index_db <- function(db, fun, query = NULL) {
   stopifnot(check_db(db), is.function(fun))
   .Call(SXPDB_filter_index_db, db, fun, query)
 }
 
+#' Build search indexes.
+#'
+#' `build_indexes` explicitly builds search indexes which are used by function with a `query` argument
+#' (when it is not `NULL`). You need to use it if you add new values into the database (including merging into it). 
+#' However, [merge_all_dbs()] will automatically build the search indexes.
+#'
+#' @param db database, sxpdb object
+#' @returns `NULL`
+#'
 #' @export
 build_indexes <- function(db) {
   stopifnot(check_db(db))
   .Call(SXPDB_build_indexes, db)
 }
 
+#' Checks if the database is in write mode
+#'
+#'
+#' The database can be open in read mode, write mode or merge mode. `write_mode` checks if it is open
+#' in write mode.
+#'
+#' @param db database, sxpdb object
+#' @returns boolean, `TRUE` if it is in write mode
+#'
+#' @seealso [open_db()]
 #' @export
 write_mode <- function(db) {
   stopifnot(check_db(db))
   .Call(SXPDB_write_mode, db)
 }
 
+#' Creates a query from an example value.
+#'
+#' @description
+#' `query_from_value` creates a query from an example R value. The query will mimic the value
+#' according to the following metadata: type, vector or not, length, class name, `NA` inside or not,
+#' number of dimensions, attributes or not. You can then relax on some of those metadata to state
+#' that you do not them want to be determined according to the example value, with [relax_query()].
+#' The query can then be used with any function taking a `query` argument.
+#' 
+#' @param value any R value
+#' @returns query object
+#'
+#'
+#' @seealso [relax_query()], [query_from_plan()], [close_query()], [view_db()], [map_db()]
 #' @export
 query_from_value <- function(value) {
   .Call(SXPDB_query_from_value, value)
 }
 
+#' Creates a query from a plan.
+#'
+#' `query_from_plan` creates a query from a plan describing the query.  You can relax later on some
+#' parameters of the query with [relax_query()].
+#' The query can then be used with any function taking a `query` argument.
+#'
+#' @param plan named list describing the query. In the absence of a parameter name, the associated metadata
+#' will be set to unspecified. The plan parameters are: 
+#'   * type: any value of the desired type
+#'   * vector: boolean
+#'   * length: integer
+#'   * class name: character vector of class names, or boolean (to just specify that you want classes, but without specific class names)
+#'   * na: boolean
+#'   * ndims: integer
+#'   * attributes: boolean
+#' @returns query object
+#' @seealso [query_from_value()], [relax_query()], [close_query()], [view_db()], [map_db()]
 #' @export
 query_from_plan <- function(plan) {
   .Call(SXPDB_query_from_plan, plan)
 }
 
+#' Closes a query object.
+#'
+#' `close_query` closes a query object. A query object is implemented as an external pointer to a 
+#' a C++ object that he dynamically allocated. However, a GC hook for that external pointer is also
+#' registered so except if you plan to crate a huge amount of query objects, you should be fine 
+#' with not calling `close_query` explicitly.
+#'
+#' @param query query object
+#' @returns `NULL`
+#'
+#' @seealso [query_from_value()], [query_from_plan()], [relax_query()]
 #' @export
 close_query <- function(query) {
   .Call(SXPDB_close_query, query)
 }
 
+#' Relaxes on some parameters of a query.
+#'
+#' `relax_query` makes a specified parameter from a query, i.e., with a given target value, into
+#' a non-specified parameter. For instance, if the query specifies that it wants values with length
+#' 34, relaxing on the length parameter will allow values with any lengths,
+#'  not only values with lengths 34.
+#'
+#' @param query query object
+#' @param relax character vector none or several of "na", "length", "attributes", "type", "vector", "ndims", "class". You can
+#' also give "keep_type" or "keep_class" to relax on all constraints, except the type, or except the class names.
+#'
+#' @returns boolean, `TRUE` if the query changed
+#' @seealso [query_from_value()], [query_from_plan()], [close_query()], [is_query_empty()]
 #' @export
 relax_query <- function(query, relax) {
   stopifnot(is.character(relax))
   .Call(SXPDB_relax_query, query, relax)
 }
 
-
+#' Checks if a query object is empty.
+#'
+#' `is_query_empty` checks if the query refers to some values, or no values at all. You need to call it after at least
+#  one call to a function that uses a query or the index cache will not have been initialized.
+#' It is typically used when the function using the query returns an ambiguous result (e.g. [sample_val()])
+#' and you want to distinguish between `NULL` and an empty query that results also in `NULL`.
+#'
+#' @param query query object
+#' @returns boolean, whether the query is empty or not
+#' @seealso [query_from_value()], [query_from_plan()], [relax_query()], [close_query()]
 #' @export
 is_query_empty <- function(query) {
   .Call(SXPDB_is_query_empty, query)
 }
 
+
+#' Merges several dbs into a new large one.
+#'
+#' `merge_all_dbs` performs an efficient merge of several databases, to keep only
+#' unique values.
+#'
+#' @param db_paths character vector of paths to the databases to be merged together
+#' @param output_path character vector of the path of the resulting database
+#' @param parallel boolean, whether the merge should be performed in parallel or not.
+#' @returns data frame with information about the merging process. The data frame has the following columns:
+#'   * `path`: path of the merged database
+#'   * `db_size_before`:  size of the resulting database before merging the db at `path`
+#'   * `added_values`: number of new unique values added after merging the db at `path`
+#'   * `small_db_size`: number of values in the db at `path`
+#'   * `small_db_bytes`: size in bytes of the db at `path`
+#'   * `duration`: duration in seconds of merging the db at `path` into the resulting db
+#'   * `error`: whether there was an error when merging the db at `path`. 
+#' @seealso [merge_into_db()]
 #' @export
 merge_all_dbs <- function(db_paths, output_path, parallel = TRUE) {
   stopifnot(is.character(db_paths), is.character(output_path), is.logical(parallel))
   .Call(SXPDB_merge_all_dbs, db_paths, output_path, parallel)
 }
 
-
+#' Fetches all the values corresponding to one origin
+#'
+#' `values_from_origins` fetches the values that share the given origin, i.e.
+#' that are one of the arguments or the return value of `pkg_name::fun_name`.
+#'
+#' @param db database, sxpdb object
+#' @param pkg_name character vector of the name of the package
+#' @param fun_name character vector of the name of the function
+#' @returns data frame with two columns: 
+#'   * `id`: ids of the values
+#'   * `param`: parameter names, concatenated and separated with `;`
+#'
+#' @seealso [view_origins_db()], [values_from_calls()]
 #' @export 
 values_from_origin <- function(db, pkg_name, fun_name) {
   stopifnot(check_db(db), is.character(pkg_name), is.character(fun_name))
   .Call(SXPDB_values_from_origins, db, pkg_name, fun_name)
 }
 
+#' Fetches all the calls corresponding to one origin
+#'
+#' `values_from_calls`  fetches the values that share the given origin, i.e.
+#' that are one of the arguments or the return value of `pkg_name::fun_name`, and
+#' identify from which calls they come from.
+#'
+#' @inheritParams values_from_origin
+#' @returns data frame with the following columns: 
+#'   * `call_id`: unique id of the call
+#'   * `value_id`: unique id of the value
+#'   * `param`: parameter name
+#'
+#' @seealso [values_from_origin()], [view_origins_db()], [view_call_ids()]
 #' @export 
 values_from_calls <- function(db, pkg_name, fun_name) {
   stopifnot(check_db(db), is.character(pkg_name), is.character(fun_name))
