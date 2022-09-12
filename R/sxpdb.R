@@ -139,7 +139,7 @@ sample_index <- function(db, query = NULL) {
 #' @param relax character vector, as in [relax_query()]
 #' @returns an R value. If the query is empty, it will return `NULL`. It is ambiguous with sampling
 #' a value that  happens to be `NULL` so you should rather use [sample_index()] with [query_from_value()].
-#' @seealso [sample_index()], [query_from-value()]
+#' @seealso [sample_index()], [query_from_value()]
 #' @export
 sample_similar <- function(db, val, relax = "") {
   stopifnot(check_db(db), is.character(relax))
@@ -264,7 +264,7 @@ size_db <- function(db) {
 #' Computes the number of values matching a given query
 #'
 #' `nb_values_db` returns the number of values matching a given query. This is very cheap to compute
-#' as it will just intersect or union some pre-computed arrays, so prefer to using [view_meta_data()]
+#' as it will just intersect or union some pre-computed arrays, so prefer to using [view_meta_db()]
 #' for simple quantitative questions. `nb_values_db` called with a `NULL` query is equivalent to calling
 #' `size_db`.
 #'
@@ -281,14 +281,14 @@ nb_values_db <- function(db, query = NULL) {
 #' Fetch values from the database.
 #' 
 #' `view_db` fetches values from the database, given a query. It will materialize the R values,
-#'  and might quickly feel up memory. Rather use metadata (with [view_metadata_db()]) if you don't need 
+#'  and might quickly feel up memory. Rather use metadata (with [view_meta_db()]) if you don't need 
 #' to look at the valeus itself. If you need to extract data from the values or transform them, rather use 
 #' [map_db()], which will only load one value at a time.
 #' 
 #' @param db database, sxpdb object
 #' @param query query object, typically built from [query_from_plan()] or [query_from_value()].
 #' @returns list of values matching the query
-#' @seealso [map_db()] [view_meta_db()] [filter_index_db()] [get_val_idx()]
+#' @seealso [map_db()] [view_meta_db()] [filter_index_db()] [get_value_idx()]
 #' @export
 view_db <- function(db, query = NULL) {
   stopifnot(check_db(db))
@@ -298,7 +298,7 @@ view_db <- function(db, query = NULL) {
 #' Fetches metadata from the database.
 #'
 #' @description 
-#' `view_metadata_db` fetches metadata from the database, given a query.
+#' `view_meta_db` fetches metadata from the database, given a query.
 #' They include:
 #'      * _runtime_ metadata: number of calls the value has been seen in, number of times the value has been seen during merges
 #'      * _static_ metadata: type, size in bytes, length (for vector values), number of attributes, number of dimensionsm number of rows (for data frames, matrixes)
@@ -390,7 +390,7 @@ get_origins_idx <- function(db, i) {
 #' @returns data frame with columns `id`, `pkg`, `fun` and `param` for the index in the database, and package
 #' function and parameter names.
 #'
-#' @seealso [get_origins()], [get_origins_idx()], [view_db()], [map_db()], [view_metadata_db()]
+#' @seealso [get_origins()], [get_origins_idx()], [view_db()], [map_db()], [view_meta_db()]
 #' @export
 view_origins_db <- function(db, query = NULL) {
   stopifnot(check_db(db))
@@ -598,7 +598,7 @@ is_query_empty <- function(query) {
 #'   * `small_db_bytes`: size in bytes of the db at `path`
 #'   * `duration`: duration in seconds of merging the db at `path` into the resulting db
 #'   * `error`: whether there was an error when merging the db at `path`. 
-#' @seealso [merge_into_db()]
+#' @seealso [merge_into()]
 #' @export
 merge_all_dbs <- function(db_paths, output_path, parallel = TRUE) {
   stopifnot(is.character(db_paths), is.character(output_path), is.logical(parallel))
@@ -650,6 +650,13 @@ types_map <- c("NULL", "symbol", "pairlist", "closure", "environment", "promise"
                "real", "complex", "str", "...", "any", "list", "expression",
                "bytecode", "externalpointer", "weakreference", "raw", "S4")
 
+#'  Get a textual repreentation of an R type
+#'
+#' `string_sexp_type` shows the character representation of an R type encoded
+#' as an integer.
+#'
+#' @param int_type integer representation of a type
+#' @returns character vector 
 #' @export
 string_sexp_type <- function(int_type) {
   if(int_type < 0 || int_type > 25) {
@@ -660,7 +667,7 @@ string_sexp_type <- function(int_type) {
   }
 }
 
-#' @export
+
 extptr_tag <- function(v) {
   .Call(SXPDB_extptr_tag, v)
 }
