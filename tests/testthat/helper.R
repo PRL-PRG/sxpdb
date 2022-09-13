@@ -11,7 +11,7 @@ db_from_values <- function(values, origins=NULL, name="sxpdb") {
     db <- open_db(tempfile(name), mode=TRUE)
 
     for(v in values) {
-        add_val(db, v)
+        add_val_origin(db, v, "pkg", "f", "arg")
     }
     db
 }
