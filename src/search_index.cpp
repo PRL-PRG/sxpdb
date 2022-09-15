@@ -438,7 +438,7 @@ roaring::Roaring64Map SearchIndex::search_function(const Database& db, const roa
 
 SearchIndex::~SearchIndex() {
   // Write all the indexes
-  if(pid == getpid() && write_mode) {
+  if(pid == getpid() && write_mode && index_generated) {
     for(int i = 0 ; i < types_index.size() ; i++) {
       write_index(types_index_path.parent_path() / (types_index_path.stem().string()  + "_" + std::to_string(i) + ".ror"), types_index[i]);
     }
