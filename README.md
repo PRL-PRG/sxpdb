@@ -1,5 +1,6 @@
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/PRL-PRG/sxpdb/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/PRL-PRG/sxpdb/actions/workflows/R-CMD-check.yaml)
+[![codecov](https://codecov.io/gh/PRL-PRG/sxpdb/branch/main/graph/badge.svg?token=YX52PLOQ3V)](https://codecov.io/gh/PRL-PRG/sxpdb)
 <!-- badges: end -->
 
 
