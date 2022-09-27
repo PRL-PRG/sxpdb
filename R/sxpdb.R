@@ -238,7 +238,7 @@ get_meta <- function(db, val) {
 #' @param db database, sxpdb object
 #' @param idx integer index of the value to look for
 #' @returns a named list with the metadata, or `NULL` if there is no such value in the database. It will
-#'  error if the index is negative or lager than the number of elements in the database.
+#'  error if the index is negative or larger than the number of elements in the database.
 #'
 #' @seealso [get_meta()]
 #' @export

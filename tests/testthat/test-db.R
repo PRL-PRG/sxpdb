@@ -48,12 +48,53 @@ test_that("open_db in write mode", {
     close(db)
 })
 
-# test_that("open_db in merge mode", {
-#     db <- db_from_values(c(1L, "tu", 45.9))
-#     path <- path_db(db)
-#     close(db)
+test_that("open_db in merge mode", {
+    db <- db_from_values(c(1L, "tu", 45.9))
+    path <- path_db(db)
+    close(db)
 
-#     db <- open_db(path, mode = "merge")
-#     expect_equal(class(db), "sxpdb")
-#     close(db)
-# })
+    db <- open_db(path, mode = "merge")
+    expect_equal(class(db), "sxpdb")
+    close(db)
+})
+
+test_that("size_db", {
+    l <- list(1L, "tu", 45.9)
+    db <- db_from_values(l)
+    len <- size_db(db)
+
+    close(db)
+    expect_equal(len, length(l))
+})
+
+test_that("get_value_idx", {
+    l <- list(1L, "tu", 45.9, list(45, 3L))
+    db <- db_from_values(l)
+
+    for(i in seq_len(size_db(db))) {
+        expect_equal(get_value_idx(db, i - 1), l[[i]])
+    }
+    close_db(db)
+})
+
+test_that("get_meta_idx", {
+    l <- rep.int(list(c(1L, 4L)), 20)
+    db <- db_from_values(l)
+
+    expect_equal(size_db(db), 1)
+    meta <- get_meta_idx(db, 0)
+
+    close_db(db)
+
+    print(meta)
+    
+    expect_equal(string_sexp_type(meta$type), typeof(l[[1]]))
+    expect_equal(meta$length, length(l[[2]]))
+    expect_equal(meta$n_attributes, 0)
+    expect_equal(meta$n_dims, 0)
+    expect_equal(meta$n_rows, 0)
+    expect_equal(meta$size, 16)
+    expect_equal(meta$n_calls, 20)
+    expect_equal(meta$n_merges, 0)
+    expect_equal(length(meta), 8) # missing class names
+})
