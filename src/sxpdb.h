@@ -294,6 +294,13 @@ SEXP build_indexes(SEXP sxpdb);
 SEXP write_mode(SEXP sxpdb);
 
 /**
+ * @method has_search_index
+ * @param sxpdb external pointer to the target database
+ * @return boolean whether the database has already a search index
+ */
+SEXP has_search_index(SEXP sxpdb);
+
+/**
  * @method query_from_value
  * @param value R value to build the query from
  * @return external pointer to the query object

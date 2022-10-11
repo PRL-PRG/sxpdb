@@ -490,6 +490,21 @@ write_mode <- function(db) {
   .Call(SXPDB_write_mode, db)
 }
 
+#' Checks if the database has a search index
+#'
+#'
+#' Requests to the database that pass a non-NULL query argument will
+#' not work if the search index is not built.
+#'
+#' @param db database, sxpdb object
+#' @returns boolean, `TRUE` if it has a search index
+#' @seealso [build_indexes()]
+#' @export
+has_search_index <- function(db) {
+  stopifnot(check_db(db))
+  .Call(SXPDB_has_search_index, db)
+}
+
 #' Creates a query from an example value.
 #'
 #' @description

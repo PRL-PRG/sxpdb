@@ -39,6 +39,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"view_db_names",   (DL_FUNC) &view_db_names,   2},
 	{"view_origins",    (DL_FUNC) &view_origins,    2},
 	{"build_indexes",  (DL_FUNC) &build_indexes,    1},
+	{"has_search_index",  (DL_FUNC) &has_search_index,  1},
 	{"write_mode",     (DL_FUNC) &write_mode,       1},
 	{"query_from_value", (DL_FUNC) &query_from_value, 1},
 	{"query_from_plan", (DL_FUNC) &query_from_plan, 1},

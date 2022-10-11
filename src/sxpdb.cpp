@@ -777,6 +777,16 @@ SEXP build_indexes(SEXP sxpdb) {
   return R_NilValue;
 }
 
+SEXP has_search_index(SEXP sxpdb) {
+  void* ptr = R_ExternalPtrAddr(sxpdb);
+  if(ptr== nullptr) {
+    return R_NilValue;
+  }
+  Database* db = static_cast<Database*>(ptr);
+
+  return Rf_ScalarLogical(db->has_search_index());
+}
+
 
 SEXP write_mode(SEXP sxpdb) {
   void* ptr = R_ExternalPtrAddr(sxpdb);

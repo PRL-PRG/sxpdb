@@ -13,7 +13,7 @@ get_meta_idx(db, idx)
 }
 \value{
 a named list with the metadata, or \code{NULL} if there is no such value in the database. It will
-error if the index is negative or lager than the number of elements in the database.
+error if the index is negative or larger than the number of elements in the database.
 }
 \description{
 \code{get_meta} returns the metadata associated to a index in the database. It includes:

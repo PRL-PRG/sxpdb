@@ -182,6 +182,10 @@ public:
     new_index = true;
   }
 
+  bool has_search_index() const {
+    return search_index.is_initialized();
+  }
+
   void update_query(Query& query) const;
 
   // Utilities
