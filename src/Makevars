@@ -4,6 +4,6 @@ PKG_V_PATCH != $(R_HOME)/bin/R -s -q -e 'cat(as.character(pkgload::pkg_version()
 PKG_V_DEVEL != $(R_HOME)/bin/R -s -q -e 'cat(as.character(pkgload::pkg_version()[1, 4]))'
 
 #-UNDEBUG to add for assertions
-PKG_CXXFLAGS=-UNDEBUG -DPKG_V_MAJOR=\"$(PKG_V_MAJOR)\" -DPKG_V_MINOR=\"$(PKG_V_MINOR)\" -DPKG_V_PATCH=\"$(PKG_V_PATCH)\" -DPKG_V_DEVEL=\"$(PKG_V_DEVEL)\"
-PKG_LIBS=-UNDEBUG -lstdc++fs
+PKG_CXXFLAGS=-DPKG_V_MAJOR=\"$(PKG_V_MAJOR)\" -DPKG_V_MINOR=\"$(PKG_V_MINOR)\" -DPKG_V_PATCH=\"$(PKG_V_PATCH)\" -DPKG_V_DEVEL=\"$(PKG_V_DEVEL)\"
+PKG_LIBS=-lstdc++fs
 
