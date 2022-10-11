@@ -2082,7 +2082,7 @@ const std::vector<size_t> Database::check(bool slow_check) {
 }
 
 
-const std::vector<uint64_t>& Database::merge_into(Database& other) {
+std::vector<uint64_t> Database::merge_into(Database& other) {
   uint64_t old_total_values = nb_total_values;
   uint64_t old_nb_classnames = classes.nb_classnames();
 
