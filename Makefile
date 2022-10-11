@@ -38,7 +38,7 @@ lintr:
 	R --slave -e "lintr::lint_package()"
 
 install: clean
-	$(BEAR) R CMD INSTALL .
+	R CMD INSTALL .
 
 write:
 	cat trace | grep -w "write"

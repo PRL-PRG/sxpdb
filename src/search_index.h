@@ -292,6 +292,10 @@ public:
 
   }
 
+  fs::path base_path() const {
+    return types_index_path.parent_path();
+  }
+
   roaring::Roaring64Map search_length(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_length) const;
 
   roaring::Roaring64Map search_classname(const Database& db, const roaring::Roaring64Map& bin_index, uint32_t precise_classname) const;

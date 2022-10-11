@@ -62,7 +62,7 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
 #ifndef NDEBUG
       Rf_warning("No debug counters in the database. Did you create the database in debug mode?\n");
 #else
-      R_ShowMessage("The database does not contain debug informations.\n");
+      if(!quiet) R_ShowMessage("The database does not contain debug informations.\n");
 #endif
     }
 
@@ -77,6 +77,7 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
     if(!quiet) Rprintf("Creating new database at %s.\n", base_path.c_str());
 
     //This will also set-up the paths for the search index
+    search_index.set_write_mode(true);
     write_configuration();
   }
   else {

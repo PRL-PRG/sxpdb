@@ -1048,7 +1048,8 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
     {"error", error_c}
   }));
 
-  Rprintf("\nBuilding seach indexes.\n");
+  Rprintf("\nConfiguration path is %s.\n", db.configuration_path().c_str());
+  Rprintf("\nBuilding seach indexes in %s.\n", db.search_index_path().c_str());
   db.build_indexes();
 
   UNPROTECT(8);

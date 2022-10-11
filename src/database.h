@@ -186,6 +186,10 @@ public:
     return search_index.is_initialized();
   }
 
+  fs::path search_index_path() const {
+    return search_index.base_path();
+  }
+
   void update_query(Query& query) const;
 
   // Utilities
