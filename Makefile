@@ -1,7 +1,7 @@
 BEAR := $(shell command -v bear 2> /dev/null)
 
 ifdef BEAR
-	BEAR := $(BEAR) --
+	BEAR := $(BEAR) 
 endif
 
 .PHONY: all build check document test install
