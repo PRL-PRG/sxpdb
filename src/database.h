@@ -118,7 +118,7 @@ public:
   uint64_t merge_in(Database& db);
   uint64_t parallel_merge_in(Database& other, uint64_t min_chunk_size = 10);
   // returns a mapping from old indexes in the source db to new indexes in the new db
-  const std::vector<uint64_t> merge_into(Database& db);
+  std::vector<uint64_t> merge_into(Database& db);
 
   // Adding R values/origins
   std::tuple<const sexp_hash*, uint64_t, bool> add_value(SEXP val);//TODO this should add dummy origins
