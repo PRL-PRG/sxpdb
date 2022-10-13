@@ -96,6 +96,15 @@ public:
         }
     }
 
+    void fill_dbnames(uint64_t last_index, const std::string& dbname) {
+        assert(write_mode);
+        assert(pid == getpid());
+
+        for(uint64_t i = 0; i < last_index ; i++) {
+            add_dbname(i, dbname);
+        }
+    }
+
     const std::vector<uint32_t>& get_dbs(uint64_t index) const {
         if(write_mode) {
             if(index < dbs.size()) {
@@ -114,6 +123,7 @@ public:
             return dbs_table->read(index);
         }
     }
+
 
     const std::string& dbname(uint32_t i) const { return db_names.read(i); }
 

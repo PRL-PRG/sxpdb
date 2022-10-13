@@ -4,7 +4,7 @@ test_that("merge", {
 
     l2 <- list(3L, "tu", 45.9)
     db2 <- db_from_values(l2)
-
+    
     mapping <- merge_into(db2, db1)
 
     l <- unique(c(l1, l2))

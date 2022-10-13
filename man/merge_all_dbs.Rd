@@ -4,12 +4,14 @@
 \alias{merge_all_dbs}
 \title{Merges several dbs into a new large one.}
 \usage{
-merge_all_dbs(db_paths, output_path, parallel = TRUE)
+merge_all_dbs(db_paths, output_path, legacy = TRUE, parallel = TRUE)
 }
 \arguments{
 \item{db_paths}{character vector of paths to the databases to be merged together}
 
 \item{output_path}{character vector of the path of the resulting database}
+
+\item{legacy}{boolean In legacy mode, "cran_db" is appended to the output_path}
 
 \item{parallel}{boolean, whether the merge should be performed in parallel or not.}
 }

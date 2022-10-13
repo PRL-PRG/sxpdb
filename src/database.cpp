@@ -2092,6 +2092,11 @@ std::vector<uint64_t> Database::merge_into(Database& other) {
   bool has_dbnames = other.dbnames.nb_values() != 0;
   std::string dbname = other.configuration_path().parent_path().filename();
 
+  // the output database might be non empty, but whithout db names
+  if(dbnames.nb_values() == 0) {
+    dbnames.fill_dbnames(nb_values(), configuration_path().parent_path().filename());
+  }
+
   sexp_hash key;
   runtime_meta_t meta;
   debug_counters_t cnts;
