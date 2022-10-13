@@ -329,7 +329,7 @@ public:
     Table<T>::open(path, write);
     // We have to create the file if it does not exists; it requires other flags than the next ones
     
-    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
+    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
     if(fd == -1) {
       Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
@@ -403,7 +403,7 @@ public:
     uint64_t nb_new_values = n_values - last_written;
     if(write_mode && in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
-      fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
+      fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
       lseek(fd, last_written * sizeof(T), SEEK_SET);
       for(auto it = store.begin() + last_written; it != store.end(); it++) {
         std::ignore = ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
@@ -420,7 +420,7 @@ public:
     uint64_t nb_new_values = n_values - last_written;
     if(write_mode && in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
-      fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
+      fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
       lseek(fd, last_written * sizeof(T), SEEK_SET);
       for(auto it = store.begin() + last_written; it != store.end(); it++) {
         std::ignore = ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
@@ -461,7 +461,7 @@ public:
 
     offset_table.open(file_path.parent_path() / (file_path.stem().string() + "_offsets.bin"), write_mode);
 
-    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRWXU);
+    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
     if(fd == -1) {
       Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
