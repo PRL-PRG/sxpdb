@@ -604,6 +604,7 @@ is_query_empty <- function(query) {
 #'
 #' @param db_paths character vector of paths to the databases to be merged together
 #' @param output_path character vector of the path of the resulting database
+#' @param legacy boolean In legacy mode, "cran_db" is appended to the output_path
 #' @param parallel boolean, whether the merge should be performed in parallel or not.
 #' @returns data frame with information about the merging process. The data frame has the following columns:
 #'   * `path`: path of the merged database
@@ -615,9 +616,9 @@ is_query_empty <- function(query) {
 #'   * `error`: whether there was an error when merging the db at `path`. 
 #' @seealso [merge_into()]
 #' @export
-merge_all_dbs <- function(db_paths, output_path, parallel = TRUE) {
+merge_all_dbs <- function(db_paths, output_path, legacy = TRUE, parallel = TRUE) {
   stopifnot(is.character(db_paths), is.character(output_path), is.logical(parallel))
-  .Call(SXPDB_merge_all_dbs, db_paths, output_path, parallel)
+  .Call(SXPDB_merge_all_dbs, db_paths, if (legacy) {file.path(output_path, cran_db) } else {output_path}, parallel)
 }
 
 #' Fetches all the values corresponding to one origin

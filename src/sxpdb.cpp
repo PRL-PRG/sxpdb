@@ -939,11 +939,11 @@ SEXP extptr_tag(SEXP ptr) {
 
 
 SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
-  fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0))) / "cran_db";
+  fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0)));
 
   Rprintf("Starting merging\n");
 
-    //Removes the db if it exists
+  //Removes the db if it exists
   fs::remove_all(db_path);
 
   // Create the db directory 
