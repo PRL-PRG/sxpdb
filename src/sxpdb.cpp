@@ -994,7 +994,7 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
       s_before_c[i] = size_before;
       std::chrono::microseconds elapsed = std::chrono::microseconds::zero();
       auto start = std::chrono::system_clock::now();
-      Database small_db(small_db_path / "sxpdb", Database::OpenMode::Merge, false);
+      Database small_db(small_db_path / "sxpdb", Database::OpenMode::Merge, true);
       uint64_t small_db_size = small_db.nb_values();
 
 

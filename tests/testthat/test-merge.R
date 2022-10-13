@@ -4,10 +4,10 @@ test_that("merge", {
 
     l2 <- list(3L, "tu", 45.9)
     db2 <- db_from_values(l2)
-    
+
     mapping <- merge_into(db2, db1)
 
-    l <- unique(c(l1, l2))
+    l <- unique(c(l2, l1))
 
     expect_equal(size_db(db2), length(l))
     expect_equal(view_db(db2), l)
@@ -30,18 +30,18 @@ test_that("merge all", {
     close(db2)
 
     result_db_name <- tempfile("result_sxpdb")
-    res <- merge_all_dbs(c(path1, path2), result_db_name, legacy = FALSE)
+    res <- merge_all_dbs(c(path1, path2), result_db_name, legacy = FALSE, parallel = FALSE)
 
     l <- unique(c(l1, l2))
 
     # try to popen the result db
     result_db <- open_db(result_db_name)
 
-    expect_length(res, 2)
-    expect_lte(nb1, size)
-    expect_lte(nb2, size)
+    expect_equal(nrow(res), 2)
+    expect_lte(nb1, size_db(result_db))
+    expect_lte(nb2, size_db(result_db))
     expect_equal(size_db(result_db), length(l))
-    expect_equal(view_db(db2), l)
+    expect_equal(view_db(result_db), l)
 
     close(result_db)
 })
