@@ -131,7 +131,7 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
     auto meta = db.static_meta.read(i);
     results[meta.sexptype].second.add(i);
 
-    if(meta.length > 1) {
+    if(meta.length != 1) {
       results[SearchIndex::nb_sexptypes].second.add(i);
     }
 

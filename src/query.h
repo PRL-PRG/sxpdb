@@ -102,6 +102,7 @@ public:
     return samples;
   }
 
+
   const roaring::Roaring64Map& view() const {return index_cache; }//TODO: provide an R API for that
   bool is_initialized() const {return init;}
 

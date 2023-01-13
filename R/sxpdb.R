@@ -597,6 +597,20 @@ is_query_empty <- function(query) {
 }
 
 
+#' Displays a query
+#'
+#' `show_query` displays the content of a query, i.e. all its parameters.
+#' If a parameter is not defined, it shows `any` for its value.
+#' For class names, it shows a vector of class names, possibly an empty one.
+#'
+#' @param query query object
+#' @returns integer, number of defined parameters
+#' @seealso [query_from_value()], [query_from_plan()], [relax_query()], [close_query()]
+#' @export
+show_query <- function(query) {
+  .Call(SXPDB_show_query, query)
+}
+
 #' Merges several dbs into a new large one.
 #'
 #' `merge_all_dbs` performs an efficient merge of several databases, to keep only

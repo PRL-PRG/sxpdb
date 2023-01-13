@@ -350,6 +350,16 @@ SEXP relax_query(SEXP query, SEXP relax);
 SEXP is_query_empty(SEXP query);
 
 /**
+ * @method show_query
+ * 
+ * Shows the value of the various parameters in the query
+ * 
+ * @param query external pointer to the query
+ * @return NULL if invalid query, number of defined parameters otherwise
+ */
+SEXP show_query(SEXP query);
+
+/**
  * @method extptr_tag
  * @param ptr external pointer
  * @return tag of the external pointer

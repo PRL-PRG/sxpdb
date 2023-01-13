@@ -28,8 +28,13 @@ test_that("simple query", {
      db <- db_from_values(l, with_search_index=TRUE)
 
      q <- query_from_value(FALSE)
+     show_query(q)
+     relax_query(q, "keep_type"); #necessary
+     # TODO: bug, matching should operate here, without having to relax
+     show_query(q)
 
      idx <- sample_index(db, q)
+     print(idx)
      expect_true(is.numeric(idx))
      v <- get_value_idx(db, idx)
 

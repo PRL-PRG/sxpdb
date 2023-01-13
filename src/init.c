@@ -45,6 +45,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"query_from_plan", (DL_FUNC) &query_from_plan, 1},
 	{"close_query", (DL_FUNC) &close_query,         1},
 	{"relax_query", (DL_FUNC) &relax_query,         2},
+	{"show_query", (DL_FUNC) &show_query,           1},
 	{"is_query_empty", (DL_FUNC) &is_query_empty,   1},
 	{"extptr_tag",   (DL_FUNC) &extptr_tag,         1},
 	{"merge_all_dbs", (DL_FUNC) &merge_all_dbs,     3},

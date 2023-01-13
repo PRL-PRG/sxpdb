@@ -937,6 +937,45 @@ SEXP extptr_tag(SEXP ptr) {
   return EXTPTR_TAG(ptr);
 }
 
+SEXP show_query(SEXP query_ptr) {
+  void* ptr = R_ExternalPtrAddr(query_ptr);
+  if(ptr== nullptr) {
+    Rf_warning("Query does not exist.\n");
+    return R_NilValue;
+  }
+  Query* query = static_cast<Query*>(ptr);
+
+  std::string classes = "[";
+  for (const auto &piece : query->class_names) {
+    classes += piece + ", ";
+  }
+  if (classes.size() > 2) {
+    classes[classes.size() - 2] = ']';
+  }
+  else {
+    classes += "]";
+  }
+  
+
+  Rprintf("Query: \n\t type: %s\n\t is_vector: %s\n\t has_na: %s\n\
+      \t has_attributes: %s\n\t has_class: %s \n\t length: %s\n\t ndims: %s\n\
+      \t class_names: %s\n\t sub_queries: %s\n", 
+      Rf_type2char(query->type),
+      query->is_vector ? std::to_string(query->is_vector.value()).c_str() : "any",
+      query->has_na ? std::to_string(query->has_na.value()).c_str() : "any",
+      query->has_attributes ? std::to_string(query->has_attributes.value()).c_str() : "any",
+      query->has_class ? std::to_string(query->has_class.value()).c_str() : "any",
+      query->length ? std::to_string(query->length.value()).c_str() : "any",
+      query->ndims ? std::to_string(query->ndims.value()).c_str() : "any",
+      classes.c_str(),
+      query->queries.size() != 0  ? "yes" : "no");
+
+
+  return Rf_ScalarInteger(query->type != ANYSXP + query->is_vector.has_value() + query->has_na.has_value() +
+    query->has_attributes.has_value() + query->has_class.has_value() + query->length.has_value() + query->ndims.has_value() +
+    query->class_names.size() != 0);
+}
+
 
 SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
   fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0)));
