@@ -215,7 +215,7 @@ public:
     int base = 10;
     int power = 10;
     for(int i = 0; i < 10; i++) {
-      for(int j = 100 + 10 * i + 1; j < 100 + 10 * (i + 1); j++) {
+      for(int j = 100 + 10 * i + 1; j <= 100 + 10 * (i + 1); j++) {
         length_intervals[j] = length_intervals[j - 1] + power;
       }
       power *= base;

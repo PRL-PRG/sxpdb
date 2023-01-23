@@ -29,9 +29,12 @@ test_that("simple query", {
 
      q <- query_from_value(FALSE)
      show_query(q)
-     relax_query(q, "keep_type"); #necessary
+     #relax_query(q, "keep_type"); #necessary
      # TODO: bug, matching should operate here, without having to relax
-     show_query(q)
+     #show_query(q)
+     #relax_query(q, "length")
+
+     print(view_meta_db(db))
 
      idx <- sample_index(db, q)
      print(idx)
