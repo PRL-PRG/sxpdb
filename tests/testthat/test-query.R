@@ -34,10 +34,8 @@ test_that("simple query", {
      #show_query(q)
      #relax_query(q, "length")
 
-     print(view_meta_db(db))
 
      idx <- sample_index(db, q)
-     print(idx)
      expect_true(is.numeric(idx))
      v <- get_value_idx(db, idx)
 

@@ -365,10 +365,9 @@ void SearchIndex::build_indexes(const Database& db) {
   assert(results_meta[i].first == "attributes_index");
   attributes_index |= results_meta[i].second;
   i++;
-  int start = i;
-  for(; i < start + lengths_index.size() ; i++) {
-    assert(results_meta[i].first == "length_index");
-    lengths_index[i] |= results_meta[i].second;
+  for(int j = 0; j < lengths_index.size() ; j++) {
+    assert(results_meta[j + i].first == "length_index");
+    lengths_index[j] |= results_meta[j + i].second;
   }
 
   // Origins

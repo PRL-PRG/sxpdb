@@ -221,6 +221,7 @@ public:
       power *= base;
     }
 
+
     types_index.resize(26);
     lengths_index.resize(nb_intervals);
   }
