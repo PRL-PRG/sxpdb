@@ -23,4 +23,7 @@ RoxygenNote: 7.2.1
 Imports:
     pkgload
 Suggests:
+    testthat,
+    xml2
+LinkingTo: 
     testthat

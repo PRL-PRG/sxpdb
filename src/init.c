@@ -8,6 +8,8 @@
 
 #include "sxpdb.h"
 
+extern SEXP run_testthat_tests(SEXP use_xml_sxp); // required for catch2, because we disable dynamic registration
+
 static const R_CallMethodDef callMethods[] = {
 	/* name						casted ptr to function			# of args */
 	// Generic record related
@@ -51,6 +53,7 @@ static const R_CallMethodDef callMethods[] = {
 	{"merge_all_dbs", (DL_FUNC) &merge_all_dbs,     3},
 	{"values_from_origins", (DL_FUNC) &values_from_origins, 3},
 	{"values_from_calls", (DL_FUNC) &values_from_calls, 3},
+	{"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 1},
 
 
 	// Must have at the end
@@ -59,7 +62,7 @@ static const R_CallMethodDef callMethods[] = {
 
 void R_init_sxpdb(DllInfo* dll) {
 	R_registerRoutines(dll, NULL, callMethods, NULL, NULL);
-  R_useDynamicSymbols(dll, FALSE);
+  	R_useDynamicSymbols(dll, FALSE);
 	R_RegisterCCallable("sxpdb", "add_val", (DL_FUNC) &add_val);
 	R_RegisterCCallable("sxpdb", "add_val_origin_", (DL_FUNC) &add_val_origin_);
 	R_RegisterCCallable("sxpdb", "add_origin_", (DL_FUNC) &add_origin_);
