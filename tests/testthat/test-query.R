@@ -28,12 +28,6 @@ test_that("simple query", {
      db <- db_from_values(l, with_search_index=TRUE)
 
      q <- query_from_value(FALSE)
-     show_query(q)
-     #relax_query(q, "keep_type"); #necessary
-     # TODO: bug, matching should operate here, without having to relax
-     #show_query(q)
-     #relax_query(q, "length")
-
 
      idx <- sample_index(db, q)
      expect_true(is.numeric(idx))
@@ -44,4 +38,23 @@ test_that("simple query", {
     expect_true(idx %in% (seq_along(l) - 1))
     expect_true(v %in% l)
     expect_equal(v, TRUE)
+})
+
+test_that("relaxed query", {
+     l <- list(1L, "tu", 45.9, TRUE, c(2, 4), NA_real_)
+     has_search_index(db) # just for the debugger
+     db <- db_from_values(l, with_search_index=TRUE)
+
+     q <- query_from_value(2)
+     res <- view_db(db, q)
+     expect_length(res, 1)
+     expect_equal(res[[1]], 45.9)
+
+     relax_query(q, c("length", "vector"))
+     res <- view_db(db, q)
+     expect_length(res, 2)
+     expect_equal(res[[1]], 45.9)
+     expect_equal(res[[2]], c(2, 4))
+
+     close(db)
 })

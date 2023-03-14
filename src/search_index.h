@@ -67,7 +67,7 @@ inline bool find_na(SEXP val) {
 #ifdef SXPDB_PARALLEL_STD
     return std::find_if(std::execution::par_unseq, v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
 #else
-    return std::find_if( v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
+    return std::find_if( v, v + length, [](double d) -> bool {return R_IsNA(d) ;}) != v + length;
 #endif
   }
   case LGLSXP:{
@@ -118,7 +118,7 @@ inline bool find_na(const sexp_view_t& sexp_view) {
 #ifdef SXPDB_PARALLEL_STD
       return std::find_if(std::execution::par_unseq, v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
 #else
-      return std::find_if( v, v + length, [](double d) -> bool {return ISNAN(d) ;}) != v + length;
+      return std::find_if( v, v + length, [](double d) -> bool {return R_IsNA(d) ;}) != v + length;
 #endif
       }
     case CPLXSXP: {

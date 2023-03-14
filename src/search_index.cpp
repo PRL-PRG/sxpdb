@@ -309,7 +309,7 @@ void SearchIndex::build_indexes(const Database& db) {
 
 
 #ifndef NDEBUG
-  Rprintf("Building indexes in parallel.\n");
+  if (!db.is_quiet()) Rprintf("Building indexes in parallel.\n");
   std::future_status meta_status;
   std::future_status value_status;
   std::future_status classname_status;
@@ -319,14 +319,14 @@ void SearchIndex::build_indexes(const Database& db) {
       meta_status = results_meta_fut.wait_for(333ms);
       if(meta_status == std::future_status::ready) {
         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
-        Rprintf("Computations on metadata have finished in %ld ms.\n", dur.count());
+        if (!db.is_quiet()) Rprintf("Computations on metadata have finished in %ld ms.\n", dur.count());
       }
     }
     if(classname_status != std::future_status::ready) {
       classname_status= results_classnames_fut.wait_for(333ms);
       if(classname_status == std::future_status::ready) {
         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
-        Rprintf("Computations on classnames have finished in %ld ms.\n", dur.count());
+        if (!db.is_quiet()) Rprintf("Computations on classnames have finished in %ld ms.\n", dur.count());
       }
     }
     if(value_status != std::future_status::ready) {
@@ -334,7 +334,7 @@ void SearchIndex::build_indexes(const Database& db) {
       value_status = results_values_fut[results_values_fut.size() - 1].wait_for(333ms);
       if(value_status == std::future_status::ready) {
         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
-        Rprintf("Computations on values have finished in %ld ms.\n", dur.count());
+        if (!db.is_quiet()) Rprintf("Computations on values have finished in %ld ms.\n", dur.count());
       }
     }
   } while (meta_status != std::future_status::ready && value_status != std::future_status::ready && classname_status!= std::future_status::ready);
