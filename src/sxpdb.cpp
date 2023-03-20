@@ -980,7 +980,7 @@ SEXP show_query(SEXP query_ptr) {
 SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
   fs::path db_path = fs::absolute(CHAR(STRING_ELT(output_path, 0)));
 
-  Rprintf("Starting merging\n");
+  //Rprintf("Starting merging\n");
 
   //Removes the db if it exists
   fs::remove_all(db_path);
@@ -990,8 +990,8 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
 
   bool parallel = Rf_asLogical(in_parallel);
 
-  // Open in write mode, and not quiet
-  Database db(db_path / "sxpdb", Database::OpenMode::Write, false);
+  // Open in write mode, and quiet
+  Database db(db_path / "sxpdb", Database::OpenMode::Write, true);
 
 
   // Progress bar setup
@@ -1087,8 +1087,8 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
     {"error", error_c}
   }));
 
-  Rprintf("\nConfiguration path is %s.\n", db.configuration_path().c_str());
-  Rprintf("\nBuilding seach indexes in %s.\n", db.search_index_path().c_str());
+  //Rprintf("\nConfiguration path is %s.\n", db.configuration_path().c_str());
+  //Rprintf("\nBuilding seach indexes in %s.\n", db.search_index_path().c_str());
   db.build_indexes();
 
   UNPROTECT(8);

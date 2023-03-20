@@ -194,7 +194,7 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
       results[0].second.add(i);
     }
 
-    start++;
+    i++;
   }
 
   for(auto& result : results) {
@@ -289,24 +289,28 @@ void SearchIndex::build_indexes(const Database& db) {
 
   // Values
   std::vector<std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>>> results_values_fut;
+
   const uint64_t chunk_size = fs::file_size(db.sexp_table.get_path()) / (std::thread::hardware_concurrency() - 1);
   const uint64_t elements_per_chunk = db.nb_values() / (std::thread::hardware_concurrency() - 1); // a rough estimate...
+  if(elements_per_chunk == 0) {// it means that there are more cores than values in the db!
+    elements_per_chunk - db.nb_values();
+  }
 
   // TODO: we can now parallelize the read operation!
   std::vector<std::vector<std::byte>> bufs;
   bufs.reserve(elements_per_chunk);
   uint64_t size = 0;
+  uint64_t start = 0;//TODO: check that start is actually the start of a sequence of bufs
   for(uint64_t i = 0; i < db.nb_values() ; i++) {
-    if(size >= chunk_size || i == db.nb_values() - 1) {
-      results_values_fut.push_back(pool.submit(build_values, std::move(bufs), i));
-      bufs.clear();
-    }
     const std::vector<std::byte>& buf = db.sexp_table.read(i);
     size += buf.size();
     bufs.push_back(buf);
+    if(size >= chunk_size || i == db.nb_values() - 1) {
+      results_values_fut.push_back(pool.submit(build_values, std::move(bufs), start));
+      start = i + 1;
+      bufs.clear();
+    }
   }
-
-
 
 #ifndef NDEBUG
   if (!db.is_quiet()) Rprintf("Building indexes in parallel.\n");

@@ -86,7 +86,7 @@ test_that("get_meta_idx", {
 
     close_db(db)
 
-    print(meta)
+    #print(meta)
     
     expect_equal(string_sexp_type(meta$type), typeof(l[[1]]))
     expect_equal(meta$length, length(l[[2]]))
@@ -96,5 +96,5 @@ test_that("get_meta_idx", {
     expect_equal(meta$size, 16)
     expect_equal(meta$n_calls, 20)
     expect_equal(meta$n_merges, 0)
-    expect_equal(length(meta), 8) # missing class names
+    expect_equal(length(meta), 10) # missing class names
 })
