@@ -42,14 +42,13 @@ test_that("simple query", {
 
 test_that("relaxed query", {
      l <- list(1L, "tu", 45.9, TRUE, c(2.1, 4), NA_real_)
-     has_search_index(db) # just for the debugger
      db <- db_from_values(l, with_search_index=TRUE)
 
      expect_equal(nb_values_db(db), length(l))
 
      q <- query_from_value(2)
      res <- view_db(db, q)
-     
+
      expect_length(res, 1)
      expect_equal(res[[1]], 45.9)
 
@@ -59,5 +58,43 @@ test_that("relaxed query", {
      expect_equal(res[[1]], 45.9)
      expect_equal(res[[2]], c(2.1, 4))
 
+     relax_query(q, "na")
+     expect_equal(nb_values_db(db, q), 3)
+
+     q <- query_from_value(2)
+     relax_query(q, "keep_type")
+     expect_equal(nb_values_db(db, q), 3)
+
      close(db)
 })
+
+
+test_that("query from plan", {
+    l <- list(1L, "tu", 45.9, NA_integer_, TRUE, c(2.1, 4), NA_real_)  
+    db <- db_from_values(l, with_search_index=TRUE)
+
+     expect_equal(nb_values_db(db), length(l))
+
+     q <- query_from_plan(list("na" = TRUE))
+     res <- view_db(db, q)
+     expect_length(res, 2)
+     expect_equal(res[[1]], NA_integer_)
+     expect_equal(res[[2]], NA_real_)
+
+     q <- query_from_plan(list("vector" = TRUE))
+     expect_equal(nb_values_db(db, q), 1)
+     expect_equal(sample_val(db, q), c(2.1, 4))
+
+     q <- query_from_plan(list("length" = 2))
+     expect_equal(nb_values_db(db, q), 1)
+     expect_equal(sample_val(db, q), c(2.1, 4))
+
+     close(db)
+
+})
+
+# TODO: 
+# - test class names
+# - multi-dimentional values
+# - with attributes
+# - 0-length vector
