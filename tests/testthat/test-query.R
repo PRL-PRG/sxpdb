@@ -76,17 +76,17 @@ test_that("query from plan", {
 
      expect_equal(nb_values_db(db), length(l))
 
-     q <- query_from_plan(list("na" = TRUE))
+     q <- query_from_plan(list(na = TRUE))
      res <- view_db(db, q)
      expect_length(res, 2)
      expect_equal(res[[1]], NA_integer_)
      expect_equal(res[[2]], NA_real_)
 
-     q <- query_from_plan(list("vector" = TRUE))
+     q <- query_from_plan(list(vector = TRUE))
      expect_equal(nb_values_db(db, q), 1)
      expect_equal(sample_val(db, q), c(2.1, 4))
 
-     q <- query_from_plan(list("length" = 2))
+     q <- query_from_plan(list(length = 2))
      expect_equal(nb_values_db(db, q), 1)
      expect_equal(sample_val(db, q), c(2.1, 4))
 
@@ -103,12 +103,12 @@ test_that("class names", {
 
      expect_equal(nb_values_db(db), length(l))
 
-     q <- query_from_plan(list("classname" = "some_class"))
+     q <- query_from_plan(list(classname = "some_class"))
      res <- view_db(db, q)
      expect_length(res, 1)
      expect_equal(res[[1]], o1)
 
-     q <- query_from_plan(list("classname" = TRUE))
+     q <- query_from_plan(list(classname = TRUE))
      res <- view_db(db, q)
      expect_length(res, 2)
      expect_equal(res[[1]], o2)
@@ -117,8 +117,52 @@ test_that("class names", {
      close(db)
 })
 
+test_that("0-length stuff", {
+     l <- list(1L, "tu", 45.9, NA_integer_, integer(0), TRUE, c(2.1, 4), double(0))
+     db <- db_from_values(l, with_search_index=TRUE)
+
+     expect_equal(nb_values_db(db), length(l))
+
+     q <- query_from_plan(list(length=0))
+     res <- view_db(db, q)
+     expect_length(res, 2)
+     expect_equal(res[[1]], integer(0))
+     expect_equal(res[[2]], double(0))
+
+     q <- query_from_plan(list(type=1L))
+     res <- view_db(db, q)
+     expect_length(res, 3)
+     expect_equal(res[[1]], 1L)
+     expect_equal(res[[2]], NA_integer_)
+     expect_equal(res[[3]], integer(0))
+
+     close(db)
+})
+
+test_that("many different lengths", {
+     db <- open_db(tempfile("sxpdb"), mode=TRUE, quiet=TRUE)
+     n <- 0
+     lengths <- c()
+     for(i in 1:5) {
+          base = 10^i
+          for(j in 1:10) {
+               v <- rep.int(2, base + j)
+               lengths <- c(lengths, base + j)
+               add_val_origin(db, v, "pkg", "f", "arg")
+          }
+     }
+     expect_equal(nb_values_db(db), length(lengths))
+     build_indexes(db)
+
+     for(len in lengths) {
+          q <- query_from_plan(list(length=len))
+          expect_equal(nb_values_db(db, q), 1) 
+     }
+
+     close(db)
+})
+
 # TODO:
-# - test class names
 # - multi-dimentional values
 # - with attributes
 # - 0-length vector
