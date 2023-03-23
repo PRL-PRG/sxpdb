@@ -1,49 +1,49 @@
 test_that("merge", {
-    l1 <- list(1L, "tu", 45.9)
-    db1 <- db_from_values(l1)
+  l1 <- list(1L, "tu", 45.9)
+  db1 <- db_from_values(l1)
 
-    l2 <- list(3L, "tu", 45.9)
-    db2 <- db_from_values(l2)
+  l2 <- list(3L, "tu", 45.9)
+  db2 <- db_from_values(l2)
 
-    mapping <- merge_into(db2, db1)
+  mapping <- merge_into(db2, db1)
 
-    l <- unique(c(l2, l1))
+  l <- unique(c(l2, l1))
 
-    expect_equal(size_db(db2), length(l))
-    expect_equal(view_db(db2), l)
+  expect_equal(size_db(db2), length(l))
+  expect_equal(view_db(db2), l)
 
-    close(db1)
-    close(db2)
+  close(db1)
+  close(db2)
 })
 
 test_that("merge all", {
-    l1 <- list(1L, "tu", 45.9)
-    db1 <- db_from_values(l1)
-    path1 <- path_db(db1)
-    nb1 <- size_db(db1)
-    close(db1)
+  l1 <- list(1L, "tu", 45.9)
+  db1 <- db_from_values(l1)
+  path1 <- path_db(db1)
+  nb1 <- size_db(db1)
+  close(db1)
 
-    l2 <- list(3L, "tu", 45.9)
-    db2 <- db_from_values(l2)
-    path2 <- path_db(db2)
-    nb2 <- size_db(db2)
-    close(db2)
+  l2 <- list(3L, "tu", 45.9)
+  db2 <- db_from_values(l2)
+  path2 <- path_db(db2)
+  nb2 <- size_db(db2)
+  close(db2)
 
-    result_db_name <- tempfile("result_sxpdb")
-    res <- merge_all_dbs(c(path1, path2), result_db_name, legacy = FALSE, parallel = FALSE)
+  result_db_name <- tempfile("result_sxpdb")
+  res <- merge_all_dbs(c(path1, path2), result_db_name, legacy = FALSE, parallel = FALSE)
 
-    l <- unique(c(l1, l2))
+  l <- unique(c(l1, l2))
 
-    # try to open the result db
-    result_db <- open_db(result_db_name)
+  # try to open the result db
+  result_db <- open_db(result_db_name)
 
-    expect_equal(nrow(res), 2)
-    expect_lte(nb1, size_db(result_db))
-    expect_lte(nb2, size_db(result_db))
-    expect_equal(size_db(result_db), length(l))
-    expect_equal(view_db(result_db), l)
+  expect_equal(nrow(res), 2)
+  expect_lte(nb1, size_db(result_db))
+  expect_lte(nb2, size_db(result_db))
+  expect_equal(size_db(result_db), length(l))
+  expect_equal(view_db(result_db), l)
 
-    close(result_db)
+  close(result_db)
 })
 
 # test_that("parallel merge all", {

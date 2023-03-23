@@ -6,7 +6,10 @@ repos:
     hooks: 
     -   id: style-files
         args: [--style_pkg=styler, --style_fun=tidyverse_style]    
-    -   id: roxygenize
+    # -   id: roxygenize
+    #     # roxygen requires loading pkg -> add dependencies from DESCRIPTION
+    #     additional_dependencies:
+    #     -    pkgload
     # codemeta must be above use-tidy-description when both are used
     # -   id: codemeta-description-updated
     -   id: use-tidy-description
@@ -14,6 +17,9 @@ repos:
         exclude: >
           (?x)^(
           .*\.[rR]|
+          .*\.cpp|
+          .*\.c|
+          .*\.h|
           .*\.feather|
           .*\.jpeg|
           .*\.pdf|
@@ -24,6 +30,7 @@ repos:
           .*\.Rds|
           .*\.Rproj|
           .*\.sh|
+          Makevars|
           (.*/|)\.gitignore|
           (.*/|)\.gitlab-ci\.yml|
           (.*/|)\.lintr|
@@ -58,7 +65,7 @@ repos:
 -   repo: https://github.com/pre-commit-ci/pre-commit-ci-config
     rev: v1.5.1
     hooks:
-    # Only reuiqred when https://pre-commit.ci is used for config validation
+    # Only required when https://pre-commit.ci is used for config validation
     -   id: check-pre-commit-ci-config
 -   repo: local
     hooks:
@@ -68,6 +75,11 @@ repos:
         language: fail
         files: '\.(Rhistory|RData|Rds|rds)$'
         # `exclude: <regex>` to allow committing specific files
+    -   id: unit-tests
+        name: Unit tests
+        entry: R -e "devtools::test()"
+        language: system
+
 
 ci:
     autoupdate_schedule: monthly

@@ -67,4 +67,3 @@ void R_init_sxpdb(DllInfo* dll) {
 	R_RegisterCCallable("sxpdb", "add_val_origin_", (DL_FUNC) &add_val_origin_);
 	R_RegisterCCallable("sxpdb", "add_origin_", (DL_FUNC) &add_origin_);
 }
-

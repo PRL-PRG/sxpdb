@@ -1,8 +1,8 @@
 ^.*\.Rproj$
-^\.Rproj\.user$
 ^LICENSE\.md$
-^\.github$
-^\.vscode$
 ^Makefile$
-^compile_commands.json$
+^\.Rproj\.user$
+^\.github$
 ^\.pre-commit-config\.yaml$
+^\.vscode$
+^compile_commands.json$

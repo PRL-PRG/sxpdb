@@ -1,10 +1,10 @@
 #' Open a database
-#' 
-#' `open_db` opens a database for reading, writing, or merging. Reading does not load as much in memory. 
+#'
+#' `open_db` opens a database for reading, writing, or merging. Reading does not load as much in memory.
 #' For instance, it will directly read values from the disk. When merging database _source_ into database
 #' _target_, _source_ must be open in merge mode, and _target_, in write mode. Writing mode is required
 #' when adding any new values to the database or building or updating search indexes.
-#' 
+#'
 #' @param db character vector of the name and path where to create the db. Default to `"db"`
 #' @param mode `TRUE` if in write mode, `FALSE` if in read mode (default), `"merge"` if in merge mode
 #' @param quiet boolean, whether to print messages or not
@@ -12,9 +12,9 @@
 #' @seealso [close_db()]
 #' @export
 open_db <- function(db = "db", mode = FALSE, quiet = TRUE) {
-	if (!dir.exists(db)) {
+  if (!dir.exists(db)) {
     dir.create(db, recursive = TRUE)
-	}
+  }
 
   prefix <- file.path(db, "sxpdb")
 
@@ -22,10 +22,10 @@ open_db <- function(db = "db", mode = FALSE, quiet = TRUE) {
 }
 
 #' Closes the database
-#' 
+#'
 #' Closes a previously open database. If `db` was uncorrectly opened, or has been already closed,
 #' the function will error.
-#' 
+#'
 #' @param db database, sxpdb object
 #' @return `NULL`
 #' @seealso [open_db()]
@@ -37,11 +37,11 @@ close_db <- function(db) {
 }
 
 #' Add a value in the dabatase
-#' 
-#' `add_val` adds an R value in the database. It does not add origins or call ids. 
-#'  This should be used in conjunction with [add_origin()]. 
+#'
+#' `add_val` adds an R value in the database. It does not add origins or call ids.
+#'  This should be used in conjunction with [add_origin()].
 #'  You should most likely never use it and rather directly use [add_val_origin()].
-#' 
+#'
 #' @param db database, sxpdb object
 #' @param val any R value. Currently, environments and closures will be silently ignored
 #' @returns integer index of the value if it has been added (now or before), or `NULL` if it has been ignored
@@ -59,7 +59,7 @@ add_val <- function(db, val) {
 #'
 #' @param db database, sxpdb object
 #' @param val any R value. Currently, environments and closures will be silently ignored
-#' @param package character vector for the package name 
+#' @param package character vector for the package name
 #' @param func character vector for the function name
 #' @param argument character vector for the argument name. `""` or `NA` mean that `val` is a return value.
 #' @param call_id integer unique id of the call from which the value comes from. Defaults to `0`
@@ -68,7 +68,7 @@ add_val <- function(db, val) {
 #' @export
 add_val_origin <- function(db, val, package, func, argument, call_id = 0) {
   stopifnot(check_db(db), write_mode(db), is.numeric(call_id), is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
-  .Call(SXPDB_add_val_origin, db, val, package, func, if(is.na(argument)) NA_character_ else argument, call_id)
+  .Call(SXPDB_add_val_origin, db, val, package, func, if (is.na(argument)) NA_character_ else argument, call_id)
 }
 
 #' Add origin to an already recorded value
@@ -80,7 +80,7 @@ add_val_origin <- function(db, val, package, func, argument, call_id = 0) {
 #'
 #' @param db database, sxpdb object
 #' @param hash hash of an already recorded value
-#' @param package character vector for the package name 
+#' @param package character vector for the package name
 #' @param func character vector for the function name
 #' @param argument character vector for the argument name. `""` or `NA` mean that `val` is a return value.
 #' @returns `NULL`
@@ -88,7 +88,7 @@ add_val_origin <- function(db, val, package, func, argument, call_id = 0) {
 #' @export
 add_origin <- function(db, hash, package, func, argument) {
   stopifnot(check_db(db), write_mode(db), is.raw(hash) && length(hash) == 20, is.character(package) | is.symbol(package), is.character(func) | is.symbol(func), is.character(argument) | is.symbol(argument) | is.na(argument))
-  .Call(SXPDB_add_origin, db, hash, package, func, if(is.na(argument)) NA_character_ else argument)
+  .Call(SXPDB_add_origin, db, hash, package, func, if (is.na(argument)) NA_character_ else argument)
 }
 
 #' Sample randomly a value from the database
@@ -117,7 +117,7 @@ sample_val <- function(db, query = NULL) {
 #' or [query_from_value()].
 #'
 #' @inheritParams sample_val
-#' @returns integer, an index to a value in the database. You can then access the value 
+#' @returns integer, an index to a value in the database. You can then access the value
 #'          with [get_value_idx()]. `NULL` if the query is empty.
 #' @seealso [sample_val()]
 #' @export
@@ -131,7 +131,7 @@ sample_index <- function(db, query = NULL) {
 #' `sample_similar` samples a value from the database, which is similar to `val` along
 #' metadata parameters, relaxed according to `relax`.
 #' The sampling uses an uniform distribution.
-#' 
+#'
 #'  You should rather use a combination of [query_from_value()] and [sample_index()] for more control.
 #'
 #' @param db database, sxpdb object
@@ -147,9 +147,9 @@ sample_similar <- function(db, val, relax = "") {
 }
 
 #' Merge a db into another one.
-#' 
+#'
 #' Deprecated. Rather use [merge_into()]
-#' 
+#'
 #' @param db1 database, sxpdb object
 #' @param db2 database, sxpdb object
 #' @returns `NULL` in case of error, number of values in the _target_ database after merging otherwise
@@ -173,14 +173,14 @@ merge_db <- function(db1, db2) {
 #' @seealso [merge_all_dbs()], [build_indexes()]
 #' @export
 merge_into <- function(target, source) {
-   stopifnot(check_db(target), check_db(source), write_mode(target))
+  stopifnot(check_db(target), check_db(source), write_mode(target))
   .Call(SXPDB_merge_into_db, target, source)
 }
 
 #' Checks if a value is in the database
-#' 
-#' `have_seen` checks if a value is stored in the database and returns its index in that case. 
-#' 
+#'
+#' `have_seen` checks if a value is stored in the database and returns its index in that case.
+#'
 #' @param db database, sxpdb object
 #' @param val R value
 #' @returns integer index of the value if the value is in the db, `NULL` otherwise
@@ -188,7 +188,7 @@ merge_into <- function(target, source) {
 #' @export
 have_seen <- function(db, val) {
   stopifnot(check_db(db))
-	.Call(SXPDB_have_seen, db, val)
+  .Call(SXPDB_have_seen, db, val)
 }
 
 #' Get the value in the db at a given index
@@ -196,7 +196,7 @@ have_seen <- function(db, val) {
 #' `get_value_idx` returns the value in `db` at index `idx`. You can also use the notation `db[idx]`.
 #'
 #' @param db database, sxpdb object
-#' @param idx integer, index in the database. Indexes start at 0 (not at 1!) so `idx >= 0` and 
+#' @param idx integer, index in the database. Indexes start at 0 (not at 1!) so `idx >= 0` and
 #'            `idx < size_db(db)`
 #' @returns an R value
 #' @seealso [`[.sxpdb`()]
@@ -212,7 +212,7 @@ get_value_idx <- function(db, idx) {
 #' `get_meta` returns the metadata associated to a value. It includes:
 #'      * _runtime_ metadata: number of calls the value has been seen in, number of times the value has been seen during merges
 #'      * _static_ metadata: type, size in bytes, length (for vector values), number of attributes, number of dimensionsm number of rows (for data frames, matrixes)
-#'      * _debug_ metadata: only if the database was created with sxpdb in debug mode, includes how many times `MAYBE_SHARED` has been true on the value, 
+#'      * _debug_ metadata: only if the database was created with sxpdb in debug mode, includes how many times `MAYBE_SHARED` has been true on the value,
 #' and how many times we were able to use the SEXP address optimization
 #'
 #' @param db database, sxpdb object
@@ -232,7 +232,7 @@ get_meta <- function(db, val) {
 #' `get_meta` returns the metadata associated to a index in the database. It includes:
 #'      * _runtime_ metadata: number of calls the value has been seen in, number of times the value has been seen during merges
 #'      * _static_ metadata: type, size in bytes, length (for vector values), number of attributes, number of dimensionsm number of rows (for data frames, matrixes)
-#'      * _debug_ metadata: only if the database was created with sxpdb in debug mode, includes how many times `MAYBE_SHARED` has been true on the value, 
+#'      * _debug_ metadata: only if the database was created with sxpdb in debug mode, includes how many times `MAYBE_SHARED` has been true on the value,
 #' and how many times we were able to use the SEXP address optimization
 #'
 #' @param db database, sxpdb object
@@ -279,12 +279,12 @@ nb_values_db <- function(db, query = NULL) {
 
 
 #' Fetch values from the database.
-#' 
+#'
 #' `view_db` fetches values from the database, given a query. It will materialize the R values,
-#'  and might quickly feel up memory. Rather use metadata (with [view_meta_db()]) if you don't need 
-#' to look at the valeus itself. If you need to extract data from the values or transform them, rather use 
+#'  and might quickly feel up memory. Rather use metadata (with [view_meta_db()]) if you don't need
+#' to look at the valeus itself. If you need to extract data from the values or transform them, rather use
 #' [map_db()], which will only load one value at a time.
-#' 
+#'
 #' @param db database, sxpdb object
 #' @param query query object, typically built from [query_from_plan()] or [query_from_value()].
 #' @returns list of values matching the query
@@ -297,17 +297,17 @@ view_db <- function(db, query = NULL) {
 
 #' Fetches metadata from the database.
 #'
-#' @description 
+#' @description
 #' `view_meta_db` fetches metadata from the database, given a query.
 #' They include:
 #'      * _runtime_ metadata: number of calls the value has been seen in, number of times the value has been seen during merges
 #'      * _static_ metadata: type, size in bytes, length (for vector values), number of attributes, number of dimensionsm number of rows (for data frames, matrixes)
-#'      * _debug_ metadata: only if the database was created with sxpdb in debug mode, includes how many times `MAYBE_SHARED` has been true on the value, 
+#'      * _debug_ metadata: only if the database was created with sxpdb in debug mode, includes how many times `MAYBE_SHARED` has been true on the value,
 #' and how many times we were able to use the SEXP address optimization
 #'
 #' @inheritParams view_db
 #' @returns data frame of the metadata for all the values, in the order of their indexes in the database
-#' 
+#'
 #' @seealso [map_db()] [get_meta_idx()] [view_db()] [map_db()] [filter_index_db()]
 #' @export
 view_meta_db <- function(db, query = NULL) {
@@ -321,17 +321,17 @@ view_meta_db <- function(db, query = NULL) {
 #'
 #' @inheritParams view_db
 #' @param query not taken into account currently
-#' @returns a data frame with column `call_id` where each cell is a list of integers, the call ids, and each row 
+#' @returns a data frame with column `call_id` where each cell is a list of integers, the call ids, and each row
 #' corresponds to a value. The values are ordered in the same way as their indexes in the database.
 #'
 #' @seealso [map_db()] [get_meta_idx()] [view_db()] [map_db()] [filter_index_db()] [view_db_names()]
 #' @export
-view_call_ids<- function(db, query = NULL) {
+view_call_ids <- function(db, query = NULL) {
   stopifnot(check_db(db))
   .Call(SXPDB_view_call_ids, db, query)
 }
 
-#' Fetches the origin databases 
+#' Fetches the origin databases
 #'
 #' `view_db_names` fetches the origin databases of each values, i.e. in which database they were written
 #' first, if they result from merging in the current database.
@@ -368,7 +368,7 @@ get_origins <- function(db, hash) {
 #' Get the origins of a value
 #'
 #' `get_origins` returns the origins (package, function, parameter names) of a function given the index
-#' of the value. 
+#' of the value.
 #'
 #' @param db database, sxpdb object
 #' @param i integer, index of the value in the database
@@ -398,13 +398,13 @@ view_origins_db <- function(db, query = NULL) {
 }
 
 #'  Path to the database directory
-#' 
-#' The database is stored as a directory of various configuration files and tables. `path_db`returns 
+#'
+#' The database is stored as a directory of various configuration files and tables. `path_db`returns
 #' the path to this directory.
-#' 
+#'
 #' @param db database, sxpdb object
 #' @returns character path to the database
-#' 
+#'
 #' @export
 path_db <- function(db) {
   stopifnot(check_db(db))
@@ -416,7 +416,7 @@ path_db <- function(db) {
 #' `check_all_db` checks if the database is not currupted and suggests some fixes if it is.
 #'
 #' @param db database, sxpdb object
-#' @param slow boolean, if `TRUE`, it will unserialize all the values in the database and check 
+#' @param slow boolean, if `TRUE`, it will unserialize all the values in the database and check
 #'        them all, if `FALSE, it will perform only quick consistency checks.
 #' @returns integer vector of indices of values with problems
 #'
@@ -432,7 +432,7 @@ check_all_db <- function(db, slow = FALSE) {
 #' and return a list of the results.
 #'
 #' @inheritParams view_db
-#' @param fun R function, the function to apply to each value matching the query. It takes on argument, 
+#' @param fun R function, the function to apply to each value matching the query. It takes on argument,
 #' the value and should return an R value.
 #'
 #' @seealso [view_db()], [filter_index_db()], [view_meta_db()], [view_origins_db()]
@@ -462,7 +462,7 @@ filter_index_db <- function(db, fun, query = NULL) {
 #' Build search indexes.
 #'
 #' `build_indexes` explicitly builds search indexes which are used by function with a `query` argument
-#' (when it is not `NULL`). You need to use it if you add new values into the database (including merging into it). 
+#' (when it is not `NULL`). You need to use it if you add new values into the database (including merging into it).
 #' However, [merge_all_dbs()] will automatically build the search indexes.
 #'
 #' @param db database, sxpdb object
@@ -513,7 +513,7 @@ has_search_index <- function(db) {
 #' number of dimensions, attributes or not. You can then relax on some of those metadata to state
 #' that you do not them want to be determined according to the example value, with [relax_query()].
 #' The query can then be used with any function taking a `query` argument.
-#' 
+#'
 #' @param value any R value
 #' @returns query object
 #'
@@ -531,7 +531,7 @@ query_from_value <- function(value) {
 #' The query can then be used with any function taking a `query` argument.
 #'
 #' @param plan named list describing the query. In the absence of a parameter name, the associated metadata
-#' will be set to unspecified. The plan parameters are: 
+#' will be set to unspecified. The plan parameters are:
 #'   * type: any value of the desired type
 #'   * vector: boolean
 #'   * length: integer
@@ -548,9 +548,9 @@ query_from_plan <- function(plan) {
 
 #' Closes a query object.
 #'
-#' `close_query` closes a query object. A query object is implemented as an external pointer to a 
+#' `close_query` closes a query object. A query object is implemented as an external pointer to a
 #' a C++ object that he dynamically allocated. However, a GC hook for that external pointer is also
-#' registered so except if you plan to crate a huge amount of query objects, you should be fine 
+#' registered so except if you plan to crate a huge amount of query objects, you should be fine
 #' with not calling `close_query` explicitly.
 #'
 #' @param query query object
@@ -627,12 +627,16 @@ show_query <- function(query) {
 #'   * `small_db_size`: number of values in the db at `path`
 #'   * `small_db_bytes`: size in bytes of the db at `path`
 #'   * `duration`: duration in seconds of merging the db at `path` into the resulting db
-#'   * `error`: whether there was an error when merging the db at `path`. 
+#'   * `error`: whether there was an error when merging the db at `path`.
 #' @seealso [merge_into()]
 #' @export
 merge_all_dbs <- function(db_paths, output_path, legacy = TRUE, parallel = TRUE) {
   stopifnot(is.character(db_paths), is.character(output_path), is.logical(parallel))
-  .Call(SXPDB_merge_all_dbs, db_paths, if (legacy) {file.path(output_path, cran_db) } else {output_path}, parallel)
+  .Call(SXPDB_merge_all_dbs, db_paths, if (legacy) {
+    file.path(output_path, cran_db)
+  } else {
+    output_path
+  }, parallel)
 }
 
 #' Fetches all the values corresponding to one origin
@@ -643,12 +647,12 @@ merge_all_dbs <- function(db_paths, output_path, legacy = TRUE, parallel = TRUE)
 #' @param db database, sxpdb object
 #' @param pkg_name character vector of the name of the package
 #' @param fun_name character vector of the name of the function
-#' @returns data frame with two columns: 
+#' @returns data frame with two columns:
 #'   * `id`: ids of the values
 #'   * `param`: parameter names, concatenated and separated with `;`
 #'
 #' @seealso [view_origins_db()], [values_from_calls()]
-#' @export 
+#' @export
 values_from_origin <- function(db, pkg_name, fun_name) {
   stopifnot(check_db(db), is.character(pkg_name), is.character(fun_name))
   .Call(SXPDB_values_from_origins, db, pkg_name, fun_name)
@@ -661,13 +665,13 @@ values_from_origin <- function(db, pkg_name, fun_name) {
 #' identify from which calls they come from.
 #'
 #' @inheritParams values_from_origin
-#' @returns data frame with the following columns: 
+#' @returns data frame with the following columns:
 #'   * `call_id`: unique id of the call
 #'   * `value_id`: unique id of the value
 #'   * `param`: parameter name
 #'
 #' @seealso [values_from_origin()], [view_origins_db()], [view_call_ids()]
-#' @export 
+#' @export
 values_from_calls <- function(db, pkg_name, fun_name) {
   stopifnot(check_db(db), is.character(pkg_name), is.character(fun_name))
   .Call(SXPDB_values_from_calls, db, pkg_name, fun_name)
@@ -675,10 +679,12 @@ values_from_calls <- function(db, pkg_name, fun_name) {
 
 ## Utilities
 
-types_map <- c("NULL", "symbol", "pairlist", "closure", "environment", "promise",
-               "language", "special", "builtin", "char", "logical", "", "", "integer",
-               "real", "complex", "str", "...", "any", "list", "expression",
-               "bytecode", "externalpointer", "weakreference", "raw", "S4")
+types_map <- c(
+  "NULL", "symbol", "pairlist", "closure", "environment", "promise",
+  "language", "special", "builtin", "char", "logical", "", "", "integer",
+  "real", "complex", "str", "...", "any", "list", "expression",
+  "bytecode", "externalpointer", "weakreference", "raw", "S4"
+)
 
 #'  Get a textual repreentation of an R type
 #'
@@ -686,13 +692,12 @@ types_map <- c("NULL", "symbol", "pairlist", "closure", "environment", "promise"
 #' as an integer.
 #'
 #' @param int_type integer representation of a type
-#' @returns character vector 
+#' @returns character vector
 #' @export
 string_sexp_type <- function(int_type) {
-  if(int_type < 0 || int_type > 25) {
+  if (int_type < 0 || int_type > 25) {
     return("")
-  }
-  else {
+  } else {
     types_map[[int_type + 1]]
   }
 }
@@ -707,7 +712,7 @@ check_db <- function(v) {
 }
 
 
-.onUnload <- function (libpath) {
+.onUnload <- function(libpath) {
   library.dynam.unload("sxpdb", libpath)
 }
 
@@ -722,7 +727,7 @@ length.sxpdb <- function(x) {
 
 #' @export
 `[.sxpdb` <- function(x, i) {
-    get_value_idx(x, i)
+  get_value_idx(x, i)
 }
 
 #' @export
@@ -731,7 +736,7 @@ close.sxpdb <- function(con, ...) {
 }
 
 dir_size <- function(path) {
-  sum(file.size(list.files(path, recursive = TRUE, full.names = TRUE)), na.rm = TRUE)  
+  sum(file.size(list.files(path, recursive = TRUE, full.names = TRUE)), na.rm = TRUE)
 }
 
 #' @export
@@ -745,7 +750,8 @@ summary.sxpdb <- function(object, digits = max(3L, getOption("digits") - 3L), ..
     byte_size = dir_size(path_db(object)),
     path = path_db(object),
     write_mode = write_mode(object),
-    digits = digits), class = "summary.sxpdb")
+    digits = digits
+  ), class = "summary.sxpdb")
 }
 
 #' @export

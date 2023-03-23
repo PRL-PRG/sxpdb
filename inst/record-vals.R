@@ -7,10 +7,10 @@ library(tictoc)
 tic("recording")
 print("recording started...")
 
-args <- commandArgs(trailingOnly=TRUE)
+args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1) {
   message("Usage: record-vals.R <dir> [... <fileN>]")
-  q(status=1)
+  q(status = 1)
 }
 
 run_dir <- args[1]
@@ -22,7 +22,7 @@ if (!dir.exists(run_dir)) {
 
 val_files <- list.files(path = run_dir, pattern = "values.RDS", recursive = TRUE)
 
-if(is.null(open_db(paste0(package_name, "_db"), create = TRUE))) {
+if (is.null(open_db(paste0(package_name, "_db"), create = TRUE))) {
   print(paste0(package_name, "_db", " opened successfully."))
 }
 
@@ -35,13 +35,12 @@ for (i in seq_along(val_files)) {
 
 counts <- data.frame(total = count_vals(), unique = size_db(), ints = size_ints())
 
-if(is.null(close_db())) {
+if (is.null(close_db())) {
   print(paste0(package_name, "_db", " closed successfully."))
 }
 
 print("recording done!")
 time <- toc()
 
-write.csv(counts, "trace-counts.csv", row.names=FALSE)
-write.csv(time, "record-time.csv", row.names=FALSE)
-
+write.csv(counts, "trace-counts.csv", row.names = FALSE)
+write.csv(time, "record-time.csv", row.names = FALSE)

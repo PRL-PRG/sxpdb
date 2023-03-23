@@ -3,11 +3,11 @@
 library(signatr)
 library(record)
 
-args <- commandArgs(trailingOnly=TRUE)
+args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 1) {
   message("Usage: merge-dbs.R <dir>")
-  q(status=1)
+  q(status = 1)
 }
 
 run_dir <- args[1]
@@ -16,7 +16,7 @@ if (!dir.exists(run_dir)) {
   stop(run_dir, ": no such a directory")
 }
 
-open_db("gbov", create=TRUE)
+open_db("gbov", create = TRUE)
 
 dirs <- list.dirs(path = run_dir, recursive = TRUE)
 dbs <- grep("\\/db$", dirs)

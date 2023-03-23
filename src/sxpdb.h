@@ -401,4 +401,3 @@ SEXP values_from_calls(SEXP sxpdb, SEXP pkg, SEXP fun);
 #endif
 
 #endif // SXPDB_SXPDB_H
-
