@@ -300,8 +300,7 @@ void SearchIndex::build_indexes(const Database& db) {
   auto results_meta_fut = pool.submit(build_indexes_static_meta, std::cref(db), last_computed, db.nb_values());
   auto results_classnames_fut = pool.submit(build_indexes_classnames, std::cref(db), std::ref(classnames_index), last_computed, db.nb_values());
   auto results_origins_fut = pool.submit(build_indexes_origins, std::cref(db), last_computed, db.nb_values());
-  std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_value_fut = std::async( std::launch::deferred, build_indexes_values, std::cref(db), last_computed, db.nb_values());
-
+  std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>> results_value_fut;
 
   // Values
   std::vector<std::future<const std::vector<std::pair<std::string, roaring::Roaring64Map>>>> results_values_fut;
@@ -316,8 +315,8 @@ void SearchIndex::build_indexes(const Database& db) {
   std::vector<std::vector<std::byte>> bufs;
   bufs.reserve(elements_per_chunk);
   uint64_t size = 0;
-  uint64_t start = 0;
-  for(uint64_t i = 0; i < db.nb_values() ; i++) {
+  uint64_t start = last_computed;
+  for(uint64_t i = start; i < db.nb_values() ; i++) {
     const std::vector<std::byte>& buf = db.sexp_table.read(i);
     size += buf.size();
     bufs.push_back(buf);
@@ -365,6 +364,9 @@ void SearchIndex::build_indexes(const Database& db) {
     assert(results[0].first == "na_index");
     na_index |= results[0].second;
   }
+  na_index.runOptimize();
+  na_index.shrinkToFit();
+  
 
   // Class names
   // classnames_index should be passed with std::ref if used with std::async
