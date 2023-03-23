@@ -161,6 +161,7 @@ class SearchIndex {
 public:
   inline static const int nb_sexptypes = 26;
   inline static const int nb_intervals= 200;
+  inline static const int nb_ndims = 6;// 0, 1, 2, 3, 4, [5, +inf[]
   inline static std::array<uint64_t, nb_intervals> length_intervals{0};
 private:
   pid_t pid;
@@ -172,6 +173,7 @@ private:
   fs::path attributes_index_path = "";
   fs::path lengths_index_path = "";
   fs::path classnames_index_path = "";
+  fs::path ndims_index_path = "";
   fs::path packages_index_path = "";
   fs::path functions_index_path = "";
 
@@ -182,6 +184,7 @@ private:
   roaring::Roaring64Map vector_index;//vector (but not scalar)
   roaring::Roaring64Map attributes_index;
   std::vector<roaring::Roaring64Map> lengths_index;
+  std::vector<roaring::Roaring64Map> ndims_index;
   std::vector<roaring::Roaring64Map> packages_index;
   std::vector<std::pair<uint32_t, roaring::Roaring64Map>> function_index;
 
@@ -222,8 +225,9 @@ public:
     }
 
 
-    types_index.resize(26);
+    types_index.resize(nb_sexptypes);
     lengths_index.resize(nb_intervals);
+    ndims_index.resize(nb_ndims);
   }
 
   void set_write_mode(bool write) { write_mode = write; }
@@ -266,6 +270,10 @@ public:
         lengths_index_path = base_path / "lengths_index";
       }
       conf["lengths_index"] = fs::relative(lengths_index_path, base_path_);
+       if(ndims_index_path.empty()) {
+        ndims_index_path = base_path / "ndims_index";
+      }
+      conf["ndims_index"] = fs::relative(ndims_index_path, base_path_);
 
       if(classnames_index_path.empty()) {
         classnames_index_path = base_path / "classnames_index.conf";
@@ -296,6 +304,8 @@ public:
   fs::path base_path() const {
     return types_index_path.parent_path();
   }
+
+  roaring::Roaring64Map search_ndims(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_length) const;
 
   roaring::Roaring64Map search_length(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_length) const;
 

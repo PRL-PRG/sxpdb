@@ -96,6 +96,17 @@ void Query::update(const Database& db) {
     }
   }
 
+  if(ndims) {
+    int n_dims = ndims.value();
+    if(n_dims > 4) {
+      roaring::Roaring64Map precise_ndims_index = search_index.search_ndims(db, search_index.ndims_index[5], n_dims);
+      index_cache &= precise_ndims_index;
+    }
+    else {
+      index_cache &= search_index.ndims_index[n_dims];
+    }
+  }
+
   for(const std::string& class_name : class_names) {
     std::optional<uint32_t> class_id = db.classes.get_class_id(class_name);
 

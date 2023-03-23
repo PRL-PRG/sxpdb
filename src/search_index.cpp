@@ -24,6 +24,7 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
   vector_index_path = base_path / config["vector_index"];
   attributes_index_path = base_path / config["vector_index"];
   lengths_index_path = base_path / config["lengths_index"];
+  ndims_index_path = base_path / config["ndims_index"];
   classnames_index_path = base_path / config["classnames_index"];
   packages_index_path = base_path / config["packages_index"];
   functions_index_path = base_path / config["functions_index"];
@@ -59,6 +60,13 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
   if(!lengths_index_path.empty()) {
     for(int i = 0; i < nb_intervals; i++) {
       lengths_index[i] = read_index(lengths_index_path.parent_path() / (lengths_index_path.stem().string() + "_" + std::to_string(i) + ".ror"));
+      new_elements = true;
+    }
+  }
+
+  if(!ndims_index_path.empty()) {
+    for(int i = 0; i < nb_ndims; i++) {
+      ndims_index[i] = read_index(ndims_index_path.parent_path() / (ndims_index_path.stem().string() + "_" + std::to_string(i) + ".ror"));
       new_elements = true;
     }
   }
@@ -113,7 +121,7 @@ void SearchIndex::open_from_config(const fs::path& base_path, const Config& conf
 
 
 const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::build_indexes_static_meta(const Database& db, uint64_t start, uint64_t end) {
-  std::vector<std::pair<std::string,  roaring::Roaring64Map>> results(SearchIndex::nb_sexptypes + 2 + SearchIndex::nb_intervals);
+  std::vector<std::pair<std::string,  roaring::Roaring64Map>> results(SearchIndex::nb_sexptypes + 2 + SearchIndex::nb_intervals + SearchIndex::nb_ndims);
   int k = 0;
   for(k =0 ; k < SearchIndex::nb_sexptypes ; k++) {
     results[k].first = "type_index";
@@ -125,6 +133,10 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
   int beg = k;
   for(;k < beg + SearchIndex::nb_intervals; k++) {
     results[k].first = "length_index";
+  }
+  beg = k;
+  for(;k < beg + SearchIndex::nb_ndims; k++) {
+    results[k].first = "ndims_index";
   }
 
   for(uint64_t i = start; i < end; i++) {
@@ -146,6 +158,10 @@ const std::vector<std::pair<std::string, roaring::Roaring64Map>> SearchIndex::bu
     }
 
     results[SearchIndex::nb_sexptypes + 2  + length_idx].second.add(i);
+
+    int ndims_idx = std::min(meta.n_dims, (uint32_t) 5);// values with dim > 4 are grouped into the same bin. They should not be common
+    results[SearchIndex::nb_sexptypes + 2  + SearchIndex::nb_intervals + ndims_idx].second.add(i);
+
   }
 
   for(auto& result : results) {
@@ -300,7 +316,7 @@ void SearchIndex::build_indexes(const Database& db) {
   std::vector<std::vector<std::byte>> bufs;
   bufs.reserve(elements_per_chunk);
   uint64_t size = 0;
-  uint64_t start = 0;//TODO: check that start is actually the start of a sequence of bufs
+  uint64_t start = 0;
   for(uint64_t i = 0; i < db.nb_values() ; i++) {
     const std::vector<std::byte>& buf = db.sexp_table.read(i);
     size += buf.size();
@@ -357,7 +373,7 @@ void SearchIndex::build_indexes(const Database& db) {
 
   auto results_meta = results_meta_fut.get();
 
-  assert(results_meta.size() == types_index.size() + 2 + lengths_index.size());
+  assert(results_meta.size() == types_index.size() + 2 + lengths_index.size() + ndims_index.size());
   int i = 0;
   for(; i < types_index.size() ; i ++) {
     assert(results_meta[i].first == "type_index");
@@ -373,6 +389,12 @@ void SearchIndex::build_indexes(const Database& db) {
     assert(results_meta[j + i].first == "length_index");
     lengths_index[j] |= results_meta[j + i].second;
   }
+  i += lengths_index.size();
+  for(int j = 0; j < ndims_index.size() ; j++) {
+    assert(results_meta[j + i].first == "ndims_index");
+    ndims_index[j] |= results_meta[j + i].second;
+  }
+
 
   // Origins
   auto results_origins = results_origins_fut.get();
@@ -409,6 +431,21 @@ roaring::Roaring64Map SearchIndex::search_length(const Database& db, const roari
 
   return precise_index;
 }
+
+roaring::Roaring64Map SearchIndex::search_ndims(const Database& db, const roaring::Roaring64Map& bin_index, uint64_t precise_ndims) const {
+  roaring::Roaring64Map precise_index;
+
+  for(uint64_t i : bin_index) {
+    const auto& meta = db.static_meta.read(i);
+
+    if(meta.n_dims == precise_ndims) {
+      precise_index.add(i);
+    }
+  }
+
+  return precise_index;
+}
+
 
 roaring::Roaring64Map SearchIndex::search_classname(const Database& db, const roaring::Roaring64Map& bin_index, uint32_t precise_classname) const {
   roaring::Roaring64Map precise_index;

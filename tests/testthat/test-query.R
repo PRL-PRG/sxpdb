@@ -26,6 +26,7 @@ test_that("sample_index", {
 
 test_that("simple query", {
      l <- list(1L, "tu", 45.9, TRUE)
+     has_search_index(db)
      db <- db_from_values(l, with_search_index=TRUE)
 
      q <- query_from_value(FALSE)
@@ -162,7 +163,48 @@ test_that("many different lengths", {
      close(db)
 })
 
-# TODO:
-# - multi-dimentional values
-# - with attributes
-# - 0-length vector
+test_that("attributes", {
+     v1 <- structure(3:23, my_attr="plop")
+     v2 <- structure(c("1", "one"), attr2=-234L)
+     l <- list(1L, "tu", 45.9, NA_integer_, v1, TRUE, c(2.1, 4), v2)
+     db <- db_from_values(l, with_search_index=TRUE)
+
+     expect_equal(nb_values_db(db), length(l))
+
+     q <- query_from_plan(list(attributes=TRUE))
+     res <- view_db(db, q)
+     expect_length(res, 2)
+     expect_equal(res[[1]], v1)
+     expect_equal(res[[2]], v2)
+
+     q <- query_from_plan(list(attributes=FALSE))
+     expect_equal(nb_values_db(db, q), nb_values_db(db) - 2)
+
+     close(db)
+})
+
+test_that("dimensions", {
+     v <- c(2, 4, 3, 5)
+     v1 <- array(v)
+     v2 <- matrix(v, nrow=2, ncol=2)
+     l <- list(1L, "tu", 45.9, NA_integer_, v1, TRUE, c(2.1, 4), v2)
+     db <- db_from_values(l, with_search_index=TRUE)
+
+     expect_equal(nb_values_db(db), length(l))
+
+     q <- query_from_plan(list(ndims=1))
+     res <- view_db(db, q)
+     expect_length(res, 1)
+     expect_equal(res[[1]], v1)
+
+     q <- query_from_plan(list(ndims=2))
+     res <- view_db(db, q)
+     expect_length(res, 1)
+     expect_equal(res[[1]], v2)
+
+
+     q <- query_from_plan(list(ndims=0))
+     expect_equal(nb_values_db(db, q), nb_values_db(db) - 2)
+
+     close(db)
+})

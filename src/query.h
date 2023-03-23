@@ -56,7 +56,7 @@ public:
   std::optional<bool> has_attributes;
   std::optional<bool> has_class;
   std::optional<uint64_t> length;
-  std::optional<int> ndims; // 2 = matrix, otherwise = array
+  std::optional<int> ndims; // 2 = matrix, 0 = nothing, otherwise = array
   std::vector<std::string> class_names;
   std::vector<Query> queries;// For union types, lists...
 public:
