@@ -5,3 +5,4 @@
 ^\.vscode$
 ^Makefile$
 ^compile_commands.json$
+^\.pre-commit-config\.yaml$
