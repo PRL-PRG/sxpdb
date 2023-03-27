@@ -77,7 +77,7 @@ repos:
         # `exclude: <regex>` to allow committing specific files
     -   id: unit-tests
         name: Unit tests
-        entry: R -e "devtools::test()"
+        entry: R -e "devtools::test(stop_on_failure=TRUE)"
         language: system
 
 

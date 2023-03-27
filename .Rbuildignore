@@ -3,6 +3,7 @@
 ^Makefile$
 ^\.Rproj\.user$
 ^\.github$
+^\.lintr$
 ^\.pre-commit-config\.yaml$
 ^\.vscode$
 ^compile_commands.json$

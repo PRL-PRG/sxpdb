@@ -270,6 +270,7 @@ public:
         lengths_index_path = base_path / "lengths_index";
       }
       conf["lengths_index"] = fs::relative(lengths_index_path, base_path_);
+      
        if(ndims_index_path.empty()) {
         ndims_index_path = base_path / "ndims_index";
       }

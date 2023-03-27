@@ -494,6 +494,11 @@ SearchIndex::~SearchIndex() {
       write_index(lengths_index_path.parent_path() / (lengths_index_path.stem().string() + "_" + std::to_string(i) + ".ror"), lengths_index[i]);
     }
 
+    for(int i = 0; i < ndims_index.size() ; i++) {
+      write_index(ndims_index_path.parent_path() / (ndims_index_path.stem().string() + "_" + std::to_string(i) + ".ror"), ndims_index[i]);
+    }
+
+
     classnames_index.write(classnames_index_path);
 
     for(int i = 0; i < packages_index.size() ; i++) {
