@@ -45,3 +45,7 @@ length(db)
 
 close(db)
 ```
+
+# Contributing
+
+Make sure to activate pre-commit hooks. We use [pre-commit](https://lorenzwalthert.github.io/precommit/articles/precommit.html)
