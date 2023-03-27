@@ -26,7 +26,6 @@ test_that("sample_index", {
 
 test_that("simple query", {
   l <- list(1L, "tu", 45.9, TRUE)
-  has_search_index(db)
   db <- db_from_values(l, with_search_index = TRUE)
 
   q <- query_from_value(FALSE)
@@ -204,6 +203,49 @@ test_that("dimensions", {
 
   q <- query_from_plan(list(ndims = 0))
   expect_equal(nb_values_db(db, q), nb_values_db(db) - 2)
+
+  close(db)
+})
+
+
+test_that("origin queries", {
+  l <- list(1L, "tu", 45.9, TRUE, c(2.1, 4))
+  origs <- rep.int(list(c("p", "fun", "param")), length(l))
+
+  # "tu"
+  origs[[2]][[1]] <- "package"
+
+  # TRUE
+  origs[[4]][[2]] <- "g"
+
+  # c(2.1, 4)
+  origs[[5]][[1]] <- "pack"
+  origs[[5]][[2]] <- "h"
+
+
+  db <- db_from_values(l, origins = origs, with_search_index = TRUE)
+
+  expect_equal(nb_values_db(db), length(l))
+
+
+  vals <- values_from_origin(db, "p", "fun")
+  expect_equal(nrow(vals), length(l) - 3)
+
+  vals <- values_from_origin(db, "package", "fun")
+
+  expect_equal(nrow(vals), 1)
+  expect_equal(vals[1, "param"], "param; ")
+  expect_equal(get_value_idx(db, vals[1, "id"]), "tu")
+
+  vals <- values_from_origin(db, "p", "g")
+  expect_equal(nrow(vals), 1)
+  expect_equal(vals[1, "param"], "param; ")
+  expect_equal(get_value_idx(db, vals[1, "id"]), TRUE)
+
+  vals <- values_from_origin(db, "pack", "h")
+  expect_equal(nrow(vals), 1)
+  expect_equal(vals[1, "param"], "param; ")
+  expect_equal(get_value_idx(db, vals[1, "id"]), c(2.1, 4))
 
   close(db)
 })

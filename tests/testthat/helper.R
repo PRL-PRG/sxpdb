@@ -23,6 +23,8 @@ db_from_values <- function(values, origins = NULL, name = "sxpdb", with_search_i
       )
     }
   }
-  sxpdb::build_indexes(db)
+  if (with_search_index) {
+    sxpdb::build_indexes(db)
+  }
   db
 }
