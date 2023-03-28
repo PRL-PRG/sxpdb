@@ -58,6 +58,8 @@ public:
   std::optional<uint64_t> length;
   std::optional<int> ndims; // 2 = matrix, 0 = nothing, otherwise = array
   std::vector<std::string> class_names;
+  std::vector<std::string> packages;
+  std::vector<std::string> functions;
   std::vector<Query> queries;// For union types, lists...
 public:
   Query(bool quiet_ = true) : quiet(quiet_), dist_cache(0, 0) {}
@@ -191,6 +193,22 @@ public:
       else if (cur_name == "attributes") {
         d.has_attributes = Rf_asLogical(cur_sexp);
       }
+      else if (cur_name == "package") {
+        if(TYPEOF(cur_sexp) == STRSXP) {
+          d.packages = std::vector<std::string>(Rf_xlength(cur_sexp));
+           for(R_xlen_t j = 0; j < Rf_xlength(cur_sexp); j++) {
+            d.packages[j] = CHAR(STRING_ELT(cur_sexp, j));
+          }
+        }
+      }
+      else if (cur_name == "func") {
+          if(TYPEOF(cur_sexp) == STRSXP) {
+          d.functions = std::vector<std::string>(Rf_xlength(cur_sexp));
+           for(R_xlen_t j = 0; j < Rf_xlength(cur_sexp); j++) {
+            d.functions[j] = CHAR(STRING_ELT(cur_sexp, j));
+          }
+        }
+      }
     }
 
     return d;
@@ -236,6 +254,8 @@ public:
 
     // Non quietness wins!
     d.quiet = d1.quiet || d2.quiet;
+
+    // TODO: implement other query parameters
 
 
     return d;

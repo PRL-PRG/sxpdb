@@ -539,6 +539,8 @@ query_from_value <- function(value) {
 #'   * na: boolean
 #'   * ndims: integer
 #'   * attributes: boolean
+#'   * package: character vector of package names
+#'   * func: character vector of function names
 #' @returns query object
 #' @seealso [query_from_value()], [relax_query()], [close_query()], [view_db()], [map_db()]
 #' @export

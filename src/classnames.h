@@ -137,6 +137,10 @@ public:
     class_names.load_all();
   }
 
+  bool is_loaded() const {
+    return class_names.is_loaded();
+  }
+
   SEXP class_name_cache() const { return class_names.to_sexp();}
 
   std::optional<uint32_t> get_class_id(const std::string& class_name) const {

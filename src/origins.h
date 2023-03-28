@@ -194,11 +194,11 @@ public:
   const std::string& function_name(uint32_t i) const { return function_names.read(i);}
   const std::string& param_name(uint32_t i) const { return param_names.read(i); }
 
-  const std::optional<uint64_t> package_id(const std::string& package_name) {
+  const std::optional<uint64_t> package_id(const std::string& package_name) const {
     return package_names.get_index(package_name);
   }
 
-  const std::optional<uint64_t> function_id(const std::string& function_name) {
+  const std::optional<uint64_t> function_id(const std::string& function_name) const {
     return function_names.get_index(function_name);
   }
 
@@ -264,6 +264,10 @@ public:
     package_names.load_unique();
     function_names.load_unique();
     // not for the parameters
+  }
+
+  bool is_loaded() const {
+    return package_names.is_loaded() && function_names.is_loaded();
   }
 
   uint64_t nb_values() const {

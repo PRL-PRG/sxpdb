@@ -655,6 +655,10 @@ public:
     unique_loaded = true;
   }
 
+  bool is_loaded() const {
+    return unique_loaded;
+  }
+
   uint64_t append_index(const std::string& value) {
     auto it = unique_lines.find(value);
 

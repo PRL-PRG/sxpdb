@@ -107,6 +107,7 @@ void Query::update(const Database& db) {
     }
   }
 
+  assert(class_names.size() == 0 || db.classes.is_loaded());
   for(const std::string& class_name : class_names) {
     std::optional<uint32_t> class_id = db.classes.get_class_id(class_name);
 
@@ -121,5 +122,40 @@ void Query::update(const Database& db) {
       }
     }
   }
-  //index_cache.runOptimize(); // Maybe not worth it...
+  
+  // refine with function and package name indexes
+  assert((packages.size() == 0 && functions.size() == 0) || db.origins.is_loaded());
+
+
+  for(const std::string& package_name : packages) {
+    auto pkg_id = db.origins.package_id(package_name);
+
+    if(pkg_id.has_value()) {
+      auto pkg_index = search_index.packages_index.at(pkg_id.value());
+      index_cache &= pkg_index;
+    }
+  }
+
+  for(const std::string& function_name : functions) {
+    auto fun_id = db.origins.function_id(function_name);
+
+    if(fun_id.has_value()) {
+      int bin_index = -1;
+      for(int i = 0 ; i < search_index.function_index.size() ; i ++) {
+        if(search_index.function_index[i].first > fun_id.value()) {
+          bin_index = i;
+          break;
+        }
+      }
+      if(bin_index == -1) {
+        bin_index = search_index.function_index.size() - 1;
+      }
+
+      if(bin_index >= 0) { // function index not empty
+          auto fun_index = search_index.search_function(db, search_index.function_index[bin_index].second, fun_id.value());
+          index_cache &= fun_index;
+      }
+    }
+  }
+
 }

@@ -513,8 +513,16 @@ const std::optional<uint64_t> Database::sample_index() {
 
  void Database::update_query(Query& query) const {
     if(new_elements || !query.is_initialized()) {
-      // Make sure the reverse indexes are loaded.
-      const_cast<ClassNames&>(classes).load_all();
+      // Make sure the reverse indexes are loaded if we need classes
+      if(query.class_names.size() > 0) {
+          const_cast<ClassNames&>(classes).load_all();
+      }
+      // Make sure the origins are loaded
+      if(query.functions.size() > 0 || query.packages.size() > 0)
+      {
+        const_cast<Origins&>(origins).load_hashtables();
+      }
+      
       query.update(*this);
     }
   }

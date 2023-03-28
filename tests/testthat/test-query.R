@@ -208,7 +208,7 @@ test_that("dimensions", {
 })
 
 
-test_that("origin queries", {
+test_that("origin queries with values_from_origin", {
   l <- list(1L, "tu", 45.9, TRUE, c(2.1, 4))
   origs <- rep.int(list(c("p", "fun", "param")), length(l))
 
@@ -246,6 +246,53 @@ test_that("origin queries", {
   expect_equal(nrow(vals), 1)
   expect_equal(vals[1, "param"], "param; ")
   expect_equal(get_value_idx(db, vals[1, "id"]), c(2.1, 4))
+
+  close(db)
+})
+
+
+test_that("origin queries with query plan ", {
+  l <- list(1L, "tu", 45.9, TRUE, c(2.1, 4))
+  origs <- rep.int(list(c("p", "fun", "param")), length(l))
+
+  # "tu"
+  origs[[2]][[1]] <- "package"
+
+  # TRUE
+  origs[[4]][[2]] <- "g"
+
+  # c(2.1, 4)
+  origs[[5]][[1]] <- "pack"
+  origs[[5]][[2]] <- "h"
+
+  has_search_index(db)
+
+  db <- db_from_values(l, origins = origs, with_search_index = TRUE)
+
+  expect_equal(nb_values_db(db), length(l))
+
+  q <- query_from_plan(list(package = "p"))
+  vals <- view_db(db, q)
+  expect_equal(length(vals), length(l) - 2)
+
+  q <- query_from_plan(list(package = "p", func = "fun"))
+  vals <- view_db(db, q)
+  expect_equal(length(vals), length(l) - 3)
+
+  q <- query_from_plan(list(package = "package", func = "fun"))
+  vals <- view_db(db, q)
+  expect_equal(length(vals), 1)
+  expect_equal(vals[[1]], "tu")
+
+  q <- query_from_plan(list(package = "p", func = "g"))
+  vals <- view_db(db, q)
+  expect_equal(length(vals), 1)
+  expect_equal(vals[[1]], TRUE)
+
+  q <- query_from_plan(list(package = "pack", func = "h"))
+  vals <- view_db(db, q)
+  expect_equal(length(vals), 1)
+  expect_equal(vals[[1]], c(2.1, 4))
 
   close(db)
 })
