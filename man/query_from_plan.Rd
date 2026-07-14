@@ -17,6 +17,8 @@ will be set to unspecified. The plan parameters are:
 \item na: boolean
 \item ndims: integer
 \item attributes: boolean
+\item package: character vector of package names
+\item func: character vector of function names
 }}
 }
 \value{
