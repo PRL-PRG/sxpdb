@@ -1,6 +1,8 @@
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/PRL-PRG/sxpdb/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/PRL-PRG/sxpdb/actions/workflows/R-CMD-check.yaml)
 [![codecov](https://codecov.io/gh/PRL-PRG/sxpdb/branch/main/graph/badge.svg?token=YX52PLOQ3V)](https://codecov.io/gh/PRL-PRG/sxpdb)
+[![r-universe](https://prl-prg.r-universe.dev/sxpdb/badges/version)](https://prl-prg.r-universe.dev/sxpdb)
+[![mutator](https://img.shields.io/endpoint?url=https%3A%2F%2Fprl-prg.github.io%2Fsxpdb%2Fmutation-score.json)](https://github.com/PRL-PRG/sxpdb/actions/workflows/mutation-testing.yaml)
 <!-- badges: end -->
 
 
