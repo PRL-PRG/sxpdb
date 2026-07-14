@@ -11,6 +11,6 @@ name: mutation-testing
 jobs:
   mutation-testing:
     # Pinned to the mutator package release; the workflow tag tracks the package version.
-    uses: PRL-PRG/mutator/.github/workflows/mutation-testing.yaml@v0.1.0
+    uses: PRL-PRG/mutator/.github/workflows/mutation-testing.yaml@v0.1.1
     with:
       target-margin: "0.10"
