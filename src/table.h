@@ -377,7 +377,11 @@ public:
 
     // We will read sequentially
     uint64_t end_pos = lseek(fd, 0, SEEK_END);
+#ifdef POSIX_FADV_SEQUENTIAL
     posix_fadvise(fd, 0, end_pos, POSIX_FADV_SEQUENTIAL);
+#else
+    (void) end_pos;  // posix_fadvise is a Linux-only hint; no-op on macOS/Windows
+#endif
 
     lseek(fd, 0, SEEK_SET);
 
@@ -471,7 +475,11 @@ public:
     uint64_t end_pos = lseek(fd, 0, SEEK_END);
     // This is for the merge case
     // for the sampling case, we should use POSIX_FADV_RANDOM here
+#ifdef POSIX_FADV_SEQUENTIAL
     posix_fadvise(fd, 0, end_pos, POSIX_FADV_SEQUENTIAL);
+#else
+    (void) end_pos;  // posix_fadvise is a Linux-only hint; no-op on macOS/Windows
+#endif
   }
 
   void append(const T& value) override {

@@ -18,8 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
+          # Windows is intentionally excluded: the package uses low-level POSIX
+          # file I/O (sysconf(_SC_PAGE_SIZE), S_IRGRP/S_IWGRP, posix_fadvise)
+          # that mingw does not provide, so it has never built there.
           - {os: macOS-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
           - {os: ubuntu-latest,   r: 'oldrel-1'}
