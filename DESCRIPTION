@@ -2,16 +2,20 @@ Package: sxpdb
 Title: Store R values
 Version: 0.0.0.9004
 Authors@R: c(
+    person(given = "Pierre",
+           family = "Donat-Bouillud",
+           role = c("aut", "cre"),
+           email = "pierre.donat.bouillud@gmail.com",
+           comment = c(ORCID = "0000-0003-4455-1130")),
     person(given = "Yuan",
            family = "Cao",
            role = c("aut"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID")),
-   person(given = "Pierre",
-          family = "Donat-Bouillud",
-          role = c("aut", "cre"),
-          email = "Pierre.donat.bouillud@gmail.com",
-          comment = c(ORCID = "0000-0003-4455-1130")))
+           email = "cao.yuan1@northeastern.edu"),
+    person(given = "Filip",
+           family = "Krikava",
+           role = c("aut"),
+           email = "krikava@gmail.com",
+           comment = c(ORCID = "0000-0002-0478-6202")))
 Description: Stores R values. It stores the values in an efficient ways that scales to millions of unique values and provides 
     a rich query API to find values from the database.
 License: MIT + file LICENSE
