@@ -1,7 +1,10 @@
-PKG_V_MAJOR != $(R_HOME)/bin/R -s -q -e 'cat(as.character(pkgload::pkg_version()[1, 1]))'
-PKG_V_MINOR != $(R_HOME)/bin/R -s -q -e 'cat(as.character(pkgload::pkg_version()[1, 2]))'
-PKG_V_PATCH != $(R_HOME)/bin/R -s -q -e 'cat(as.character(pkgload::pkg_version()[1, 3]))'
-PKG_V_DEVEL != $(R_HOME)/bin/R -s -q -e 'cat(as.character(pkgload::pkg_version()[1, 4]))'
+# Absent version components (e.g. patch/devel for a 2-part version like "0.1")
+# come back as NA; map them to 0 so the compile-time stoi() in utils.h accepts
+# them.
+PKG_V_MAJOR != $(R_HOME)/bin/R -s -q -e 'v <- pkgload::pkg_version()[1, 1]; cat(if (is.na(v)) "0" else as.character(v))'
+PKG_V_MINOR != $(R_HOME)/bin/R -s -q -e 'v <- pkgload::pkg_version()[1, 2]; cat(if (is.na(v)) "0" else as.character(v))'
+PKG_V_PATCH != $(R_HOME)/bin/R -s -q -e 'v <- pkgload::pkg_version()[1, 3]; cat(if (is.na(v)) "0" else as.character(v))'
+PKG_V_DEVEL != $(R_HOME)/bin/R -s -q -e 'v <- pkgload::pkg_version()[1, 4]; cat(if (is.na(v)) "0" else as.character(v))'
 
 #-UNDEBUG to add for assertions
 PKG_CXXFLAGS=-UNDEBUG -DPKG_V_MAJOR=\"$(PKG_V_MAJOR)\" -DPKG_V_MINOR=\"$(PKG_V_MINOR)\" -DPKG_V_PATCH=\"$(PKG_V_PATCH)\" -DPKG_V_DEVEL=\"$(PKG_V_DEVEL)\"
