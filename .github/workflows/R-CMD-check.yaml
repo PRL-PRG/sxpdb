@@ -46,4 +46,10 @@ jobs:
 
       - uses: r-lib/actions/check-r-package@v2
         with:
+          # Fail only on ERRORs, not WARNINGs. This package deliberately reaches
+          # into R's C internals (it is a database of arbitrary R values), so
+          # "checking compiled code" reports non-API calls (ATTRIB iteration and
+          # the gp-bit "cached" flag via LEVELS/SETLEVELS, see src/r_compat.h)
+          # for which there is no public-API replacement. Those remain WARNINGs.
+          error-on: '"error"'
           upload-snapshots: true

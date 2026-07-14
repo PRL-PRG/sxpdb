@@ -90,7 +90,7 @@ public:
       classes.push_back(new_classes);
     }
     else {
-      Rf_warning("The class attribute for value at index %lu has a surprising type: %s.\n", Rf_type2str(TYPEOF(klass)));
+      Rf_warning("The class attribute for value at index %lu has a surprising type: %s.\n", (unsigned long) index, Rf_type2str(TYPEOF(klass)));
     }
   }
 

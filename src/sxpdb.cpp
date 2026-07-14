@@ -1026,7 +1026,7 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
         throw std::runtime_error("Database is corrupted: lock file is present.\n");
       }
 
-      std::cout << "[";
+      Rprintf("[");
 
       uint64_t size_before = db.nb_values();
       SET_STRING_ELT(paths_c, i, STRING_ELT(db_paths, i));
@@ -1067,15 +1067,15 @@ SEXP merge_all_dbs(SEXP db_paths, SEXP output_path, SEXP in_parallel) {
     progress = (double) i / (double) nb_paths;
     int pos = barWidth * progress;
     for (int j = 0; j < barWidth; ++j) {
-        if (j < pos) std::cout << "=";
-        else if (j == pos) std::cout << ">";
-        else std::cout << " ";
+        if (j < pos) Rprintf("=");
+        else if (j == pos) Rprintf(">");
+        else Rprintf(" ");
     }
-    std::cout << "] " << int(progress * 100.0) << " %\r";
-    std::cout.flush();
+    Rprintf("] %d %%\r", int(progress * 100.0));
+    R_FlushConsole();
 
   }
-  std::cout << std::endl;
+  Rprintf("\n");
 
   SEXP df = PROTECT(create_data_frame({
     {"path", paths_c},

@@ -257,7 +257,7 @@ pool.push_task([&](const fs::path& base_path, bool write_mode) {
             origins.nb_packages(),
             origins.nb_functions(),
             origins.nb_parameters(),
-            classes.nb_classnames());
+            (unsigned long) classes.nb_classnames());
   }
 
 }
@@ -269,7 +269,7 @@ Database::~Database() {
             origins.nb_packages(),
             origins.nb_functions(),
             origins.nb_parameters(),
-            classes.nb_classnames());
+            (unsigned long) classes.nb_classnames());
   }
 
   if(pid == getpid()) {
@@ -1145,7 +1145,7 @@ const SEXP Database::values_from_calls(const std::string& package, const std::st
       }
 
       if(parameters.size() == 0) {
-        Rf_warning("Value %lu does not correspond to a parameter of %s::%s.\n", package.c_str(), function.c_str());
+        Rf_warning("Value %lu does not correspond to a parameter of %s::%s.\n", (unsigned long) vid, package.c_str(), function.c_str());
         SET_STRING_ELT(params, j, NA_STRING);
       }
       else {
@@ -1542,7 +1542,7 @@ std::tuple<const sexp_hash*, uint64_t, bool> Database::add_value(SEXP val) {
     else {
       s_meta.n_rows = 0;
     }
-    if(Rf_isFrame(val)) {
+    if(Rf_inherits(val, "data.frame")) {
       s_meta.n_rows = s_meta.length == 0 ? 0 : Rf_xlength(VECTOR_ELT(val, 0));
     }
     static_meta.append(s_meta);
