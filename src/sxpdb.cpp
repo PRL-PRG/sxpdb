@@ -934,7 +934,7 @@ SEXP is_query_empty(SEXP query_ptr) {
 }
 
 SEXP extptr_tag(SEXP ptr) {
-  return EXTPTR_TAG(ptr);
+  return R_ExternalPtrTag(ptr);
 }
 
 SEXP show_query(SEXP query_ptr) {

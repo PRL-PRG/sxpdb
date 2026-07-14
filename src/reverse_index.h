@@ -125,7 +125,9 @@ public:
       idx = indexes.size() - 1;
     }
     assert(indexes.size() > 0);
-    return {indexes[idx], idx < intervals.size() &&  intervals[idx + 1] - intervals[idx] <= 1} ;
+    // NB: guard must be idx + 1 < size(), since we read intervals[idx + 1];
+    // for the last bin there is no next interval (treated as "several").
+    return {indexes[idx], idx + 1 < intervals.size() &&  intervals[idx + 1] - intervals[idx] <= 1} ;
   }
 };
 

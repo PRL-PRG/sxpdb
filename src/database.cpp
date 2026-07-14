@@ -439,7 +439,7 @@ std::optional<uint64_t>  Database::cached_sexp(SEXP val) const {
   // if the tracing bit is not set, we have not seen the value for sure
   // if the value is not shared, then its content can be modified in place
   // so we should hash the value again anyway
-  if(!maybe_shared(val) || RTRACE(val) == 0 ) {
+  if(!maybe_shared(val) || sxpdb_is_cached(val) == 0 ) {
     return {};
   }
 
@@ -467,7 +467,7 @@ const sexp_hash Database::compute_hash(SEXP val, const std::vector<std::byte>& b
 }
 
 void Database::cache_sexp(SEXP val, uint64_t index) {
-  SET_RTRACE(val, 1);
+  sxpdb_set_cached(val);
   sexp_addresses.insert_or_assign(val, index);
 }
 

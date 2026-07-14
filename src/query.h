@@ -6,6 +6,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "Rversion.h"
+#include "r_compat.h"
 
 #include <optional>
 #include <vector>

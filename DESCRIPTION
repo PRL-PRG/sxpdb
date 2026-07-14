@@ -1,6 +1,6 @@
 Package: sxpdb
 Title: Store R values
-Version: 0.0.0.9004
+Version: 0.1
 Authors@R: c(
     person(given = "Pierre",
            family = "Donat-Bouillud",
@@ -28,6 +28,9 @@ Imports:
     pkgload
 Suggests:
     testthat,
-    xml2
-LinkingTo: 
+    xml2,
+    mutator
+LinkingTo:
     testthat
+Remotes:
+    PRL-PRG/mutator

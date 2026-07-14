@@ -265,9 +265,9 @@ test_that("origin queries with query plan ", {
   origs[[5]][[1]] <- "pack"
   origs[[5]][[2]] <- "h"
 
-  has_search_index(db)
-
   db <- db_from_values(l, origins = origs, with_search_index = TRUE)
+
+  expect_true(has_search_index(db))
 
   expect_equal(nb_values_db(db), length(l))
 

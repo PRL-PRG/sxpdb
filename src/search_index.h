@@ -218,7 +218,9 @@ public:
     int base = 10;
     int power = 10;
     for(int i = 0; i < 10; i++) {
-      for(int j = 100 + 10 * i + 1; j <= 100 + 10 * (i + 1); j++) {
+      // NB: the last group would otherwise write length_intervals[200],
+      // one past the end of the array (valid indices are 0..nb_intervals-1).
+      for(int j = 100 + 10 * i + 1; j <= 100 + 10 * (i + 1) && j < nb_intervals; j++) {
         length_intervals[j] = length_intervals[j - 1] + power;
       }
       power *= base;

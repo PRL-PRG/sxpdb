@@ -4,6 +4,7 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
+#include "r_compat.h"
 
 #include <vector>
 #include <algorithm>
