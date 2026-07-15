@@ -8,4 +8,8 @@ PKG_V_DEVEL != $(R_HOME)/bin/R -s -q -e 'v <- pkgload::pkg_version()[1, 4]; cat(
 
 #-UNDEBUG to add for assertions
 PKG_CXXFLAGS=-UNDEBUG -DPKG_V_MAJOR=\"$(PKG_V_MAJOR)\" -DPKG_V_MINOR=\"$(PKG_V_MINOR)\" -DPKG_V_PATCH=\"$(PKG_V_PATCH)\" -DPKG_V_DEVEL=\"$(PKG_V_DEVEL)\"
-PKG_LIBS=-UNDEBUG -lstdc++fs
+# NB: no -lstdc++fs. std::filesystem lives in the standard library on every
+# toolchain we target (gcc >= 9, clang/libc++, Apple clang); the separate
+# stdc++fs library only existed for gcc < 9 and is absent on macOS, where
+# linking it fails with "ld: library 'stdc++fs' not found".
+PKG_LIBS=-UNDEBUG
