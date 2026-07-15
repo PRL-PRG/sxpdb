@@ -515,7 +515,7 @@ SearchIndex::~SearchIndex() {
 roaring::Roaring64Map read_index(const fs::path& path) {
   std::ifstream index_file(path, std::fstream::binary);
   if(!index_file) {
-    Rf_error("Index file %s does not exist.\n", path.c_str());
+    Rf_error("Index file %s does not exist.\n", path.string().c_str());
   }
 
   //get length of file
@@ -536,7 +536,7 @@ void write_index(const fs::path& path, const roaring::Roaring64Map& index) {
   std::ofstream index_file(path, std::fstream::binary | std::fstream::trunc);
 
   if(!index_file) {
-    Rf_error("Cannot create index file %s: %s.\n", path.c_str(), strerror(errno));
+    Rf_error("Cannot create index file %s: %s.\n", path.string().c_str(), strerror(errno));
   }
 
   size_t size = index.getSizeInBytes();
@@ -544,7 +544,7 @@ void write_index(const fs::path& path, const roaring::Roaring64Map& index) {
   size_t written = index.write(buf.data(), true);
 
   if(size != written) {
-    Rf_error("Incorrect number of bytes written for index %s: expected = %lu vs actual =%lu.\n", path.c_str(), size, written);
+    Rf_error("Incorrect number of bytes written for index %s: expected = %lu vs actual =%lu.\n", path.string().c_str(), size, written);
   }
 
   index_file.write(buf.data(), buf.size());

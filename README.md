@@ -48,6 +48,20 @@ length(db)
 close(db)
 ```
 
+# Non-API R entry points
+
+To serialize and faithfully reconstruct arbitrary R values in a performant way, sxpdb's C++ code
+reads and writes SEXP internals through a few R entry points that are *not* part
+of the public C API: `ATTRIB`, `LEVELS`, `SETLEVELS`, and `REFCNT`. These cover
+the object's attributes, its `gp` "general purpose" bits, and its reference
+count, for which R currently exposes no supported public equivalent.
+
+`R CMD check` reports this under "checking compiled code" ("Found non-API calls
+to R").
+ The trade-off is that R core may change or remove them without
+notice, which could require updating sxpdb to keep pace.
+
+
 # Contributing
 
 Make sure to activate pre-commit hooks. We use [pre-commit](https://lorenzwalthert.github.io/precommit/articles/precommit.html)
