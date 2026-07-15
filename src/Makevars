@@ -1,10 +1,21 @@
-# Absent version components (e.g. patch/devel for a 2-part version like "0.1")
-# come back as NA; map them to 0 so the compile-time stoi() in utils.h accepts
-# them.
-PKG_V_MAJOR != $(R_HOME)/bin/R -s -q -e 'v <- pkgload::pkg_version()[1, 1]; cat(if (is.na(v)) "0" else as.character(v))'
-PKG_V_MINOR != $(R_HOME)/bin/R -s -q -e 'v <- pkgload::pkg_version()[1, 2]; cat(if (is.na(v)) "0" else as.character(v))'
-PKG_V_PATCH != $(R_HOME)/bin/R -s -q -e 'v <- pkgload::pkg_version()[1, 3]; cat(if (is.na(v)) "0" else as.character(v))'
-PKG_V_DEVEL != $(R_HOME)/bin/R -s -q -e 'v <- pkgload::pkg_version()[1, 4]; cat(if (is.na(v)) "0" else as.character(v))'
+# Resolve the package version at build time and split it into components.
+#
+# We use ':=' with $(shell ...) rather than the '!=' shell-assignment operator:
+# '!=' needs GNU Make >= 4.0, but macOS ships GNU Make 3.81 (Apple froze at the
+# last GPLv2 release), where '!=' is not recognised and silently leaves the
+# variable empty -> -DPKG_V_*=\"\". ':=', $(shell), $(subst), $(word) and $(or)
+# all work back to Make 3.81.
+#
+# One Rscript call (base read.dcf, no pkgload) reads the version, with a
+# tryCatch fallback so it can never come out empty; make then splits it and
+# defaults any absent component (e.g. patch/devel of a 2-part version like
+# "0.1") to 0, which the compile-time stoi() in utils.h requires.
+PKG_VERSION := $(shell "$(R_HOME)/bin/Rscript" -e 'cat(tryCatch(as.character(read.dcf(file.path("..", "DESCRIPTION"), "Version")[1, 1]), error = function(e) "0.0.0.0"))')
+V_PARTS := $(subst ., ,$(PKG_VERSION))
+PKG_V_MAJOR := $(or $(word 1,$(V_PARTS)),0)
+PKG_V_MINOR := $(or $(word 2,$(V_PARTS)),0)
+PKG_V_PATCH := $(or $(word 3,$(V_PARTS)),0)
+PKG_V_DEVEL := $(or $(word 4,$(V_PARTS)),0)
 
 #-UNDEBUG to add for assertions
 PKG_CXXFLAGS=-UNDEBUG -DPKG_V_MAJOR=\"$(PKG_V_MAJOR)\" -DPKG_V_MINOR=\"$(PKG_V_MINOR)\" -DPKG_V_PATCH=\"$(PKG_V_PATCH)\" -DPKG_V_DEVEL=\"$(PKG_V_DEVEL)\"
