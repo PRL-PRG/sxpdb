@@ -1,0 +1,15 @@
+# This file is a template. The @PKG_V_*@ placeholders are substituted by the
+# top-level ./configure (or ./configure.win) script, which resolves the package
+# version from DESCRIPTION and writes the generated src/Makevars.
+#
+# The version parsing used to live here, but it relied on GNU Make extensions
+# (':=', '$(shell)', '$(subst)', '$(word)', '$(or)'), which R CMD check flags as
+# non-portable. Doing it in configure keeps this Makevars free of them.
+
+#-UNDEBUG to add for assertions
+PKG_CXXFLAGS=-UNDEBUG -DPKG_V_MAJOR=\"@PKG_V_MAJOR@\" -DPKG_V_MINOR=\"@PKG_V_MINOR@\" -DPKG_V_PATCH=\"@PKG_V_PATCH@\" -DPKG_V_DEVEL=\"@PKG_V_DEVEL@\"
+# NB: no -lstdc++fs. std::filesystem lives in the standard library on every
+# toolchain we target (gcc >= 9, clang/libc++, Apple clang); the separate
+# stdc++fs library only existed for gcc < 9 and is absent on macOS, where
+# linking it fails with "ld: library 'stdc++fs' not found".
+PKG_LIBS=-UNDEBUG
