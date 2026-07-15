@@ -56,8 +56,8 @@ public:
 
         if(index > call_ids.size()) {
               Rf_error("Cannot add a call id for a value that was not recorded in the main table."
-                   " Last index is %lu, but the index of that new call id is %lu.\n",
-                   call_ids.size(), index);
+                   " Last index is %llu, but the index of that new call id is %llu.\n",
+                   (unsigned long long) call_ids.size(), (unsigned long long) index);
         }
 
         if(index < call_ids.size()) {
@@ -77,8 +77,8 @@ public:
                 return call_ids[index];
             }
             else {
-                Rf_error("Trying to retrieve a call id for a value that does not exist. %lu values but %lu index.\n",
-                 call_ids.size(), index);
+                Rf_error("Trying to retrieve a call id for a value that does not exist. %llu values but %llu index.\n",
+                 (unsigned long long) call_ids.size(), (unsigned long long) index);
             }
         }
         else {

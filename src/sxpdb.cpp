@@ -115,8 +115,8 @@ SEXP add_val_origin_(SEXP sxpdb, SEXP val,
     }
   }
   catch(std::exception& e) {
-    Rf_error("Error adding value from package %s, function %s and argument %s, with call id %lu, into the database: %s\n",
-             package_name, function_name, argument_name, call_id, e.what());
+    Rf_error("Error adding value from package %s, function %s and argument %s, with call id %llu, into the database: %s\n",
+             package_name, function_name, argument_name, (unsigned long long) call_id, e.what());
   }
   
   if(!db->is_quiet()) {
@@ -505,7 +505,7 @@ SEXP merge_db(SEXP sxpdb1, SEXP sxpdb2) {
     db1->parallel_merge_in(*db2, 150);
   }
   catch(std::exception& e) {
-    Rf_error("Error merging database %s into %s: %s\n", db2->configuration_path().c_str(), db1->configuration_path().c_str(), e.what());
+    Rf_error("Error merging database %s into %s: %s\n", db2->configuration_path().string().c_str(), db1->configuration_path().string().c_str(), e.what());
   }
 
   return Rf_ScalarInteger(db1->nb_values());
@@ -533,7 +533,7 @@ SEXP merge_into_db(SEXP target, SEXP source) {
     UNPROTECT(1);
   }
   catch(std::exception& e) {
-    Rf_error("Error merging database %s into %s: %s\n", db2->configuration_path().c_str(), db1->configuration_path().c_str(), e.what());
+    Rf_error("Error merging database %s into %s: %s\n", db2->configuration_path().string().c_str(), db1->configuration_path().string().c_str(), e.what());
   }
 
   return mapping;
@@ -588,7 +588,7 @@ SEXP path_db(SEXP sxpdb) {
   // so we just need to get the dirname
   auto path = std::filesystem::absolute(db->configuration_path().parent_path());
 
-  SEXP res = PROTECT(Rf_mkString(path.c_str()));
+  SEXP res = PROTECT(Rf_mkString(path.string().c_str()));
 
   UNPROTECT(1);
 

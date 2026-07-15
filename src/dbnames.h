@@ -77,8 +77,8 @@ public:
 
         if(index > dbs.size()) {
             Rf_error("Cannot add a db name for a value that was not recorded in the main table."
-                    " Last index is %lu, but the index of that new db name is %lu.\n",
-                    dbs.size(), index);
+                    " Last index is %llu, but the index of that new db name is %llu.\n",
+                    (unsigned long long) dbs.size(), (unsigned long long) index);
         }
 
         uint32_t db_id = db_names.append_index(dbname);

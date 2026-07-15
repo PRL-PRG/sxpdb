@@ -1,0 +1,36 @@
+#!/bin/sh
+# Resolve the package version and bake it into compile-time -D flags without any
+# GNU Make extensions (R CMD check flags those as non-portable). This does the
+# version parsing that used to live in src/Makevars, then substitutes the
+# components into src/Makevars.in to produce the generated src/Makevars.
+#
+# We split "major.minor.patch.devel" and default any absent component (e.g. the
+# patch/devel of a 2-part version like "0.1") to 0, which the compile-time
+# stoi() in src/database.h requires.
+
+: "${R_HOME=$(R RHOME)}"
+if test -z "${R_HOME}"; then
+  echo "configure: could not determine R_HOME" >&2
+  exit 1
+fi
+RSCRIPT="${R_HOME}/bin/Rscript"
+
+PKG_VERSION=$("${RSCRIPT}" --vanilla -e 'cat(tryCatch(as.character(read.dcf("DESCRIPTION", "Version")[1, 1]), error = function(e) "0.0.0.0"))')
+if test -z "${PKG_VERSION}"; then
+  PKG_VERSION="0.0.0.0"
+fi
+
+V_MAJOR=$(echo "${PKG_VERSION}" | cut -d. -f1)
+V_MINOR=$(echo "${PKG_VERSION}" | cut -d. -f2)
+V_PATCH=$(echo "${PKG_VERSION}" | cut -d. -f3)
+V_DEVEL=$(echo "${PKG_VERSION}" | cut -d. -f4)
+: "${V_MAJOR:=0}"
+: "${V_MINOR:=0}"
+: "${V_PATCH:=0}"
+: "${V_DEVEL:=0}"
+
+sed -e "s|@PKG_V_MAJOR@|${V_MAJOR}|g" \
+    -e "s|@PKG_V_MINOR@|${V_MINOR}|g" \
+    -e "s|@PKG_V_PATCH@|${V_PATCH}|g" \
+    -e "s|@PKG_V_DEVEL@|${V_DEVEL}|g" \
+    src/Makevars.in > src/Makevars

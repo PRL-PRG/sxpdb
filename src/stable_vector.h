@@ -8,6 +8,8 @@
 #include <iterator>
 #include <cassert>
 
+#include "posix_compat.h" // Windows equivalent for sysconf(_SC_PAGE_SIZE)
+
 template<typename T>
 class StableVectorIterator;
 
