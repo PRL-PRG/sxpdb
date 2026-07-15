@@ -3,14 +3,25 @@
 
 // Portability shims for the few POSIX file-I/O primitives sxpdb relies on.
 //
-// On Unix these come from the system headers and this file adds nothing. On
-// Windows (mingw / Rtools) some are missing or spelled differently, so we
-// declare equivalents here and implement them in posix_compat.cpp. Everything
-// is guarded by _WIN32 and must never shadow the real POSIX functions on Unix.
+// On Unix these come from the system headers and this file adds almost nothing.
+// On Windows (mingw / Rtools) some are missing or spelled differently, so we
+// declare equivalents here and implement them in posix_compat.cpp. The Windows
+// bits are guarded by _WIN32 and must never shadow the real POSIX functions on
+// Unix.
 //
 // The implementations live in the .cpp (not inline here) so that <windows.h> is
 // pulled into a single translation unit rather than every file that includes
 // table.h.
+
+// --- O_BINARY ---------------------------------------------------------------
+// POSIX has no text/binary distinction, so <fcntl.h> does not define O_BINARY;
+// define it to 0 there so `open(..., O_BINARY)` stays portable. On Windows the
+// flag IS defined and is essential: without it the CRT read()/write() perform
+// CR/LF translation (and treat 0x1A as EOF), which corrupts the binary database.
+#include <fcntl.h>
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
 
 #ifdef _WIN32
 
