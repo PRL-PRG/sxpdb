@@ -31,7 +31,7 @@ inline void trim(std::string &s) {
 Config::Config(const fs::path& path) {
   std::ifstream description_file(path);
   if(!description_file) {
-   Rf_error("No configuration file %s\n", path.c_str());
+   Rf_error("No configuration file %s\n", path.string().c_str());
   }
 
   std::string line;
@@ -57,7 +57,7 @@ void Config::write(const fs::path& filename) {
   std::ofstream file(filename,std::ofstream::out | std::ofstream::trunc);
 
   if(!file) {
-    Rf_error("Impossible to open for write config file %s\n", filename.c_str());
+    Rf_error("Impossible to open for write config file %s\n", filename.string().c_str());
   }
 
   for(auto& it : config) {

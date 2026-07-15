@@ -74,14 +74,14 @@ Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
     nb_total_values = std::stoul(config["nb_values"]);
   }
   else if (mode == OpenMode::Write) {
-    if(!quiet) Rprintf("Creating new database at %s.\n", base_path.c_str());
+    if(!quiet) Rprintf("Creating new database at %s.\n", base_path.string().c_str());
 
     //This will also set-up the paths for the search index
     search_index.set_write_mode(true);
     write_configuration();
   }
   else {
-    Rf_error("Cannot read data base at %s. Path does not exist.\n", base_path.c_str());
+    Rf_error("Cannot read data base at %s. Path does not exist.\n", base_path.string().c_str());
   }
 
   // We can now create the lock file if we are in write mode
@@ -253,7 +253,7 @@ pool.push_task([&](const fs::path& base_path, bool write_mode) {
 
   if(!quiet) {
     Rprintf("Loaded database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters, with %lu classes.\n",
-            base_path.c_str(), nb_total_values,
+            base_path.string().c_str(), nb_total_values,
             origins.nb_packages(),
             origins.nb_functions(),
             origins.nb_parameters(),
@@ -265,7 +265,7 @@ pool.push_task([&](const fs::path& base_path, bool write_mode) {
 Database::~Database() {
   if(!quiet) {
     Rprintf("Closing database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters, and %lu classes.\n",
-            base_path.c_str(), nb_total_values,
+            base_path.string().c_str(), nb_total_values,
             origins.nb_packages(),
             origins.nb_functions(),
             origins.nb_parameters(),
@@ -1614,7 +1614,7 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
   other.sexp_table.load_all();
 
   bool has_dbnames = other.dbnames.nb_values() != 0;
-  std::string dbname = other.configuration_path().parent_path().filename();
+  std::string dbname = other.configuration_path().parent_path().filename().string();
 
   bool has_debug = debug_counters.nb_values() > 0 && other.debug_counters.nb_values() > 0;
 
@@ -1954,7 +1954,7 @@ uint64_t Database::merge_in(Database& other) {
   other.sexp_table.load_all();
 
   bool has_dbnames = other.dbnames.nb_values() != 0;
-  std::string dbname = other.configuration_path().parent_path().filename();
+  std::string dbname = other.configuration_path().parent_path().filename().string();
 
   sexp_hash key;
   runtime_meta_t meta;
@@ -2098,11 +2098,11 @@ std::vector<uint64_t> Database::merge_into(Database& other) {
   other.sexp_table.load_all();
 
   bool has_dbnames = other.dbnames.nb_values() != 0;
-  std::string dbname = other.configuration_path().parent_path().filename();
+  std::string dbname = other.configuration_path().parent_path().filename().string();
 
   // the output database might be non empty, but whithout db names
   if(dbnames.nb_values() == 0) {
-    dbnames.fill_dbnames(nb_values(), configuration_path().parent_path().filename());
+    dbnames.fill_dbnames(nb_values(), configuration_path().parent_path().filename().string());
   }
 
   sexp_hash key;

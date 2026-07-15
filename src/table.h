@@ -178,14 +178,14 @@ public:
     file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::ate);
 
     if(!file) {
-      Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
+      Rf_error("Impossible to open the table file at %s: %s\n", file_path.string().c_str(), strerror(errno));
     }
 
 
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
     if(n_values != n_values_file) {
-      Rf_error("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.c_str(), n_values, n_values_file);
+      Rf_error("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.string().c_str(), n_values, n_values_file);
     }
 
     file.exceptions(std::fstream::failbit);
@@ -329,10 +329,10 @@ public:
     Table<T>::open(path, write);
     // We have to create the file if it does not exists; it requires other flags than the next ones
     
-    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+    fd = ::open(file_path.string().c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
     if(fd == -1) {
-      Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
+      Rf_error("Impossible to open the table file at %s: %s\n", file_path.string().c_str(), strerror(errno));
     }
     // Now seek to the end for write to be able to append to the file
     uint64_t end_pos = lseek(fd, 0, SEEK_END);
@@ -340,7 +340,7 @@ public:
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
     if(n_values != n_values_file) {
-      Rf_error("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.c_str(), n_values, n_values_file);
+      Rf_error("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.string().c_str(), n_values, n_values_file);
     }
 
     last_written = n_values;
@@ -407,7 +407,7 @@ public:
     uint64_t nb_new_values = n_values - last_written;
     if(write_mode && in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
-      fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+      fd = ::open(file_path.string().c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
       lseek(fd, last_written * sizeof(T), SEEK_SET);
       for(auto it = store.begin() + last_written; it != store.end(); it++) {
         std::ignore = ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
@@ -424,7 +424,7 @@ public:
     uint64_t nb_new_values = n_values - last_written;
     if(write_mode && in_memory && nb_new_values > 0 && pid == getpid()) {
       //only materialize new values
-      fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+      fd = ::open(file_path.string().c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
       lseek(fd, last_written * sizeof(T), SEEK_SET);
       for(auto it = store.begin() + last_written; it != store.end(); it++) {
         std::ignore = ::write(fd, reinterpret_cast<char*>(&(*it)), sizeof(T));
@@ -465,10 +465,10 @@ public:
 
     offset_table.open(file_path.parent_path() / (file_path.stem().string() + "_offsets.bin"), write_mode);
 
-    fd = ::open(file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+    fd = ::open(file_path.string().c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
     if(fd == -1) {
-      Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
+      Rf_error("Impossible to open the table file at %s: %s\n", file_path.string().c_str(), strerror(errno));
     }
 
     // Now seek to the end for write to be able to append to the file
@@ -545,7 +545,7 @@ public:
     assert(size > 0 );
 
     if(value.size() != size) {
-      Rf_warning("Cannot write at index %lu a value of a different size in table %s : %lu vs %ld.\n", idx, file_path.c_str(), size, value.size());
+      Rf_warning("Cannot write at index %lu a value of a different size in table %s : %lu vs %ld.\n", idx, file_path.string().c_str(), size, value.size());
       return;
     }
 
@@ -618,7 +618,7 @@ public:
       file.open(file_path, std::fstream::in);
 
       if(!file) {
-        Rf_error("Impossible to open the table file at %s: %s\n", file_path.c_str(), strerror(errno));
+        Rf_error("Impossible to open the table file at %s: %s\n", file_path.string().c_str(), strerror(errno));
       }
 
       // There will be only one chunk at the beginning
