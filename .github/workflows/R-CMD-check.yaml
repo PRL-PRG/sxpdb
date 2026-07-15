@@ -14,13 +14,18 @@ jobs:
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
 
+    # Windows is being brought back up (it uses low-level POSIX file I/O -
+    # sysconf(_SC_PAGE_SIZE), S_IRGRP/S_IWGRP, pread/pwrite - that mingw does not
+    # provide). While that port is in progress the Windows job is allowed to fail
+    # so it still runs and reports compiler errors without failing the workflow.
+    # Remove `allow-failure: true` once Windows builds cleanly.
+    continue-on-error: ${{ matrix.config.allow-failure || false }}
+
     strategy:
       fail-fast: false
       matrix:
         config:
-          # Windows is intentionally excluded: the package uses low-level POSIX
-          # file I/O (sysconf(_SC_PAGE_SIZE), S_IRGRP/S_IWGRP, posix_fadvise)
-          # that mingw does not provide, so it has never built there.
+          - {os: windows-latest, r: 'release', allow-failure: true}
           - {os: macOS-latest,   r: 'release'}
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
