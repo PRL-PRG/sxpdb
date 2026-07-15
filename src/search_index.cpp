@@ -338,14 +338,14 @@ void SearchIndex::build_indexes(const Database& db) {
       meta_status = results_meta_fut.wait_for(333ms);
       if(meta_status == std::future_status::ready) {
         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
-        if (!db.is_quiet()) Rprintf("Computations on metadata have finished in %ld ms.\n", dur.count());
+        if (!db.is_quiet()) Rprintf("Computations on metadata have finished in %lld ms.\n", (long long) dur.count());
       }
     }
     if(classname_status != std::future_status::ready) {
       classname_status= results_classnames_fut.wait_for(333ms);
       if(classname_status == std::future_status::ready) {
         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
-        if (!db.is_quiet()) Rprintf("Computations on classnames have finished in %ld ms.\n", dur.count());
+        if (!db.is_quiet()) Rprintf("Computations on classnames have finished in %lld ms.\n", (long long) dur.count());
       }
     }
     if(value_status != std::future_status::ready) {
@@ -353,7 +353,7 @@ void SearchIndex::build_indexes(const Database& db) {
       value_status = results_values_fut[results_values_fut.size() - 1].wait_for(333ms);
       if(value_status == std::future_status::ready) {
         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
-        if (!db.is_quiet()) Rprintf("Computations on values have finished in %ld ms.\n", dur.count());
+        if (!db.is_quiet()) Rprintf("Computations on values have finished in %lld ms.\n", (long long) dur.count());
       }
     }
   } while (meta_status != std::future_status::ready && value_status != std::future_status::ready && classname_status!= std::future_status::ready);
@@ -544,7 +544,7 @@ void write_index(const fs::path& path, const roaring::Roaring64Map& index) {
   size_t written = index.write(buf.data(), true);
 
   if(size != written) {
-    Rf_error("Incorrect number of bytes written for index %s: expected = %lu vs actual =%lu.\n", path.string().c_str(), size, written);
+    Rf_error("Incorrect number of bytes written for index %s: expected = %llu vs actual =%llu.\n", path.string().c_str(), (unsigned long long) size, (unsigned long long) written);
   }
 
   index_file.write(buf.data(), buf.size());

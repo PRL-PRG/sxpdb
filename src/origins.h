@@ -136,8 +136,8 @@ public:
       assert(pid == getpid());
       if(index > locations.size()) {
         Rf_error("Cannot add an origin for a value that was not recorded in the main table."
-                   " Last index is %lu, but the index of that new origin is %lu.\n",
-                   locations.size(), index);
+                   " Last index is %llu, but the index of that new origin is %llu.\n",
+                   (unsigned long long) locations.size(), (unsigned long long) index);
       }
 
       location_t loc(package_names.append_index(package_name),

@@ -11,9 +11,10 @@
 using namespace moodycamel;
 
 Database:: Database(const fs::path& config_, OpenMode mode_, bool quiet_) :
-  config_path(config_), base_path(fs::absolute(config_path.parent_path())), mode(mode_),   quiet(quiet_),
-  rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
+  mode(mode_), quiet(quiet_),
   pid(getpid()),
+  rand_engine(std::chrono::system_clock::now().time_since_epoch().count()),
+  config_path(config_), base_path(fs::absolute(config_path.parent_path())),
   ser(4096) // does it fit in the processor caches?
 {
   fs::path sexp_table_path = base_path / "sexp_table.conf";
@@ -195,56 +196,56 @@ pool.push_task([&](const fs::path& base_path, bool write_mode) {
   // Check if the number of values in tables are coherent
   if(sexp_table.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the sexp table: %lu vs %lu\n", nb_total_values, sexp_table.nb_values());
+               "in the sexp table: %llu vs %llu\n", (unsigned long long) nb_total_values, (unsigned long long) sexp_table.nb_values());
   }
 
   if(hashes.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the hashes table: %lu vs %lu\n", nb_total_values, hashes.nb_values());
+               "in the hashes table: %llu vs %llu\n", (unsigned long long) nb_total_values, (unsigned long long) hashes.nb_values());
   }
 
   if(runtime_meta.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the runtime_meta table: %lu vs %lu\n", nb_total_values, runtime_meta.nb_values());
+               "in the runtime_meta table: %llu vs %llu\n", (unsigned long long) nb_total_values, (unsigned long long) runtime_meta.nb_values());
   }
 
   if(static_meta.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the static_meta table: %lu vs %lu\n", nb_total_values, static_meta.nb_values());
+               "in the static_meta table: %llu vs %llu\n", (unsigned long long) nb_total_values, (unsigned long long) static_meta.nb_values());
   }
 
   if(debug_counters.nb_values() != 0 && debug_counters.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the debug counters tables: %lu vs %lu.\n", nb_total_values, debug_counters.nb_values());
+               "in the debug counters tables: %llu vs %llu.\n", (unsigned long long) nb_total_values, (unsigned long long) debug_counters.nb_values());
   }
 
   if(origins.nb_values() > nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the origin tables: %lu vs %lu.\n", nb_total_values, origins.nb_values());
+               "in the origin tables: %llu vs %llu.\n", (unsigned long long) nb_total_values, (unsigned long long) origins.nb_values());
   }
 
   if(classes.nb_values() != nb_total_values) {
     Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the class tables: %lu vs %lu.\n", nb_total_values, classes.nb_values());
+               "in the class tables: %llu vs %llu.\n", (unsigned long long) nb_total_values, (unsigned long long) classes.nb_values());
   }
 
   if(call_ids.nb_values() != nb_total_values) {
      Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the call_id tables: %lu vs %lu.\n", nb_total_values, call_ids.nb_values());
+               "in the call_id tables: %llu vs %llu.\n", (unsigned long long) nb_total_values, (unsigned long long) call_ids.nb_values());
   }
 
   // 0 is possible, as we only update that table when merging
   // SO the table is empty just after tracing
   if(dbnames.nb_values() != 0 && dbnames.nb_values() != nb_total_values) {
      Rf_error("Inconsistent number of values in the global configuration file and "
-               "in the db names tables: %lu vs %lu.\n", nb_total_values, dbnames.nb_values());
+               "in the db names tables: %llu vs %llu.\n", (unsigned long long) nb_total_values, (unsigned long long) dbnames.nb_values());
   }
 
   if(to_check) {
     Rprintf("Checking the database in slow mode.\n");
     auto errors = check(true);
     if(errors.size() > 0 ) {
-      Rf_error("The database is corrupted: %ld errors. Open it again with autorepair to try repairing it.\n", errors.size());
+      Rf_error("The database is corrupted: %llu errors. Open it again with autorepair to try repairing it.\n", (unsigned long long) errors.size());
     }
     else {
       Rprintf("No errors found.\n");
@@ -252,24 +253,24 @@ pool.push_task([&](const fs::path& base_path, bool write_mode) {
   }
 
   if(!quiet) {
-    Rprintf("Loaded database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters, with %lu classes.\n",
-            base_path.string().c_str(), nb_total_values,
-            origins.nb_packages(),
-            origins.nb_functions(),
-            origins.nb_parameters(),
-            (unsigned long) classes.nb_classnames());
+    Rprintf("Loaded database at %s with %llu unique values, from %llu packages, %llu functions and %llu parameters, with %llu classes.\n",
+            base_path.string().c_str(), (unsigned long long) nb_total_values,
+            (unsigned long long) origins.nb_packages(),
+            (unsigned long long) origins.nb_functions(),
+            (unsigned long long) origins.nb_parameters(),
+            (unsigned long long) classes.nb_classnames());
   }
 
 }
 
 Database::~Database() {
   if(!quiet) {
-    Rprintf("Closing database at %s with %ld unique values, from %lu packages, %lu functions and %lu parameters, and %lu classes.\n",
-            base_path.string().c_str(), nb_total_values,
-            origins.nb_packages(),
-            origins.nb_functions(),
-            origins.nb_parameters(),
-            (unsigned long) classes.nb_classnames());
+    Rprintf("Closing database at %s with %llu unique values, from %llu packages, %llu functions and %llu parameters, and %llu classes.\n",
+            base_path.string().c_str(), (unsigned long long) nb_total_values,
+            (unsigned long long) origins.nb_packages(),
+            (unsigned long long) origins.nb_functions(),
+            (unsigned long long) origins.nb_parameters(),
+            (unsigned long long) classes.nb_classnames());
   }
 
   if(pid == getpid()) {
@@ -1145,7 +1146,7 @@ const SEXP Database::values_from_calls(const std::string& package, const std::st
       }
 
       if(parameters.size() == 0) {
-        Rf_warning("Value %lu does not correspond to a parameter of %s::%s.\n", (unsigned long) vid, package.c_str(), function.c_str());
+        Rf_warning("Value %llu does not correspond to a parameter of %s::%s.\n", (unsigned long long) vid, package.c_str(), function.c_str());
         SET_STRING_ELT(params, j, NA_STRING);
       }
       else {
@@ -1663,8 +1664,8 @@ uint64_t Database::parallel_merge_in(Database& other, uint64_t min_chunk_size) {
     elems_present |= elems.second;
   }
 
-  if(!quiet) Rprintf("Planning to add %lu new values from the %lu of the merged database.\n",
-   elems_to_add.cardinality(), other.nb_values());
+  if(!quiet) Rprintf("Planning to add %llu new values from the %llu of the merged database.\n",
+   (unsigned long long) elems_to_add.cardinality(), (unsigned long long) other.nb_values());
 
   // Now we have all the indexes of the elements to add
 

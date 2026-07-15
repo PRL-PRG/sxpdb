@@ -65,7 +65,7 @@ protected:
   fs::path file_path;
   pid_t pid;
 public:
-  Table(const fs::path& path, bool write=true) : pid(getpid()), write_mode(write) {
+  Table(const fs::path& path, bool write=true) : write_mode(write), pid(getpid()) {
     open(path);
   }
 
@@ -186,7 +186,7 @@ public:
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
     if(n_values != n_values_file) {
-      Rf_error("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.string().c_str(), n_values, n_values_file);
+      Rf_error("Number of values in config file and file do not match for table %s: %llu vs %llu.\n", path.string().c_str(), (unsigned long long) n_values, (unsigned long long) n_values_file);
     }
 
     file.exceptions(std::fstream::failbit);
@@ -341,7 +341,7 @@ public:
     // check if the size is coherent
     uint64_t n_values_file = fs::file_size(file_path) / sizeof(T);
     if(n_values != n_values_file) {
-      Rf_error("Number of values in config file and file do not match for table %s: %lu vs %lu.\n", path.string().c_str(), n_values, n_values_file);
+      Rf_error("Number of values in config file and file do not match for table %s: %llu vs %llu.\n", path.string().c_str(), (unsigned long long) n_values, (unsigned long long) n_values_file);
     }
 
     last_written = n_values;
@@ -546,7 +546,7 @@ public:
     assert(size > 0 );
 
     if(value.size() != size) {
-      Rf_warning("Cannot write at index %lu a value of a different size in table %s : %lu vs %ld.\n", idx, file_path.string().c_str(), size, value.size());
+      Rf_warning("Cannot write at index %llu a value of a different size in table %s : %llu vs %llu.\n", (unsigned long long) idx, file_path.string().c_str(), (unsigned long long) size, (unsigned long long) value.size());
       return;
     }
 

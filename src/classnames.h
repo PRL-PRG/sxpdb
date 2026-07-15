@@ -72,8 +72,8 @@ public:
     assert(pid == getpid());
     if(index != classes.size()) {
       Rf_error("Cannot add a class name for a value that was not recorded in the main table."
-                 " Last index is %lu, but the index of that new class name is %lu.\n",
-                 classes.size(), index);
+                 " Last index is %llu, but the index of that new class name is %llu.\n",
+                 (unsigned long long) classes.size(), (unsigned long long) index);
     }
 
     //class names is an attribute with a vector of strings
@@ -90,7 +90,7 @@ public:
       classes.push_back(new_classes);
     }
     else {
-      Rf_warning("The class attribute for value at index %lu has a surprising type: %s.\n", (unsigned long) index, Rf_type2char(TYPEOF(klass)));
+      Rf_warning("The class attribute for value at index %llu has a surprising type: %s.\n", (unsigned long long) index, Rf_type2char(TYPEOF(klass)));
     }
   }
 
