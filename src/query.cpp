@@ -79,8 +79,11 @@ void Query::update(const Database& db) {
   if(length) {
     auto low_bound = std::lower_bound(search_index.length_intervals.begin(), search_index.length_intervals.end(), length.value());
     if(low_bound == search_index.length_intervals.end()) {
-     // Then it is in the last bin
-     low_bound = &SearchIndex::length_intervals.back();
+     // Then it is in the last bin. Use an end-relative iterator rather than
+     // &back(): a raw pointer only converts to the container's iterator on
+     // libstdc++ (where they coincide), not on libc++ (wasm/webR, macOS),
+     // where the iterator is a wrapper type.
+     low_bound = search_index.length_intervals.end() - 1;
     }
     int length_idx = std::distance(SearchIndex::length_intervals.begin(), low_bound);
     // Check if the index_cache in that slot represents one length or several ones
