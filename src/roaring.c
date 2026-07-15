@@ -1,6 +1,12 @@
 // !!! DO NOT EDIT - THIS IS AN AUTO-GENERATED FILE !!!
 // Created by amalgamation.sh on Mon 16 Aug 2021 13:20:45 EDT
 
+// sxpdb: the only local edit to this vendored amalgamation. It routes this
+// file's printf/fprintf(stderr,...) console output through R's I/O so the
+// package does not write to stdout/stderr directly (R CMD check "checking
+// compiled code" WARNING). Re-add this single line after any CRoaring update.
+#include "r_roaring.h"
+
 /*
  * Copyright 2016-2020 The CRoaring authors
  *
