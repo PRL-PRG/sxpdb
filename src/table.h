@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "posix_compat.h" // Windows equivalents for pread/pwrite, S_I* bits
 
 #include "config.h"
 #include "robin_hood.h"
