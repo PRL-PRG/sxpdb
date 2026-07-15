@@ -48,3 +48,6 @@ db
 .vscode
 
 testthat-problems.rds
+
+# C coverage
+*.gcda
