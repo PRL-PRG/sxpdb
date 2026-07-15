@@ -120,7 +120,7 @@ public:
   // returns the closest description of the SEXP
   // We may relax it later on
   inline static const Query from_value(SEXP val, bool quiet = true) {
-    Query d(TYPEOF(val), quiet = quiet);
+    Query d(TYPEOF(val), quiet);
 
     d.length = Rf_length(val);
 
@@ -159,7 +159,7 @@ public:
     }
     SEXP names = Rf_getAttrib(plan, R_NamesSymbol);
 
-    Query d(ANYSXP, quiet = quiet);
+    Query d(ANYSXP, quiet);
 
     // If something is not present, it is just not taken into account for the search plan
     std::string cur_name = "";

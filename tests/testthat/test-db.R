@@ -96,5 +96,8 @@ test_that("get_meta_idx", {
   expect_equal(meta$size, 16)
   expect_equal(meta$n_calls, 20)
   expect_equal(meta$n_merges, 0)
-  expect_equal(length(meta), 10) # missing class names
+  # 8 base columns (class-name/na columns absent here). Debug builds (-UNDEBUG)
+  # add 2 debug-counter columns; release builds omit them.
+  has_debug <- "maybed_shared" %in% names(meta)
+  expect_equal(length(meta), if (has_debug) 10 else 8)
 })

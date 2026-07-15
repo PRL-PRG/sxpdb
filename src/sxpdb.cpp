@@ -971,9 +971,9 @@ SEXP show_query(SEXP query_ptr) {
       query->queries.size() != 0  ? "yes" : "no");
 
 
-  return Rf_ScalarInteger(query->type != ANYSXP + query->is_vector.has_value() + query->has_na.has_value() +
+  return Rf_ScalarInteger((query->type != ANYSXP) + query->is_vector.has_value() + query->has_na.has_value() +
     query->has_attributes.has_value() + query->has_class.has_value() + query->length.has_value() + query->ndims.has_value() +
-    query->class_names.size() != 0);
+    (query->class_names.size() != 0));
 }
 
 
