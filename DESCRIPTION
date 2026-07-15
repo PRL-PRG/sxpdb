@@ -13,7 +13,7 @@ Authors@R: c(
            email = "cao.yuan1@northeastern.edu"),
     person(given = "Filip",
            family = "Krikava",
-           role = c("aut"),
+           role = c("ctb"),
            email = "krikava@gmail.com",
            comment = c(ORCID = "0000-0002-0478-6202")))
 Description: Stores R values. It stores the values in an efficient ways that scales to millions of unique values and provides 
